@@ -1,0 +1,111 @@
+"""Experiment configuration dataclasses with JSON serialization."""
+
+from dataclasses import dataclass, field, asdict
+from typing import List, Optional
+import json
+from pathlib import Path
+
+
+@dataclass
+class ExperimentConfig:
+    """Base configuration for all experiments."""
+
+    name: str = ""
+    seed: int = 42
+    n_reps: int = 500
+    n_jobs: int = -1  # -1 = all cores
+    output_dir: str = "results"
+
+    def save(self, path: str):
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w") as f:
+            json.dump(asdict(self), f, indent=2)
+
+    @classmethod
+    def load(cls, path: str):
+        with open(path) as f:
+            return cls(**json.load(f))
+
+
+@dataclass
+class SyntheticConfig(ExperimentConfig):
+    """Configuration for synthetic experiments."""
+
+    M: int = 100
+    n_models: int = 200
+    p: int = 20
+    noise_level: float = 0.05
+    signal_prob: float = 0.2  # rho = 1 - signal_prob = 0.8
+    classifier: str = "knn"
+    n_components: int = 10
+
+
+@dataclass
+class Exp1Config(SyntheticConfig):
+    """Exp 1: Error vs m for varying r."""
+
+    name: str = "exp1_error_vs_m_rank"
+    r_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 25, 50])
+    noise_levels: List[float] = field(default_factory=lambda: [0.15, 0.3, 0.5])
+    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
+
+
+@dataclass
+class Exp2Config(SyntheticConfig):
+    """Exp 2: Error vs m for varying rho."""
+
+    name: str = "exp2_error_vs_m_rho"
+    r: int = 5
+    signal_prob_values: List[float] = field(default_factory=lambda: [0.1, 0.2, 0.5, 0.9])
+    noise_levels: List[float] = field(default_factory=lambda: [0.15, 0.3, 0.5])
+    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
+
+
+@dataclass
+class Exp3Config(SyntheticConfig):
+    """Exp 3: Query distribution effect."""
+
+    name: str = "exp3_query_distribution"
+    r: int = 5
+    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
+    concentration: float = 0.9
+
+
+@dataclass
+class Exp4Config(SyntheticConfig):
+    """Exp 4: Error vs n (sample complexity)."""
+
+    name: str = "exp4_error_vs_n"
+    r: int = 5
+    m: int = 50
+    n_values: List[int] = field(default_factory=lambda: [10, 20, 50, 100, 200, 300, 500])
+
+
+@dataclass
+class Exp5Config(SyntheticConfig):
+    """Exp 5: Bayes convergence."""
+
+    name: str = "exp5_bayes_convergence"
+    r: int = 5
+    noise_level: float = 0.1
+    m: int = 100  # Large enough to activate all directions
+    n_values: List[int] = field(default_factory=lambda: [20, 50, 100, 200, 500, 1000])
+
+
+@dataclass
+class RealConfig(ExperimentConfig):
+    """Configuration for real LLM experiments."""
+
+    data_path: str = ""
+    embedding_model: str = "nomic-embed-text-v1.5"
+    n_reps: int = 100
+    classifier: str = "knn"
+    n_components: int = 10
+
+
+@dataclass
+class Exp7Config(RealConfig):
+    """Exp 7: Accuracy vs m (main real result)."""
+
+    name: str = "exp7_accuracy_vs_m"
+    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
