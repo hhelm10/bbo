@@ -25,7 +25,7 @@ def main():
                         help="Which experiments to run")
     parser.add_argument("--output-dir", default="results/real",
                         help="Output directory")
-    parser.add_argument("--figure-dir", default="results/figures",
+    parser.add_argument("--figure-dir", default="figures",
                         help="Figure output directory")
     parser.add_argument("--n-reps", type=int, default=100)
     parser.add_argument("--seed", type=int, default=42)

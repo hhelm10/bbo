@@ -35,7 +35,7 @@ def main():
                         help="Which experiments to run (e.g., exp1 exp2)")
     parser.add_argument("--output-dir", default="results/synthetic",
                         help="Output directory for results")
-    parser.add_argument("--figure-dir", default="results/figures",
+    parser.add_argument("--figure-dir", default="figures",
                         help="Output directory for figures")
     parser.add_argument("--n-reps", type=int, default=None,
                         help="Override number of repetitions")
