@@ -8,6 +8,7 @@ Three distributions:
 Expected: signal-concentrated converges fastest; orthogonal never converges.
 """
 
+import math
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -24,17 +25,31 @@ from bbo.experiments.config import Exp3Config
 _DIST_SEED_OFFSET = {"uniform": 0, "signal": 1, "orthogonal": 2}
 
 
-def _run_one_rep(responses, labels, M, m, dist, seed, n_components, classifier):
+def _knn_k(n):
+    """k = floor(log(n)) rounded down to nearest odd integer."""
+    k = int(math.log(n))
+    if k % 2 == 0:
+        k -= 1
+    return max(k, 1)
+
+
+def _run_one_rep(responses, labels, M, m, dist, seed, n_components, classifier,
+                 n_neighbors):
     rng = np.random.default_rng(seed)
     query_idx = sample_queries(M, m, distribution=dist, rng=rng)
     return single_trial(responses, labels, query_idx,
-                        n_components=n_components, classifier_name=classifier)
+                        n_components=n_components, classifier_name=classifier,
+                        n_neighbors=n_neighbors)
 
 
 def run_exp3(config: Exp3Config = None) -> pd.DataFrame:
     """Run full Exp 3 sweep with parallel reps."""
     if config is None:
         config = Exp3Config()
+
+    k = _knn_k(config.n_models)
+    # Use n_components = r so MDS rank matches the true discriminative rank
+    n_comp = min(config.r, config.n_models - 1)
 
     problem = make_problem(
         M=config.M, r=config.r, signal_prob=config.signal_prob,
@@ -69,7 +84,7 @@ def run_exp3(config: Exp3Config = None) -> pd.DataFrame:
                      for rep in range(config.n_reps)]
             errors = Parallel(n_jobs=config.n_jobs, backend="loky")(
                 delayed(_run_one_rep)(responses, labels, config.M, m, dist, s,
-                                      config.n_components, config.classifier)
+                                      n_comp, config.classifier, k)
                 for s in seeds
             )
             errors = np.array(errors)

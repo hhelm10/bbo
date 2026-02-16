@@ -5,6 +5,7 @@ Sweep p (activation probability) in {0.1, 0.3, 0.5, 0.8}.
 Slope changes as log(1-p).
 """
 
+import math
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -16,17 +17,31 @@ from bbo.classification.evaluate import single_trial
 from bbo.experiments.config import Exp2Config
 
 
-def _run_one_rep(responses, labels, M, m, seed, n_components, classifier):
+def _knn_k(n):
+    """k = floor(log(n)) rounded down to nearest odd integer."""
+    k = int(math.log(n))
+    if k % 2 == 0:
+        k -= 1
+    return max(k, 1)
+
+
+def _run_one_rep(responses, labels, M, m, seed, n_components, classifier,
+                 n_neighbors):
     rng = np.random.default_rng(seed)
     query_idx = sample_queries(M, m, rng=rng)
     return single_trial(responses, labels, query_idx,
-                        n_components=n_components, classifier_name=classifier)
+                        n_components=n_components, classifier_name=classifier,
+                        n_neighbors=n_neighbors)
 
 
 def run_exp2(config: Exp2Config = None) -> pd.DataFrame:
     """Run full Exp 2 sweep with parallel reps."""
     if config is None:
         config = Exp2Config()
+
+    k = _knn_k(config.n_models)
+    # Use n_components = r so MDS rank matches the true discriminative rank
+    n_comp = min(config.r, config.n_models - 1)
 
     results = []
 
@@ -49,7 +64,7 @@ def run_exp2(config: Exp2Config = None) -> pd.DataFrame:
                      for rep in range(config.n_reps)]
             errors = Parallel(n_jobs=config.n_jobs, backend="loky")(
                 delayed(_run_one_rep)(responses, labels, config.M, m, s,
-                                      config.n_components, config.classifier)
+                                      n_comp, config.classifier, k)
                 for s in seeds
             )
             errors = np.array(errors)

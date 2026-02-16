@@ -5,6 +5,7 @@ Sweep r in {2, 5, 10, 25, 50, 100}.
 Expected: log P[error >= 0.5] vs m has slope log(0.7), intercept log(r).
 """
 
+import math
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -16,11 +17,21 @@ from bbo.classification.evaluate import single_trial
 from bbo.experiments.config import Exp1Config
 
 
-def _run_one_rep(responses, labels, M, m, seed, n_components, classifier):
+def _knn_k(n):
+    """k = floor(log(n)) rounded down to nearest odd integer."""
+    k = int(math.log(n))
+    if k % 2 == 0:
+        k -= 1
+    return max(k, 1)
+
+
+def _run_one_rep(responses, labels, M, m, seed, n_components, classifier,
+                 n_neighbors):
     rng = np.random.default_rng(seed)
     query_idx = sample_queries(M, m, rng=rng)
     return single_trial(responses, labels, query_idx,
-                        n_components=n_components, classifier_name=classifier)
+                        n_components=n_components, classifier_name=classifier,
+                        n_neighbors=n_neighbors)
 
 
 def run_exp1(config: Exp1Config = None) -> pd.DataFrame:
@@ -28,6 +39,7 @@ def run_exp1(config: Exp1Config = None) -> pd.DataFrame:
     if config is None:
         config = Exp1Config()
 
+    k = _knn_k(config.n_models)
     results = []
 
     for r in config.r_values:
@@ -43,12 +55,15 @@ def run_exp1(config: Exp1Config = None) -> pd.DataFrame:
         responses = get_all_responses(models)
         labels = get_labels(models)
 
+        # Use n_components = r so MDS rank matches the true discriminative rank
+        n_comp = min(r, config.n_models - 1)
+
         for m in tqdm(config.m_values, desc=f"  r={r}", leave=False):
             seeds = [config.seed + rep * 100003 + m * 1009 + r * 7
                      for rep in range(config.n_reps)]
             errors = Parallel(n_jobs=config.n_jobs, backend="loky")(
                 delayed(_run_one_rep)(responses, labels, config.M, m, s,
-                                      config.n_components, config.classifier)
+                                      n_comp, config.classifier, k)
                 for s in seeds
             )
             errors = np.array(errors)

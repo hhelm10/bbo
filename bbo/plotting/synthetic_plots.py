@@ -64,26 +64,50 @@ def _setup_broken_log_y(ax, n_reps):
 # Individual experiment plots
 # ---------------------------------------------------------------------------
 
+def _theory_bound(m_values, r, rho, clip_min=None):
+    """Theoretical bound: min(r * rho^m, 1), clipped below at clip_min."""
+    m = np.asarray(m_values, dtype=float)
+    bound = np.minimum(r * rho ** m, 1.0)
+    if clip_min is not None:
+        bound = np.clip(bound, clip_min, None)
+    return bound
+
+
 def plot_exp1(df: pd.DataFrame, output_dir: str = "results/figures"):
     """Plot Exp 1: log P[error >= 0.5] vs m, one curve per r."""
     set_paper_style()
     n_reps = int(df["n_reps"].iloc[0])
     r_values = sorted(df["r"].unique())
+    clip_min = 1.0 / n_reps  # don't let bounds cross the break
 
     fig, ax = plt.subplots(figsize=(7, 5))
+
+    m_dense = np.logspace(np.log10(1), np.log10(200), 200)
 
     for i, r in enumerate(r_values):
         color = PALETTE[i % len(PALETTE)]
         sub = df[df["r"] == r]
+        rho = sub["rho"].iloc[0]
         y = _map_zeros(sub["prob_high_error"].values, n_reps)
         ax.plot(sub["m"], y, marker="o", markersize=4, color=color,
                 label=f"$r = {r}$", linewidth=1.5)
+        # Theoretical bound as dashed line (clipped above 1/n_reps)
+        bound = _theory_bound(m_dense, r, rho, clip_min=clip_min)
+        ax.plot(m_dense, bound, color=color, linestyle="--", linewidth=1.0,
+                alpha=0.6)
+
+    # Single legend entry for theory
+    theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
+                                  linewidth=1.0, alpha=0.6, label="$r\\rho^m$")
+    handles, labels = ax.get_legend_handles_labels()
+    handles.append(theory_handle)
+    labels.append("$r\\rho^m$")
+    ax.legend(handles, labels, title="Rank $r$", fontsize=9, title_fontsize=10)
 
     ax.set_xscale("log")
     _setup_broken_log_y(ax, n_reps)
     ax.set_xlabel("Number of queries $m$")
     ax.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-    ax.legend(title="Rank $r$", fontsize=9, title_fontsize=10)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{output_dir}/exp1_error_vs_m_rank.pdf")
@@ -95,21 +119,34 @@ def plot_exp2(df: pd.DataFrame, output_dir: str = "results/figures"):
     set_paper_style()
     n_reps = int(df["n_reps"].iloc[0])
     rho_values = sorted(df["rho"].unique())
+    clip_min = 1.0 / n_reps
 
     fig, ax = plt.subplots(figsize=(7, 5))
+
+    m_dense = np.logspace(np.log10(1), np.log10(200), 200)
 
     for i, rho in enumerate(rho_values):
         color = PALETTE[i % len(PALETTE)]
         sub = df[df["rho"] == rho]
+        r = 5  # Exp 2 uses fixed r=5
         y = _map_zeros(sub["prob_high_error"].values, n_reps)
         ax.plot(sub["m"], y, marker="o", markersize=4, color=color,
                 label=f"$\\rho = {rho:.1f}$", linewidth=1.5)
+        bound = _theory_bound(m_dense, r, rho, clip_min=clip_min)
+        ax.plot(m_dense, bound, color=color, linestyle="--", linewidth=1.0,
+                alpha=0.6)
+
+    theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
+                                  linewidth=1.0, alpha=0.6, label="$r\\rho^m$")
+    handles, labels = ax.get_legend_handles_labels()
+    handles.append(theory_handle)
+    labels.append("$r\\rho^m$")
+    ax.legend(handles, labels, title="$\\rho$", fontsize=9, title_fontsize=10)
 
     ax.set_xscale("log")
     _setup_broken_log_y(ax, n_reps)
     ax.set_xlabel("Number of queries $m$")
     ax.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-    ax.legend(title="$\\rho$", fontsize=9, title_fontsize=10)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{output_dir}/exp2_error_vs_m_rho.pdf")
@@ -126,37 +163,60 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     # --- Panel A: vary r ---
     n_reps1 = int(df_exp1["n_reps"].iloc[0])
     r_values = sorted(df_exp1["r"].unique())
+    m_dense = np.logspace(np.log10(1), np.log10(200), 200)
+    clip_min1 = 1.0 / n_reps1
 
     for i, r in enumerate(r_values):
         color = PALETTE[i % len(PALETTE)]
         sub = df_exp1[df_exp1["r"] == r]
+        rho = sub["rho"].iloc[0]
         y = _map_zeros(sub["prob_high_error"].values, n_reps1)
         ax1.plot(sub["m"], y, marker="o", markersize=3, color=color,
                  label=f"$r = {r}$", linewidth=1.5)
+        bound = _theory_bound(m_dense, r, rho, clip_min=clip_min1)
+        ax1.plot(m_dense, bound, color=color, linestyle="--", linewidth=0.8,
+                 alpha=0.5)
+
+    theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
+                                  linewidth=0.8, alpha=0.5, label="$r\\rho^m$")
+    h1, l1 = ax1.get_legend_handles_labels()
+    h1.append(theory_handle)
+    l1.append("$r\\rho^m$")
 
     ax1.set_xscale("log")
     _setup_broken_log_y(ax1, n_reps1)
     ax1.set_xlabel("Number of queries $m$")
     ax1.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
     ax1.set_title("(a) Varying rank $r$  ($p = 0.3$)", fontsize=11)
-    ax1.legend(fontsize=7, loc="upper right", ncol=2)
+    ax1.legend(h1, l1, fontsize=7, loc="upper right", ncol=2)
 
     # --- Panel B: vary rho ---
     n_reps2 = int(df_exp2["n_reps"].iloc[0])
     rho_values = sorted(df_exp2["rho"].unique())
+    clip_min2 = 1.0 / n_reps2
 
     for i, rho in enumerate(rho_values):
         color = PALETTE[i % len(PALETTE)]
         sub = df_exp2[df_exp2["rho"] == rho]
+        r_exp2 = 5  # Exp 2 uses fixed r=5
         y = _map_zeros(sub["prob_high_error"].values, n_reps2)
         ax2.plot(sub["m"], y, marker="o", markersize=3, color=color,
                  label=f"$\\rho = {rho:.1f}$", linewidth=1.5)
+        bound = _theory_bound(m_dense, r_exp2, rho, clip_min=clip_min2)
+        ax2.plot(m_dense, bound, color=color, linestyle="--", linewidth=0.8,
+                 alpha=0.5)
+
+    theory_handle2 = mlines.Line2D([], [], color="gray", linestyle="--",
+                                   linewidth=0.8, alpha=0.5, label="$r\\rho^m$")
+    h2, l2 = ax2.get_legend_handles_labels()
+    h2.append(theory_handle2)
+    l2.append("$r\\rho^m$")
 
     ax2.set_xscale("log")
     _setup_broken_log_y(ax2, n_reps2)
     ax2.set_xlabel("Number of queries $m$")
     ax2.set_title("(b) Varying $\\rho$  ($r = 5$)", fontsize=11)
-    ax2.legend(fontsize=8, loc="upper right")
+    ax2.legend(h2, l2, fontsize=8, loc="upper right")
 
     # --- Panel C: query distribution ---
     dist_labels = {"uniform": "Uniform", "signal": "Signal-concentrated",
