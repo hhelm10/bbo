@@ -1,32 +1,29 @@
 """Synthetic problem generator for controlled experiments.
 
-Bernoulli-Weight Model (from computational_model.md):
+Bernoulli-Weight Model:
 
 The discriminative field alpha_l(q) = xi_{ql} * w_{ql} where:
     xi_{ql} ~ Bernoulli(p)   (activation: does query q probe dimension l?)
     w_{ql}  ~ Uniform(0, 1)  (intensity: how strongly?)
 
 Models:
-    Each model f has a latent type vector theta_f in {0,1}^r.
-    Class label y = theta_{f,1}. Dimensions 2,...,r are random (Bernoulli(0.5)).
+    Each model f has a latent type vector theta_f in {0,1}^r drawn uniformly.
+    Class label y = parity(theta_f) XOR Bernoulli(eta).
 
-Model-pair kernel (per the spec):
-    phi_l(f, f') = c_l * 1[theta_{f,l} != theta_{f',l}]
-
-where c_l > 0 is a per-dimension scale. We parameterize:
-    c_1 = 1   (signal dimension, fixed)
-    c_l = sigma for l >= 2  (noise dimensions)
-
-sigma controls classification hardness via the signal-to-noise ratio.
+    The parity label ensures ALL r dimensions must be activated to beat chance.
+    No proper subset of dimensions suffices.
 
 Response model (realizes the kernel via orthogonal embedding):
-    g(f(q)) = sum_l sqrt(alpha_l(q) * c_l) / 2 * (1 - 2*theta_{f,l}) * directions[l]
+    g(f(q)) = sum_l sqrt(alpha_l(q)) / 2 * (1 - 2*theta_{f,l}) * directions[l]
 
 This gives the exact decomposition:
-    ||g(f_i(q)) - g(f_j(q))||^2 = sum_l alpha_l(q) * c_l * 1[theta_{i,l} != theta_{j,l}]
+    ||g(f_i(q)) - g(f_j(q))||^2 = sum_l alpha_l(q) * 1[theta_{i,l} != theta_{j,l}]
 
 Zero sets: Z_l = {q : alpha_l(q) = 0} = {q : xi_{ql} = 0}.
 Under uniform Pi_Q: rho_l = Pi_Q(Z_l) = 1 - p.
+
+Theoretical bound: P[error >= 0.5] <= r * (1-p)^m.
+This is tight: missing any single dimension makes the parity label unrecoverable.
 """
 
 from dataclasses import dataclass
@@ -41,7 +38,7 @@ class SyntheticModel(Model):
 
     Parameters
     ----------
-    embedded_responses : ndarray of shape (M, p)
+    embedded_responses : ndarray of shape (M, p_embed)
         Precomputed g(f(q)) for all M queries.
     label_ : int
         Class label.
@@ -80,21 +77,17 @@ class SyntheticProblem:
     alpha : ndarray of shape (M, r)
         Field magnitudes. alpha[q,l] = xi[q,l] * w[q,l] >= 0.
         Zero iff xi[q,l] = 0 (query q does not activate dimension l).
-    c : ndarray of shape (r,)
-        Per-dimension scale. c[0] = signal scale, c[1:] = noise scale (sigma).
-        phi_l(f,f') = c_l * 1[theta_{f,l} != theta_{f',l}].
-    directions : ndarray of shape (r, p)
+    directions : ndarray of shape (r, p_embed)
         Orthonormal direction vectors for each discriminative dimension.
-    p : int
+    p_embed : int
         Embedding dimension.
     """
 
     M: int
     r: int
     alpha: np.ndarray  # shape (M, r), field magnitudes
-    c: np.ndarray  # shape (r,), per-dimension scales
-    directions: np.ndarray  # shape (r, p), orthonormal rows
-    p: int
+    directions: np.ndarray  # shape (r, p_embed), orthonormal rows
+    p_embed: int
 
     @property
     def sensitivity_matrix(self) -> np.ndarray:
@@ -126,23 +119,23 @@ class SyntheticProblem:
         zero_counts = (self.alpha == 0).sum(axis=0)  # per dimension
         return zero_counts.max() / self.M
 
-    def generate_models(self, n: int,
+    def generate_models(self, n: int, eta: float = 0.0,
                          rng: np.random.Generator = None) -> List[SyntheticModel]:
-        """Generate n synthetic models (n/2 per class).
+        """Generate n synthetic models.
 
-        Each model f has latent type theta_f in {0,1}^r:
-          - theta_{f,1} = class label (0 or 1)
-          - theta_{f,l} ~ Bernoulli(0.5) for l >= 2 (random noise dimensions)
+        Each model f has latent type theta_f in {0,1}^r drawn uniformly.
+        Label: y = parity(theta_f) XOR Bernoulli(eta).
 
-        Signs: s_l(f) = 1 - 2*theta_{f,l} in {+1, -1}.
-        Response: g(f(q)) = sum_l sqrt(alpha[q,l] * c_l) / 2 * s_l(f) * directions[l]
-
-        This realizes phi_l(f,f') = c_l * 1[theta_{f,l} != theta_{f',l}].
+        The parity label ensures all r dimensions must be activated to beat
+        chance. Missing any single dimension makes the label unrecoverable.
 
         Parameters
         ----------
         n : int
-            Total number of models (split evenly between classes).
+            Total number of models.
+        eta : float
+            Label noise probability. When eta=0, L*=0 (perfectly separable
+            given all dimensions). When eta>0, L*=eta.
         rng : numpy random Generator, optional
 
         Returns
@@ -152,41 +145,39 @@ class SyntheticProblem:
         if rng is None:
             rng = np.random.default_rng()
 
-        n_per_class = n // 2
         models = []
-        # scale[l] = sqrt(c_l) / 2 so that (u_i - u_j)^2 = c_l when disagreeing
-        scale = np.sqrt(self.c) / 2.0  # shape (r,)
         sqrt_alpha = np.sqrt(self.alpha)  # (M, r)
 
-        for class_label in [0, 1]:
-            for i in range(n_per_class):
-                # Latent type vector theta in {0,1}^r
-                theta = rng.integers(0, 2, size=self.r)
-                theta[0] = class_label  # dimension 1 determines class
+        for i in range(n):
+            # Latent type vector theta in {0,1}^r, drawn uniformly
+            theta = rng.integers(0, 2, size=self.r)
 
-                # Signs: s_l = 1 - 2*theta_l
-                signs = 1.0 - 2.0 * theta.astype(float)
+            # Parity label: XOR of all dimensions
+            label = int(theta.sum() % 2)
 
-                # g(f(q)) = sum_l sqrt(alpha[q,l]) * scale[l] * s_l * directions[l]
-                embedded = (sqrt_alpha * scale * signs) @ self.directions
+            # Label noise
+            if eta > 0 and rng.random() < eta:
+                label = 1 - label
 
-                model = SyntheticModel(embedded, class_label,
-                                       model_id=class_label * n_per_class + i)
-                models.append(model)
+            # Signs: s_l = 1 - 2*theta_l
+            signs = 1.0 - 2.0 * theta.astype(float)
+
+            # g(f(q)) = sum_l sqrt(alpha[q,l]) * (1/2) * s_l * directions[l]
+            embedded = (sqrt_alpha * 0.5 * signs) @ self.directions
+
+            model = SyntheticModel(embedded, label, model_id=i)
+            models.append(model)
 
         return models
 
 
 def make_problem(M: int = 100, r: int = 5, signal_prob: float = 0.3,
-                 sigma: float = 1.0, p: int = 20,
+                 p_embed: int = 20,
                  rng: np.random.Generator = None) -> SyntheticProblem:
     """Create a Bernoulli-Weight synthetic problem.
 
     The field alpha_l(q) = xi_{ql} * w_{ql} where xi ~ Bern(signal_prob),
     w ~ Uniform(0,1). This gives rho = 1 - signal_prob under uniform Pi_Q.
-
-    Per-dimension scales: c_1 = 1 (signal), c_l = sigma for l >= 2 (noise).
-    sigma controls classification hardness via the signal-to-noise ratio.
 
     Parameters
     ----------
@@ -197,10 +188,7 @@ def make_problem(M: int = 100, r: int = 5, signal_prob: float = 0.3,
     signal_prob : float
         Activation probability p. Each query activates each dimension
         independently with this probability. rho = 1 - signal_prob.
-    sigma : float
-        Noise dimension scale. c_1 = 1, c_{l>=2} = sigma.
-        Higher sigma = harder classification (more noise per dimension).
-    p : int
+    p_embed : int
         Embedding dimension (must be >= r for orthogonal directions).
     rng : numpy random Generator
 
@@ -212,28 +200,25 @@ def make_problem(M: int = 100, r: int = 5, signal_prob: float = 0.3,
         rng = np.random.default_rng(42)
 
     # Orthogonal direction vectors via QR decomposition.
-    if r > p:
-        raise ValueError(f"Need r <= p for orthogonal directions, got r={r}, p={p}")
-    random_matrix = rng.standard_normal((p, r))
+    if r > p_embed:
+        raise ValueError(
+            f"Need r <= p_embed for orthogonal directions, got r={r}, p_embed={p_embed}"
+        )
+    random_matrix = rng.standard_normal((p_embed, r))
     Q, _ = np.linalg.qr(random_matrix)
-    directions = Q[:, :r].T  # (r, p), rows are orthonormal
+    directions = Q[:, :r].T  # (r, p_embed), rows are orthonormal
 
     # Bernoulli-Weight field: alpha = xi * w
     xi = (rng.random((M, r)) < signal_prob).astype(float)
     w = rng.random((M, r))
     alpha = xi * w
 
-    # Per-dimension scales: c_1 = 1, c_{l>=2} = sigma
-    c = np.full(r, sigma)
-    c[0] = 1.0
-
     return SyntheticProblem(
         M=M,
         r=r,
         alpha=alpha,
-        c=c,
         directions=directions,
-        p=p,
+        p_embed=p_embed,
     )
 
 
@@ -242,7 +227,7 @@ def get_all_responses(models: List[SyntheticModel]) -> np.ndarray:
 
     Returns
     -------
-    responses : ndarray of shape (n_models, M, p)
+    responses : ndarray of shape (n_models, M, p_embed)
     """
     return np.stack([m.all_responses for m in models])
 

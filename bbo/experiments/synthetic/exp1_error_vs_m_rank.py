@@ -45,12 +45,12 @@ def run_exp1(config: Exp1Config = None) -> pd.DataFrame:
     for r in config.r_values:
         print(f"  r={r}...")
         # Embedding dimension must be >= r for orthogonal directions
-        p = max(config.p, r)
+        p_embed = max(config.p_embed, r)
         problem = make_problem(
             M=config.M, r=r, signal_prob=config.signal_prob,
-            sigma=config.sigma, p=p, rng=np.random.default_rng(config.seed),
+            p_embed=p_embed, rng=np.random.default_rng(config.seed),
         )
-        models = problem.generate_models(config.n_models,
+        models = problem.generate_models(config.n_models, eta=config.eta,
                                           rng=np.random.default_rng(config.seed + 1))
         responses = get_all_responses(models)
         labels = get_labels(models)

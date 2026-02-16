@@ -15,9 +15,10 @@ from bbo.classification.evaluate import single_trial
 from bbo.experiments.config import Exp5Config
 
 
-def _run_one_rep(problem, n_models, m, M, seed, n_components, classifier):
+def _run_one_rep(problem, n_models, m, M, seed, n_components, classifier,
+                 eta=0.0):
     rng = np.random.default_rng(seed)
-    models = problem.generate_models(n_models, rng=rng)
+    models = problem.generate_models(n_models, eta=eta, rng=rng)
     responses = get_all_responses(models)
     labels = get_labels(models)
     query_idx = sample_queries(M, m, rng=rng)
@@ -33,7 +34,7 @@ def run_exp5(config: Exp5Config = None) -> pd.DataFrame:
 
     problem = make_problem(
         M=config.M, r=config.r, signal_prob=config.signal_prob,
-        sigma=config.sigma, p=config.p, rng=np.random.default_rng(config.seed),
+        p_embed=config.p_embed, rng=np.random.default_rng(config.seed),
     )
 
     results = []
@@ -43,7 +44,8 @@ def run_exp5(config: Exp5Config = None) -> pd.DataFrame:
                  for rep in range(config.n_reps)]
         errors = Parallel(n_jobs=config.n_jobs, backend="loky")(
             delayed(_run_one_rep)(problem, n_models, config.m, config.M, s,
-                                  config.n_components, config.classifier)
+                                  config.n_components, config.classifier,
+                                  config.eta)
             for s in seeds
         )
         errors = np.array(errors)

@@ -53,9 +53,9 @@ def run_exp3(config: Exp3Config = None) -> pd.DataFrame:
 
     problem = make_problem(
         M=config.M, r=config.r, signal_prob=config.signal_prob,
-        sigma=config.sigma, p=config.p, rng=np.random.default_rng(config.seed),
+        p_embed=config.p_embed, rng=np.random.default_rng(config.seed),
     )
-    models = problem.generate_models(config.n_models,
+    models = problem.generate_models(config.n_models, eta=config.eta,
                                       rng=np.random.default_rng(config.seed + 1))
     responses = get_all_responses(models)
     labels = get_labels(models)
