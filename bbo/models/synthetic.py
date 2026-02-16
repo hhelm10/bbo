@@ -4,12 +4,16 @@ Creates classification problems with known discriminative rank r and
 controlled noise levels. All responses are precomputed for speed.
 
 Response model (additive):
-    g(f_i(q)) = signal_strength * sum_l A[q,l] * z_i(q,l) * directions[l]
+    g(f_i(q)) = signal_strength * sum_l A[q,l] * z_i(l) * directions[l]
 
 where:
     A[q,l] ~ Bernoulli(signal_prob)  (independent per query per dimension)
-    z_i(q,l) in {+1, -1}             (per-query, per-dimension sign with noise)
-    directions[l] in R^p              (unit direction vector for dimension l)
+    z_i(l) in {+1, -1}              (per-model, per-dimension sign with noise)
+    directions[l] in R^p             (unit direction vector for dimension l)
+
+The per-query squared distance decomposes as:
+    ||diff(q)||^2 = sum_l alpha_l(q) * phi_l(f_i, f_j)
+with alpha_l(q) = s^2 * A[q,l]^2 >= 0 and phi_l(i,j) = (z_i(l) - z_j(l))^2 >= 0.
 
 Under uniform Pi_Q, rho_l = 1 - signal_prob for each l.
 """
@@ -112,9 +116,13 @@ class SyntheticProblem:
 
         For each model i with class label y_i:
           - base sign = +1 if y_i == 0, -1 if y_i == 1
-          - For each query q and dimension l where A[q,l] = 1:
-            sign z_i(q,l) = base_sign, flipped independently with prob noise_level
-          - response[q] = signal_strength * sum_l A[q,l] * z_i(q,l) * directions[l]
+          - For each dimension l:
+            sign z_i(l) = base_sign, flipped independently with prob noise_level
+          - response[q] = signal_strength * sum_l A[q,l] * z_i(l) * directions[l]
+
+        Signs are per-model per-dimension (NOT per-query), so that
+        phi_l(f, f') = (z_i(l) - z_j(l))^2 is query-independent,
+        matching the paper's discriminative factorization.
 
         Parameters
         ----------
@@ -136,13 +144,13 @@ class SyntheticProblem:
             base_sign = 1.0 if class_label == 0 else -1.0
 
             for i in range(n_per_class):
-                # Per-query, per-dimension signs
-                signs = np.full((self.M, self.r), base_sign)
+                # Per-dimension signs (query-independent)
+                signs = np.full(self.r, base_sign)
                 if self.noise_level > 0:
-                    flip_mask = rng.random((self.M, self.r)) < self.noise_level
+                    flip_mask = rng.random(self.r) < self.noise_level
                     signs[flip_mask] *= -1
 
-                # (M, r) * (M, r) -> (M, r) then @ (r, p) -> (M, p)
+                # (M, r) * (r,) -> (M, r) then @ (r, p) -> (M, p)
                 signal = (self.A * signs) @ self.directions
                 embedded = self.signal_strength * signal
 

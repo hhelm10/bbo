@@ -1,20 +1,23 @@
-"""Energy distance computation for black-box model comparison.
+"""Pairwise distance computation for black-box model comparison.
 
 At temperature 0, each model produces a deterministic response per query.
-The energy distance simplifies to the norm of embedded response differences.
+The cumulative squared distance over m queries is:
 
-Cumulative energy distance (metric on the m-product space):
-    E^2_m(f, f') = 2 * sum_{k=1}^m ||g(f(q_k)) - g(f'(q_k))||
+    D^2_m(f, f') = sum_{k=1}^m ||g(f(q_k)) - g(f'(q_k))||^2
+
+Using squared norms ensures the discriminative factorization holds:
+    ||diff(q)||^2 = sum_l alpha_l(q) * phi_l(f, f')
+with alpha_l(q) >= 0 and phi_l(f,f') >= 0.
 """
 
 import numpy as np
 
 
 def pairwise_energy_distances_t0(responses: np.ndarray, query_indices: np.ndarray = None) -> np.ndarray:
-    """Compute pairwise cumulative energy distances at temperature 0.
+    """Compute pairwise cumulative distances at temperature 0.
 
-    E^2_m(f, f') = 2 * sum_{k=1}^m ||g(f(q_k)) - g(f'(q_k))||
-    Returns D where D[i,j] = sqrt(E^2_m) for metric use.
+    D^2_m(f, f') = sum_{k=1}^m ||g(f(q_k)) - g(f'(q_k))||^2
+    Returns D where D[i,j] = sqrt(D^2_m) for metric use.
 
     Parameters
     ----------
@@ -35,45 +38,21 @@ def pairwise_energy_distances_t0(responses: np.ndarray, query_indices: np.ndarra
 
     n = R.shape[0]
 
-    # Use loop over pairs to avoid O(n^2 * m * p) memory allocation
     D = np.zeros((n, n))
     for i in range(n):
         diffs = R[i] - R[i + 1:]  # (n-i-1, m, p)
-        norms = np.linalg.norm(diffs, axis=-1)  # (n-i-1, m)
-        E_sq = 2.0 * norms.sum(axis=-1)  # (n-i-1,)
-        D[i, i + 1:] = np.sqrt(E_sq)
-
-    D = D + D.T
-    return D
-
-
-def pairwise_energy_distances_t0_loop(responses: np.ndarray, query_indices: np.ndarray = None) -> np.ndarray:
-    """Memory-efficient version using loops (for large n_models).
-
-    Same interface and output as pairwise_energy_distances_t0.
-    """
-    if query_indices is not None:
-        R = responses[:, query_indices, :]
-    else:
-        R = responses
-
-    n = R.shape[0]
-    D = np.zeros((n, n))
-
-    for i in range(n):
-        diffs = R[i] - R[i + 1:]  # (n-i-1, m, p)
-        norms = np.linalg.norm(diffs, axis=-1)  # (n-i-1, m)
-        E_sq = 2.0 * norms.sum(axis=-1)  # (n-i-1,)
-        D[i, i + 1:] = np.sqrt(E_sq)
+        sq_norms = np.sum(diffs**2, axis=-1)  # (n-i-1, m)
+        D_sq = sq_norms.sum(axis=-1)  # (n-i-1,)
+        D[i, i + 1:] = np.sqrt(D_sq)
 
     D = D + D.T
     return D
 
 
 def per_query_energy_tensor(responses: np.ndarray) -> np.ndarray:
-    """Compute the full M x n_pairs energy distance tensor.
+    """Compute the full M x n_pairs squared-distance tensor.
 
-    For SVD analysis (Exp 6): each entry is ||g(f_i(q)) - g(f_j(q))|| for
+    For SVD analysis (Exp 6): each entry is ||g(f_i(q)) - g(f_j(q))||^2 for
     a single query and model pair.
 
     Parameters
@@ -85,7 +64,7 @@ def per_query_energy_tensor(responses: np.ndarray) -> np.ndarray:
     -------
     T : ndarray of shape (M, n_pairs)
         Where n_pairs = n_models * (n_models - 1) / 2.
-        T[q, k] = ||g(f_i(q)) - g(f_j(q))|| for the k-th pair (i, j) with i < j.
+        T[q, k] = ||g(f_i(q)) - g(f_j(q))||^2 for the k-th pair (i, j).
     pairs : ndarray of shape (n_pairs, 2)
         The (i, j) indices for each pair.
     """
@@ -98,7 +77,8 @@ def per_query_energy_tensor(responses: np.ndarray) -> np.ndarray:
     idx = 0
     for i in range(n):
         for j in range(i + 1, n):
-            T[:, idx] = np.linalg.norm(responses[i] - responses[j], axis=-1)
+            diff = responses[i] - responses[j]
+            T[:, idx] = np.sum(diff**2, axis=-1)
             pairs[idx] = [i, j]
             idx += 1
 
