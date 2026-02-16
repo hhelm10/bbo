@@ -15,17 +15,6 @@ from bbo.classification.evaluate import single_trial
 from bbo.experiments.config import Exp5Config
 
 
-def estimate_bayes_error(noise_level: float, r: int) -> float:
-    """Estimate the Bayes error for a noisy synthetic problem.
-
-    With noise_level applied per-query-per-dimension, each signal query has
-    probability noise_level of giving the wrong class's token. Over many
-    signal queries, the empirical distribution determines the class.
-    For small noise_level and large signal sets, L* ~ noise_level.
-    """
-    return noise_level
-
-
 def _run_one_rep(problem, n_models, m, M, seed, n_components, classifier):
     rng = np.random.default_rng(seed)
     models = problem.generate_models(n_models, rng=rng)
@@ -42,12 +31,9 @@ def run_exp5(config: Exp5Config = None) -> pd.DataFrame:
     if config is None:
         config = Exp5Config()
 
-    bayes_error = estimate_bayes_error(config.noise_level, config.r)
-
     problem = make_problem(
         M=config.M, r=config.r, signal_prob=config.signal_prob,
-        noise_level=config.noise_level, p=config.p,
-        rng=np.random.default_rng(config.seed),
+        p=config.p, rng=np.random.default_rng(config.seed),
     )
 
     results = []
@@ -67,7 +53,6 @@ def run_exp5(config: Exp5Config = None) -> pd.DataFrame:
             "m": config.m,
             "mean_error": errors.mean(),
             "std_error": errors.std(),
-            "bayes_error": bayes_error,
             "n_reps": config.n_reps,
         })
 

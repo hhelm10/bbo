@@ -1,7 +1,8 @@
 """Exp 1: Error vs m for varying discriminative rank r.
 
-Fix M=100, n=200 models, uniform Pi_Q, signal_prob=0.2 (rho=0.8).
-Sweep r, m, and noise_level.
+Fix M=100, n=200 models, uniform Pi_Q, p=0.3 (rho=0.7).
+Sweep r in {2, 5, 10, 25, 50, 100}.
+Expected: log P[error >= 0.5] vs m has slope log(0.7), intercept log(r).
 """
 
 import numpy as np
@@ -29,38 +30,36 @@ def run_exp1(config: Exp1Config = None) -> pd.DataFrame:
 
     results = []
 
-    for noise_level in config.noise_levels:
-        for r in config.r_values:
-            print(f"  noise={noise_level}, r={r}...")
-            problem = make_problem(
-                M=config.M, r=r, signal_prob=config.signal_prob,
-                noise_level=noise_level, p=config.p,
-                rng=np.random.default_rng(config.seed),
+    for r in config.r_values:
+        print(f"  r={r}...")
+        # Embedding dimension must be >= r for orthogonal directions
+        p = max(config.p, r)
+        problem = make_problem(
+            M=config.M, r=r, signal_prob=config.signal_prob,
+            p=p, rng=np.random.default_rng(config.seed),
+        )
+        models = problem.generate_models(config.n_models,
+                                          rng=np.random.default_rng(config.seed + 1))
+        responses = get_all_responses(models)
+        labels = get_labels(models)
+
+        for m in tqdm(config.m_values, desc=f"  r={r}", leave=False):
+            seeds = [config.seed + rep * 100003 + m * 1009 + r * 7
+                     for rep in range(config.n_reps)]
+            errors = Parallel(n_jobs=config.n_jobs, backend="loky")(
+                delayed(_run_one_rep)(responses, labels, config.M, m, s,
+                                      config.n_components, config.classifier)
+                for s in seeds
             )
-            models = problem.generate_models(config.n_models,
-                                              rng=np.random.default_rng(config.seed + 1))
-            responses = get_all_responses(models)
-            labels = get_labels(models)
+            errors = np.array(errors)
 
-            nl_offset = int(noise_level * 1000)
-            for m in tqdm(config.m_values, desc=f"  σ={noise_level} r={r}", leave=False):
-                seeds = [config.seed + rep * 100003 + m * 1009 + r * 7 + nl_offset * 3
-                         for rep in range(config.n_reps)]
-                errors = Parallel(n_jobs=config.n_jobs, backend="loky")(
-                    delayed(_run_one_rep)(responses, labels, config.M, m, s,
-                                          config.n_components, config.classifier)
-                    for s in seeds
-                )
-                errors = np.array(errors)
-
-                results.append({
-                    "r": r,
-                    "noise_level": noise_level,
-                    "m": m,
-                    "rho": problem.rho,
-                    "prob_high_error": (errors >= 0.5).mean(),
-                    "mean_error": errors.mean(),
-                    "n_reps": config.n_reps,
-                })
+            results.append({
+                "r": r,
+                "m": m,
+                "rho": problem.rho,
+                "prob_high_error": (errors >= 0.5).mean(),
+                "mean_error": errors.mean(),
+                "n_reps": config.n_reps,
+            })
 
     return pd.DataFrame(results)

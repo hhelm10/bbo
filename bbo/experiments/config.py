@@ -34,36 +34,44 @@ class SyntheticConfig(ExperimentConfig):
     M: int = 100
     n_models: int = 200
     p: int = 20
-    noise_level: float = 0.05
-    signal_prob: float = 0.2  # rho = 1 - signal_prob = 0.8
+    signal_prob: float = 0.3  # rho = 1 - signal_prob = 0.7
     classifier: str = "knn"
     n_components: int = 10
 
 
 @dataclass
 class Exp1Config(SyntheticConfig):
-    """Exp 1: Error vs m for varying r."""
+    """Exp 1: Error vs m for varying r.
+
+    Fix p=0.3 (rho=0.7), vary r.
+    All curves should have slope log(1-p) = log(0.7) with intercept log(r).
+    """
 
     name: str = "exp1_error_vs_m_rank"
-    r_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20])
-    noise_levels: List[float] = field(default_factory=lambda: [0.15, 0.3, 0.5])
+    r_values: List[int] = field(default_factory=lambda: [2, 5, 10, 25, 50, 100])
     m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
 
 
 @dataclass
 class Exp2Config(SyntheticConfig):
-    """Exp 2: Error vs m for varying rho."""
+    """Exp 2: Error vs m for varying rho.
+
+    Fix r=5, vary p (activation probability).
+    Slope changes as log(1-p).
+    """
 
     name: str = "exp2_error_vs_m_rho"
     r: int = 5
-    signal_prob_values: List[float] = field(default_factory=lambda: [0.1, 0.5, 0.9])
-    noise_levels: List[float] = field(default_factory=lambda: [0.15, 0.3, 0.5])
+    signal_prob_values: List[float] = field(default_factory=lambda: [0.1, 0.3, 0.5, 0.8])
     m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
 
 
 @dataclass
 class Exp3Config(SyntheticConfig):
-    """Exp 3: Query distribution effect."""
+    """Exp 3: Query distribution effect.
+
+    Fix r=5, p=0.3. Compare uniform, signal-concentrated, orthogonal-concentrated.
+    """
 
     name: str = "exp3_query_distribution"
     r: int = 5
@@ -87,7 +95,6 @@ class Exp5Config(SyntheticConfig):
 
     name: str = "exp5_bayes_convergence"
     r: int = 5
-    noise_level: float = 0.1
     m: int = 100  # Large enough to activate all directions
     n_values: List[int] = field(default_factory=lambda: [20, 50, 100, 200, 500, 1000])
 

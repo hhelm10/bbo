@@ -1,7 +1,10 @@
 """Exp 3: Effect of query distribution Pi_Q.
 
-Fix r=5, M=100, signal_prob=0.2, n=200.
-Three distributions: uniform, concentrated on signal, concentrated on Q_perp.
+Fix r=5, M=100, p=0.3, n=200.
+Three distributions:
+  - Uniform over Q
+  - Concentrated on high-signal queries (large sum_l alpha_l(q))
+  - Concentrated on orthogonal queries (alpha_l(q) = 0 for all l)
 Expected: signal-concentrated converges fastest; orthogonal never converges.
 """
 
@@ -35,15 +38,18 @@ def run_exp3(config: Exp3Config = None) -> pd.DataFrame:
 
     problem = make_problem(
         M=config.M, r=config.r, signal_prob=config.signal_prob,
-        noise_level=config.noise_level, p=config.p,
-        rng=np.random.default_rng(config.seed),
+        p=config.p, rng=np.random.default_rng(config.seed),
     )
     models = problem.generate_models(config.n_models,
                                       rng=np.random.default_rng(config.seed + 1))
     responses = get_all_responses(models)
     labels = get_labels(models)
 
-    signal_idx = problem.signal_queries
+    # High-signal queries: top queries by total signal intensity sum_l alpha_l(q)
+    total_signal = problem.query_total_signal
+    n_signal = max(1, int(0.3 * config.M))  # top 30% by signal
+    signal_idx = np.argsort(total_signal)[-n_signal:]
+
     orth_idx = problem.orthogonal_queries
 
     distributions = {

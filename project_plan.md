@@ -50,44 +50,40 @@ The experiments should demonstrate:
 
 **Purpose:** Validate the theoretical predictions in a controlled setting where ground truth is known exactly.
 
-#### Setup
+#### Setup: Bernoulli-Weight Model
 
-Let $\mathcal{Q} = \{q_1, \ldots, q_M\}$ with $M = 100$. Let $\mathcal{X}$ be a finite set (e.g., $V = 50$ tokens). Let $g: \mathcal{X} \to \mathbb{R}^p$ be an injective embedding (e.g., one-hot or a fixed random embedding into $\mathbb{R}^{20}$).
+See `computational_model.md` for the full specification. Summary:
 
-At temperature zero, each model $f$ is fully characterized by its response vector $(f(q_1), \ldots, f(q_M)) \in \mathcal{X}^M$. We construct two classes of models:
+**Discriminative field.** The $M \times r$ field matrix has entries $\alpha_\ell(q) = \xi_{q\ell} \cdot w_{q\ell}$ where $\xi_{q\ell} \sim \text{Bernoulli}(p)$ and $w_{q\ell} \sim \text{Uniform}(0,1)$. The activation probability $p$ is the single tuning parameter; $\rho = 1 - p$.
 
-**Construction for controlled rank $r$:**
+**Models.** Each model $f$ has a latent type vector $\theta_f \in \{0,1\}^r$. Class label $y = \theta_{f,1}$. Dimensions $2, \ldots, r$ are drawn i.i.d. Bernoulli(0.5), creating within-class variation. Signs $s_\ell(f) = 1 - 2\theta_{f,\ell} \in \{+1, -1\}$.
 
-Define $r$ "discriminative dimensions" $\ell = 1, \ldots, r$. For each dimension $\ell$:
-- Define a subset $S_\ell \subseteq \mathcal{Q}$ of queries that carry signal along dimension $\ell$ (i.e., $\mathcal{Z}_\ell = \mathcal{Q} \setminus S_\ell$).
-- Class 0 models respond with token $a_\ell$ on queries in $S_\ell$; class 1 models respond with token $b_\ell \neq a_\ell$.
-- On queries in $\mathcal{Z}_\ell$, both classes respond identically.
+**Responses.** $g(f(q)) = \sum_\ell \sqrt{\alpha_\ell(q)} \cdot s_\ell(f) \cdot d_\ell$ where $d_1, \ldots, d_r$ are orthonormal directions in $\mathbb{R}^p$ (via QR decomposition). Orthogonality ensures the squared distance factorizes exactly: $\|g(f(q)) - g(f'(q))\|^2 = \sum_\ell \alpha_\ell(q) \cdot (s_\ell(f) - s_\ell(f'))^2$.
 
-For queries in $\mathcal{Q}_\perp = \bigcap_\ell \mathcal{Z}_\ell$ (orthogonal queries), all models respond identically regardless of class.
-
-Add noise by varying responses within each class (some class 0 models respond with $a_\ell$ on only a fraction of queries in $S_\ell$, etc.) to make $L^* > 0$ but $< 0.5$.
+**Key properties:**
+- Zero sets: $\mathcal{Z}_\ell = \{q : \xi_{q\ell} = 0\}$, so $\Pi_Q(\mathcal{Z}_\ell) = 1 - p$ under uniform $\Pi_Q$.
+- Within-class variation from dimensions $2, \ldots, r$ makes classification harder as $r$ grows (requires $n \to \infty$ for large $r$).
+- The parameter $p$ interpolates between sparse ($p = 1/r$, coupon-collector) and dense ($p = 1$, single query suffices).
 
 #### Experiments
 
-**Exp 1: Error vs $m$ for varying $r$.**
-- Fix $M = 100$, $n = 200$ training models, uniform $\Pi_Q$.
-- Construct problems with $r \in \{2, 5, 10, 25, 50, 100\}$.
-- For each $r$, set $|S_\ell| = 20$ (so $\Pi_Q(\mathcal{Z}_\ell) = 0.8$ uniformly).
-- Vary $m$ from 1 to 200. For each $m$, sample $Q$ from $\Pi_Q$, compute MDS, train $k$-NN or LDA, measure classification error. Repeat 500 times.
-- **Expected result:** Log-linear decay of error in $m$, with the same slope ($\log 0.8$) but intercept shifting as $\log r$. All curves should be parallel on a log scale.
-- **Plot:** $\log P[\text{error} \geq 0.5]$ vs $m$, one curve per $r$.
+**Exp 1: Error vs $m$ for varying $r$.** ✅ COMPLETE
+- Fix $M = 100$, $n = 200$, $p = 0.3$ ($\rho = 0.7$), uniform $\Pi_Q$.
+- Sweep $r \in \{2, 5, 10, 25, 50, 100\}$, $m \in \{1, 2, 5, 10, 20, 50, 100, 200\}$, 100 reps.
+- **Results:** For $r \leq 10$, $P[\text{error} \geq 0.5]$ decays exponentially in $m$ (coupon-collector behavior). For $r \geq 25$, finite-$n$ effects dominate: within-class variation from $r - 1$ noise dimensions makes classification hard with $n = 200$ models, consistent with the theory requiring $n \to \infty$.
+- **Plot:** Panel (a) of Figure 1.
 
-**Exp 2: Error vs $m$ for varying $\rho$.**
+**Exp 2: Error vs $m$ for varying $\rho$.** ✅ COMPLETE
 - Fix $r = 5$, $M = 100$, $n = 200$, uniform $\Pi_Q$.
-- Vary $|S_\ell|$: when $|S_\ell| = 50$, $\rho = 0.5$; when $|S_\ell| = 10$, $\rho = 0.9$; when $|S_\ell| = 90$, $\rho = 0.1$.
-- **Expected result:** Slope of log-error vs $m$ curve is $\log \rho$. Small $\rho$ (large signal sets) converges fast; large $\rho$ (small signal sets) converges slowly.
-- **Plot:** $\log P[\text{error} \geq 0.5]$ vs $m$, one curve per $\rho$.
+- Sweep $p \in \{0.1, 0.3, 0.5, 0.8\}$ (i.e., $\rho \in \{0.9, 0.7, 0.5, 0.2\}$), 100 reps.
+- **Results:** Larger $\rho$ (sparser signal) requires more queries. $\rho = 0.9$ needs $m \approx 10$ to eliminate high-error events; $\rho = 0.2$ has $P[\text{error} \geq 0.5] = 0$ at all $m$. Slopes on log scale vary with $\log(1-p)$ as predicted.
+- **Plot:** Panel (b) of Figure 1.
 
-**Exp 3: Effect of query distribution $\Pi_Q$.**
-- Fix $r = 5$, $M = 100$, $|S_\ell| = 20$, $n = 200$.
-- Three distributions: (a) uniform over $\mathcal{Q}$; (b) concentrated on $\mathcal{Q} \setminus \mathcal{Q}_\perp$ (high-signal queries); (c) concentrated on $\mathcal{Q}_\perp$ (orthogonal queries).
-- **Expected result:** (b) converges fastest; (a) is intermediate; (c) never converges (or converges extremely slowly).
-- **Plot:** Classification accuracy vs $m$ for three distributions.
+**Exp 3: Effect of query distribution $\Pi_Q$.** ✅ COMPLETE
+- Fix $r = 5$, $M = 100$, $p = 0.3$, $n = 200$, 100 reps.
+- Three distributions: uniform, signal-concentrated (top 30% by $\sum_\ell \alpha_\ell(q)$), orthogonal-concentrated (queries with $\alpha_\ell(q) = 0$ for all $\ell$).
+- **Results:** Signal-concentrated converges fastest (accuracy ~0.93 at $m = 1$); uniform is intermediate (~0.84 at $m = 1$); orthogonal-concentrated is slowest (~0.56 at $m = 1$) but eventually catches up at large $m$ since the distribution still has some mass on signal queries.
+- **Plot:** Panel (c) of Figure 1.
 
 **Exp 4: Error vs $n$ (sample complexity).**
 - Fix $r = 5$, $m = 50$ (large enough that query bound is satisfied), uniform $\Pi_Q$.
@@ -155,12 +151,11 @@ Add noise by varying responses within each class (some class 0 models respond wi
 
 Ranked by importance for the submission:
 
-1. **Exp 1 + 2** (synthetic: error vs $m$ for varying $r$ and $\rho$) — validates the core theorem
+1. ✅ **Exp 1 + 2 + 3** (synthetic: Figure 1) — validates the core theorem and discriminative field concept
 2. **Exp 7** (real: accuracy vs $m$) — demonstrates practical relevance
 3. **Exp 6** (real: effective rank) — validates low-rank assumption
-4. **Exp 8** (real: relevant vs orthogonal) — validates discriminative field concept
-5. **Exp 3** (synthetic: query distribution) — validates $\Pi_Q$ predictions
-6. **Exp 9** (real: baselines) — positions contribution relative to alternatives
-7. **Exp 5** (synthetic: Bayes convergence) — validates Theorem 2
-8. **Exp 4** (synthetic: sample complexity) — validates $\gamma(n)$
-9. **Exp 10** (real: predicting $m^*$) — nice-to-have, shows bound is practical
+4. **Exp 8** (real: relevant vs orthogonal) — validates discriminative field concept on real data
+5. **Exp 9** (real: baselines) — positions contribution relative to alternatives
+6. **Exp 5** (synthetic: Bayes convergence) — validates Theorem 2
+7. **Exp 4** (synthetic: sample complexity) — validates $\gamma(n)$
+8. **Exp 10** (real: predicting $m^*$) — nice-to-have, shows bound is practical

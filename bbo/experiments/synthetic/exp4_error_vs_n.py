@@ -34,8 +34,7 @@ def run_exp4(config: Exp4Config = None) -> pd.DataFrame:
 
     problem = make_problem(
         M=config.M, r=config.r, signal_prob=config.signal_prob,
-        noise_level=config.noise_level, p=config.p,
-        rng=np.random.default_rng(config.seed),
+        p=config.p, rng=np.random.default_rng(config.seed),
     )
 
     results = []

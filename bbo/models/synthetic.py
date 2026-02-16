@@ -1,21 +1,31 @@
 """Synthetic problem generator for controlled experiments.
 
-Creates classification problems with known discriminative rank r and
-controlled noise levels. All responses are precomputed for speed.
+Bernoulli-Weight Model (from computational_model.md):
 
-Response model (additive):
-    g(f_i(q)) = signal_strength * sum_l A[q,l] * z_i(l) * directions[l]
+The discriminative field alpha_l(q) = xi_{ql} * w_{ql} where:
+    xi_{ql} ~ Bernoulli(p)   (activation: does query q probe dimension l?)
+    w_{ql}  ~ Uniform(0, 1)  (intensity: how strongly?)
 
-where:
-    A[q,l] ~ Bernoulli(signal_prob)  (independent per query per dimension)
-    z_i(l) in {+1, -1}              (per-model, per-dimension sign with noise)
-    directions[l] in R^p             (unit direction vector for dimension l)
+Models:
+    Each model f has a latent type vector theta_f in {0,1}^r.
+    Class label y = theta_{f,1}. Dimensions 2,...,r are random (Bernoulli(0.5)).
 
-The per-query squared distance decomposes as:
+Response model:
+    g(f_i(q)) = sum_l sqrt(alpha_l(q)) * s_l(f_i) * directions[l]
+
+where s_l(f) = 1 - 2*theta_{f,l} in {+1, -1}.
+
+The per-query squared distance decomposes exactly (orthogonal directions):
     ||diff(q)||^2 = sum_l alpha_l(q) * phi_l(f_i, f_j)
-with alpha_l(q) = s^2 * A[q,l]^2 >= 0 and phi_l(i,j) = (z_i(l) - z_j(l))^2 >= 0.
 
-Under uniform Pi_Q, rho_l = 1 - signal_prob for each l.
+with alpha_l(q) >= 0 (field magnitude) and
+     phi_l(i,j) = (s_l(f_i) - s_l(f_j))^2 = 4 * 1[theta_{f,l} != theta_{f',l}].
+
+Dimension 1 carries class signal (phi_1 = 4 for cross-class, 0 for within-class).
+Dimensions 2,...,r carry noise (phi_l = 4 with prob 0.5 regardless of class).
+
+Zero sets: Z_l = {q : alpha_l(q) = 0} = {q : xi_{ql} = 0}.
+Under uniform Pi_Q: rho_l = Pi_Q(Z_l) = 1 - p.
 """
 
 from dataclasses import dataclass
@@ -58,71 +68,68 @@ class SyntheticModel(Model):
 
 @dataclass
 class SyntheticProblem:
-    """A synthetic classification problem with controlled structure.
+    """A synthetic classification problem with controlled discriminative structure.
 
     Parameters
     ----------
     M : int
         Total number of queries.
     r : int
-        Discriminative rank (number of signal dimensions).
-    A : ndarray of shape (M, r)
-        Sensitivity matrix. A[q,l] = 1 if query q carries signal along
-        dimension l.
+        Discriminative rank (number of latent dimensions).
+    alpha : ndarray of shape (M, r)
+        Field magnitudes. alpha[q,l] = xi[q,l] * w[q,l] >= 0.
+        Zero iff xi[q,l] = 0 (query q does not activate dimension l).
     directions : ndarray of shape (r, p)
-        Unit direction vectors for each discriminative dimension.
+        Orthonormal direction vectors for each discriminative dimension.
     p : int
         Embedding dimension.
-    noise_level : float
-        Per-query per-dimension sign flip probability.
-    signal_strength : float
-        Amplitude of discriminative signal.
     """
 
     M: int
     r: int
-    A: np.ndarray  # shape (M, r)
-    directions: np.ndarray  # shape (r, p)
+    alpha: np.ndarray  # shape (M, r), field magnitudes
+    directions: np.ndarray  # shape (r, p), orthonormal rows
     p: int
-    noise_level: float = 0.0
-    signal_strength: float = 1.0
 
     @property
     def sensitivity_matrix(self) -> np.ndarray:
-        """Binary matrix A[q, l]."""
-        return self.A
+        """Binary activation matrix: 1 where alpha > 0."""
+        return (self.alpha > 0).astype(float)
 
     @property
     def orthogonal_queries(self) -> np.ndarray:
-        """Indices of queries in Q_perp (not active for any dimension)."""
-        return np.where(self.A.sum(axis=1) == 0)[0]
+        """Indices of queries in Q_perp (alpha_l(q) = 0 for all l)."""
+        return np.where((self.alpha > 0).sum(axis=1) == 0)[0]
 
     @property
     def signal_queries(self) -> np.ndarray:
-        """Indices of all signal queries (active for at least one dimension)."""
-        return np.where(self.A.sum(axis=1) > 0)[0]
+        """Indices of queries active for at least one dimension."""
+        return np.where((self.alpha > 0).sum(axis=1) > 0)[0]
+
+    @property
+    def query_total_signal(self) -> np.ndarray:
+        """Total signal intensity per query: sum_l alpha_l(q). Shape (M,)."""
+        return self.alpha.sum(axis=1)
 
     @property
     def rho(self) -> float:
         """Maximum zero-set probability under uniform distribution.
 
-        rho = max_l |Z_l| / M where Z_l = {q : A[q,l] = 0}
+        rho = max_l |Z_l| / M where Z_l = {q : alpha_l(q) = 0}.
+        Since alpha_l(q) = 0 iff xi_{ql} = 0, rho ~ 1 - signal_prob.
         """
-        zero_counts = (self.A == 0).sum(axis=0)  # per dimension
+        zero_counts = (self.alpha == 0).sum(axis=0)  # per dimension
         return zero_counts.max() / self.M
 
     def generate_models(self, n: int, rng: np.random.Generator = None) -> List[SyntheticModel]:
         """Generate n synthetic models (n/2 per class).
 
-        For each model i with class label y_i:
-          - base sign = +1 if y_i == 0, -1 if y_i == 1
-          - For each dimension l:
-            sign z_i(l) = base_sign, flipped independently with prob noise_level
-          - response[q] = signal_strength * sum_l A[q,l] * z_i(l) * directions[l]
+        Each model f has latent type theta_f in {0,1}^r:
+          - theta_{f,1} = class label (0 or 1)
+          - theta_{f,l} ~ Bernoulli(0.5) for l >= 2 (random noise dimensions)
 
-        Signs are per-model per-dimension (NOT per-query), so that
-        phi_l(f, f') = (z_i(l) - z_j(l))^2 is query-independent,
-        matching the paper's discriminative factorization.
+        Signs: s_l(f) = 1 - 2*theta_{f,l} in {+1, -1}.
+        Response: g(f(q)) = sum_l sqrt(alpha[q,l]) * s_l(f) * directions[l]
 
         Parameters
         ----------
@@ -139,20 +146,19 @@ class SyntheticProblem:
 
         n_per_class = n // 2
         models = []
+        sqrt_alpha = np.sqrt(self.alpha)  # (M, r)
 
         for class_label in [0, 1]:
-            base_sign = 1.0 if class_label == 0 else -1.0
-
             for i in range(n_per_class):
-                # Per-dimension signs (query-independent)
-                signs = np.full(self.r, base_sign)
-                if self.noise_level > 0:
-                    flip_mask = rng.random(self.r) < self.noise_level
-                    signs[flip_mask] *= -1
+                # Latent type vector theta in {0,1}^r
+                theta = rng.integers(0, 2, size=self.r)
+                theta[0] = class_label  # dimension 1 determines class
 
-                # (M, r) * (r,) -> (M, r) then @ (r, p) -> (M, p)
-                signal = (self.A * signs) @ self.directions
-                embedded = self.signal_strength * signal
+                # Signs: s_l = 1 - 2*theta_l
+                signs = 1.0 - 2.0 * theta.astype(float)
+
+                # g(f(q)) = sum_l sqrt(alpha[q,l]) * s_l * directions[l]
+                embedded = (sqrt_alpha * signs) @ self.directions
 
                 model = SyntheticModel(embedded, class_label,
                                        model_id=class_label * n_per_class + i)
@@ -161,31 +167,26 @@ class SyntheticProblem:
         return models
 
 
-def make_problem(M: int = 100, r: int = 5, signal_prob: float = 0.2,
-                 noise_level: float = 0.0, p: int = 20,
-                 rng: np.random.Generator = None,
-                 signal_strength: float = 1.0) -> SyntheticProblem:
-    """Create a standard synthetic problem.
+def make_problem(M: int = 100, r: int = 5, signal_prob: float = 0.3,
+                 p: int = 20,
+                 rng: np.random.Generator = None) -> SyntheticProblem:
+    """Create a Bernoulli-Weight synthetic problem.
 
-    Each query independently contributes to each dimension with probability
-    signal_prob. Under uniform Pi_Q, this gives rho = 1 - signal_prob.
+    The field alpha_l(q) = xi_{ql} * w_{ql} where xi ~ Bern(signal_prob),
+    w ~ Uniform(0,1). This gives rho = 1 - signal_prob under uniform Pi_Q.
 
     Parameters
     ----------
     M : int
         Number of queries.
     r : int
-        Discriminative rank.
+        Discriminative rank (number of latent dimensions).
     signal_prob : float
-        Probability each query is active for each dimension.
-        rho = 1 - signal_prob under uniform distribution.
-    noise_level : float
-        Per-query per-dimension sign flip probability.
+        Activation probability p. Each query activates each dimension
+        independently with this probability. rho = 1 - signal_prob.
     p : int
-        Embedding dimension.
+        Embedding dimension (must be >= r for orthogonal directions).
     rng : numpy random Generator
-    signal_strength : float
-        Amplitude of discriminative signal.
 
     Returns
     -------
@@ -194,21 +195,24 @@ def make_problem(M: int = 100, r: int = 5, signal_prob: float = 0.2,
     if rng is None:
         rng = np.random.default_rng(42)
 
-    # Random unit direction vectors for each discriminative dimension
-    directions = rng.standard_normal((r, p))
-    directions /= np.linalg.norm(directions, axis=1, keepdims=True)
+    # Orthogonal direction vectors via QR decomposition.
+    if r > p:
+        raise ValueError(f"Need r <= p for orthogonal directions, got r={r}, p={p}")
+    random_matrix = rng.standard_normal((p, r))
+    Q, _ = np.linalg.qr(random_matrix)
+    directions = Q[:, :r].T  # (r, p), rows are orthonormal
 
-    # Independent Bernoulli sensitivity matrix
-    A = (rng.random((M, r)) < signal_prob).astype(float)
+    # Bernoulli-Weight field: alpha = xi * w
+    xi = (rng.random((M, r)) < signal_prob).astype(float)
+    w = rng.random((M, r))
+    alpha = xi * w
 
     return SyntheticProblem(
         M=M,
         r=r,
-        A=A,
+        alpha=alpha,
         directions=directions,
         p=p,
-        noise_level=noise_level,
-        signal_strength=signal_strength,
     )
 
 
