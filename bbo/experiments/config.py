@@ -82,12 +82,16 @@ class Exp3Config(SyntheticConfig):
 
 @dataclass
 class Exp4Config(SyntheticConfig):
-    """Exp 4: Error vs n (sample complexity)."""
+    """Exp 4: Error vs n (sample complexity).
+
+    Fix r=10, m=50 (all dimensions covered), vary n.
+    Shows gamma(n) -> 0 as n -> infinity.
+    """
 
     name: str = "exp4_error_vs_n"
     r: int = 5
     m: int = 50
-    n_values: List[int] = field(default_factory=lambda: [10, 20, 50, 100, 200, 300, 500])
+    n_values: List[int] = field(default_factory=lambda: [20, 50, 100, 200, 500, 1000, 2000])
 
 
 @dataclass

@@ -81,9 +81,10 @@ def main():
             plot_fn(df, output_dir=args.figure_dir)
             print(f"Figure saved to {args.figure_dir}/")
 
-    # Generate combined Figure 1 if all three experiments were run
+    # Generate combined Figure 1 if experiments 1-3 were run (exp4 optional)
     if not args.no_plot and all(k in results for k in ["exp1", "exp2", "exp3"]):
         plot_figure1(results["exp1"], results["exp2"], results["exp3"],
+                     df_exp4=results.get("exp4"),
                      output_dir=args.figure_dir)
         print(f"Combined figure1 saved to {args.figure_dir}/figure1_error_vs_m.pdf")
 

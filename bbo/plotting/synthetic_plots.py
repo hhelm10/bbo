@@ -154,11 +154,13 @@ def plot_exp2(df: pd.DataFrame, output_dir: str = "results/figures"):
 
 
 def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
-                 df_exp3: pd.DataFrame, output_dir: str = "results/figures"):
-    """Combined Figure 1: three panels for Exp 1, 2, and 3."""
+                 df_exp3: pd.DataFrame, df_exp4: pd.DataFrame = None,
+                 output_dir: str = "results/figures"):
+    """Combined Figure 1: four panels for Exp 1-4 in a 2x2 layout."""
     set_paper_style()
 
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(16, 4.5))
+    fig, axes = plt.subplots(2, 2, figsize=(12, 9))
+    ax1, ax2, ax3, ax4 = axes.flat
 
     # --- Panel A: vary r ---
     n_reps1 = int(df_exp1["n_reps"].iloc[0])
@@ -235,6 +237,22 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     ax3.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5)
     ax3.set_title("(c) Query distribution  ($r = 5, p = 0.3$)", fontsize=11)
     ax3.legend(fontsize=8, loc="lower right")
+
+    # --- Panel D: error vs n (sample complexity) ---
+    if df_exp4 is not None:
+        n_reps4 = int(df_exp4["n_reps"].iloc[0])
+        y4 = _map_zeros(df_exp4["prob_high_error"].values, n_reps4)
+        ax4.plot(df_exp4["n_models"], y4,
+                 marker="o", markersize=4, color=PALETTE[0], linewidth=1.5)
+        ax4.set_xscale("log")
+        _setup_broken_log_y(ax4, n_reps4)
+        ax4.set_xlabel("Number of models $n$")
+        ax4.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
+        r_exp4 = int(df_exp4["r"].iloc[0])
+        m_exp4 = int(df_exp4["m"].iloc[0])
+        ax4.set_title(f"(d) Sample complexity  ($r = {r_exp4}, m = {m_exp4}$)", fontsize=11)
+    else:
+        ax4.set_visible(False)
 
     fig.tight_layout()
 
