@@ -35,6 +35,7 @@ class SyntheticConfig(ExperimentConfig):
     n_models: int = 200
     p: int = 20
     signal_prob: float = 0.3  # rho = 1 - signal_prob = 0.7
+    sigma: float = 1.0  # noise dimension scale c_{l>=2}; higher = harder
     classifier: str = "knn"
     n_components: int = 10
 
@@ -48,7 +49,8 @@ class Exp1Config(SyntheticConfig):
     """
 
     name: str = "exp1_error_vs_m_rank"
-    r_values: List[int] = field(default_factory=lambda: [5, 10, 25, 50, 100])
+    sigma: float = 1.5
+    r_values: List[int] = field(default_factory=lambda: [2, 10, 20, 100])
     m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
 
 

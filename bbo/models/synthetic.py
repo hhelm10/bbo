@@ -10,19 +10,20 @@ Models:
     Each model f has a latent type vector theta_f in {0,1}^r.
     Class label y = theta_{f,1}. Dimensions 2,...,r are random (Bernoulli(0.5)).
 
-Response model:
-    g(f_i(q)) = sum_l sqrt(alpha_l(q)) * s_l(f_i) * directions[l]
+Model-pair kernel (per the spec):
+    phi_l(f, f') = c_l * 1[theta_{f,l} != theta_{f',l}]
 
-where s_l(f) = 1 - 2*theta_{f,l} in {+1, -1}.
+where c_l > 0 is a per-dimension scale. We parameterize:
+    c_1 = 1   (signal dimension, fixed)
+    c_l = sigma for l >= 2  (noise dimensions)
 
-The per-query squared distance decomposes exactly (orthogonal directions):
-    ||diff(q)||^2 = sum_l alpha_l(q) * phi_l(f_i, f_j)
+sigma controls classification hardness via the signal-to-noise ratio.
 
-with alpha_l(q) >= 0 (field magnitude) and
-     phi_l(i,j) = (s_l(f_i) - s_l(f_j))^2 = 4 * 1[theta_{f,l} != theta_{f',l}].
+Response model (realizes the kernel via orthogonal embedding):
+    g(f(q)) = sum_l sqrt(alpha_l(q) * c_l) / 2 * (1 - 2*theta_{f,l}) * directions[l]
 
-Dimension 1 carries class signal (phi_1 = 4 for cross-class, 0 for within-class).
-Dimensions 2,...,r carry noise (phi_l = 4 with prob 0.5 regardless of class).
+This gives the exact decomposition:
+    ||g(f_i(q)) - g(f_j(q))||^2 = sum_l alpha_l(q) * c_l * 1[theta_{i,l} != theta_{j,l}]
 
 Zero sets: Z_l = {q : alpha_l(q) = 0} = {q : xi_{ql} = 0}.
 Under uniform Pi_Q: rho_l = Pi_Q(Z_l) = 1 - p.
@@ -79,6 +80,9 @@ class SyntheticProblem:
     alpha : ndarray of shape (M, r)
         Field magnitudes. alpha[q,l] = xi[q,l] * w[q,l] >= 0.
         Zero iff xi[q,l] = 0 (query q does not activate dimension l).
+    c : ndarray of shape (r,)
+        Per-dimension scale. c[0] = signal scale, c[1:] = noise scale (sigma).
+        phi_l(f,f') = c_l * 1[theta_{f,l} != theta_{f',l}].
     directions : ndarray of shape (r, p)
         Orthonormal direction vectors for each discriminative dimension.
     p : int
@@ -88,6 +92,7 @@ class SyntheticProblem:
     M: int
     r: int
     alpha: np.ndarray  # shape (M, r), field magnitudes
+    c: np.ndarray  # shape (r,), per-dimension scales
     directions: np.ndarray  # shape (r, p), orthonormal rows
     p: int
 
@@ -121,7 +126,8 @@ class SyntheticProblem:
         zero_counts = (self.alpha == 0).sum(axis=0)  # per dimension
         return zero_counts.max() / self.M
 
-    def generate_models(self, n: int, rng: np.random.Generator = None) -> List[SyntheticModel]:
+    def generate_models(self, n: int,
+                         rng: np.random.Generator = None) -> List[SyntheticModel]:
         """Generate n synthetic models (n/2 per class).
 
         Each model f has latent type theta_f in {0,1}^r:
@@ -129,7 +135,9 @@ class SyntheticProblem:
           - theta_{f,l} ~ Bernoulli(0.5) for l >= 2 (random noise dimensions)
 
         Signs: s_l(f) = 1 - 2*theta_{f,l} in {+1, -1}.
-        Response: g(f(q)) = sum_l sqrt(alpha[q,l]) * s_l(f) * directions[l]
+        Response: g(f(q)) = sum_l sqrt(alpha[q,l] * c_l) / 2 * s_l(f) * directions[l]
+
+        This realizes phi_l(f,f') = c_l * 1[theta_{f,l} != theta_{f',l}].
 
         Parameters
         ----------
@@ -146,6 +154,8 @@ class SyntheticProblem:
 
         n_per_class = n // 2
         models = []
+        # scale[l] = sqrt(c_l) / 2 so that (u_i - u_j)^2 = c_l when disagreeing
+        scale = np.sqrt(self.c) / 2.0  # shape (r,)
         sqrt_alpha = np.sqrt(self.alpha)  # (M, r)
 
         for class_label in [0, 1]:
@@ -157,8 +167,8 @@ class SyntheticProblem:
                 # Signs: s_l = 1 - 2*theta_l
                 signs = 1.0 - 2.0 * theta.astype(float)
 
-                # g(f(q)) = sum_l sqrt(alpha[q,l]) * s_l * directions[l]
-                embedded = (sqrt_alpha * signs) @ self.directions
+                # g(f(q)) = sum_l sqrt(alpha[q,l]) * scale[l] * s_l * directions[l]
+                embedded = (sqrt_alpha * scale * signs) @ self.directions
 
                 model = SyntheticModel(embedded, class_label,
                                        model_id=class_label * n_per_class + i)
@@ -168,12 +178,15 @@ class SyntheticProblem:
 
 
 def make_problem(M: int = 100, r: int = 5, signal_prob: float = 0.3,
-                 p: int = 20,
+                 sigma: float = 1.0, p: int = 20,
                  rng: np.random.Generator = None) -> SyntheticProblem:
     """Create a Bernoulli-Weight synthetic problem.
 
     The field alpha_l(q) = xi_{ql} * w_{ql} where xi ~ Bern(signal_prob),
     w ~ Uniform(0,1). This gives rho = 1 - signal_prob under uniform Pi_Q.
+
+    Per-dimension scales: c_1 = 1 (signal), c_l = sigma for l >= 2 (noise).
+    sigma controls classification hardness via the signal-to-noise ratio.
 
     Parameters
     ----------
@@ -184,6 +197,9 @@ def make_problem(M: int = 100, r: int = 5, signal_prob: float = 0.3,
     signal_prob : float
         Activation probability p. Each query activates each dimension
         independently with this probability. rho = 1 - signal_prob.
+    sigma : float
+        Noise dimension scale. c_1 = 1, c_{l>=2} = sigma.
+        Higher sigma = harder classification (more noise per dimension).
     p : int
         Embedding dimension (must be >= r for orthogonal directions).
     rng : numpy random Generator
@@ -207,10 +223,15 @@ def make_problem(M: int = 100, r: int = 5, signal_prob: float = 0.3,
     w = rng.random((M, r))
     alpha = xi * w
 
+    # Per-dimension scales: c_1 = 1, c_{l>=2} = sigma
+    c = np.full(r, sigma)
+    c[0] = 1.0
+
     return SyntheticProblem(
         M=M,
         r=r,
         alpha=alpha,
+        c=c,
         directions=directions,
         p=p,
     )

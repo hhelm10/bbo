@@ -48,7 +48,7 @@ def run_exp1(config: Exp1Config = None) -> pd.DataFrame:
         p = max(config.p, r)
         problem = make_problem(
             M=config.M, r=r, signal_prob=config.signal_prob,
-            p=p, rng=np.random.default_rng(config.seed),
+            sigma=config.sigma, p=p, rng=np.random.default_rng(config.seed),
         )
         models = problem.generate_models(config.n_models,
                                           rng=np.random.default_rng(config.seed + 1))

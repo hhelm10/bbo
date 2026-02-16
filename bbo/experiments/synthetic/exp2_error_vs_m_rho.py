@@ -51,7 +51,7 @@ def run_exp2(config: Exp2Config = None) -> pd.DataFrame:
 
         problem = make_problem(
             M=config.M, r=config.r, signal_prob=signal_prob,
-            p=config.p, rng=np.random.default_rng(config.seed),
+            sigma=config.sigma, p=config.p, rng=np.random.default_rng(config.seed),
         )
         models = problem.generate_models(config.n_models,
                                           rng=np.random.default_rng(config.seed + 1))

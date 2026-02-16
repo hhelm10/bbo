@@ -147,8 +147,8 @@ class TestSyntheticProblem:
             for j in range(i + 1, 4):
                 for q in range(problem.M):
                     diff_sq = np.sum((responses[i, q] - responses[j, q])**2)
-                    # phi_l(i,j) = (s_l(i) - s_l(j))^2 = 4 * 1[theta_l differs]
-                    phi = 4.0 * (thetas[i] != thetas[j]).astype(float)
+                    # phi_l(i,j) = c_l * 1[theta_l differs]
+                    phi = problem.c * (thetas[i] != thetas[j]).astype(float)
                     expected = np.sum(problem.alpha[q] * phi)
                     assert diff_sq == pytest.approx(expected, abs=1e-10)
 
