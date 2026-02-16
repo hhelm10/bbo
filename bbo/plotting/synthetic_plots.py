@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.transforms as transforms
 import matplotlib.lines as mlines
 import seaborn as sns
 from pathlib import Path
@@ -10,10 +11,63 @@ from pathlib import Path
 from bbo.plotting.style import set_paper_style, PALETTE
 
 
+# ---------------------------------------------------------------------------
+# Helpers for log y-axis with a break to display y = 0
+# ---------------------------------------------------------------------------
+
+def _zero_pos(n_reps):
+    """Position on log axis where y=0 is displayed (below 1/n_reps)."""
+    return 1.0 / (n_reps * 3)
+
+
+def _map_zeros(y, n_reps):
+    """Replace 0 values with zero_pos for log-scale plotting."""
+    zp = _zero_pos(n_reps)
+    return np.where(np.asarray(y, dtype=float) > 0, y, zp)
+
+
+def _setup_broken_log_y(ax, n_reps):
+    """Configure log y-axis with a break to show y = 0.
+
+    Adds:
+      - "0" tick at zero_pos (below 1/n_reps)
+      - Two diagonal slash marks indicating the axis break
+      - Standard log ticks above the break
+    """
+    threshold = 1.0 / n_reps
+    zp = _zero_pos(n_reps)
+
+    ax.set_yscale("log")
+    ax.set_ylim(bottom=zp * 0.5, top=1.5)
+
+    # --- Custom ticks: "0" plus standard powers of 10 ---
+    log_ticks = [10.0 ** k for k in range(0, -5, -1) if 10.0 ** k >= threshold]
+    ax.set_yticks([zp] + log_ticks)
+    ax.set_yticklabels(
+        ["0"] + [f"$10^{{{int(np.log10(t))}}}$" for t in log_ticks]
+    )
+    ax.yaxis.set_minor_locator(plt.NullLocator())
+
+    # --- Break indicator: two diagonal slashes on the y-axis ---
+    break_mid = np.sqrt(zp * threshold)  # geometric midpoint of gap
+    trans = transforms.blended_transform_factory(ax.transAxes, ax.transData)
+    for ratio in [0.78, 1.28]:
+        by = break_mid * ratio
+        ax.plot(
+            [-0.02, 0.02],
+            [by * 0.85, by / 0.85],
+            transform=trans, color="k", lw=0.8, clip_on=False,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Individual experiment plots
+# ---------------------------------------------------------------------------
+
 def plot_exp1(df: pd.DataFrame, output_dir: str = "results/figures"):
     """Plot Exp 1: log P[error >= 0.5] vs m, one curve per r."""
     set_paper_style()
-
+    n_reps = int(df["n_reps"].iloc[0])
     r_values = sorted(df["r"].unique())
 
     fig, ax = plt.subplots(figsize=(7, 5))
@@ -21,18 +75,14 @@ def plot_exp1(df: pd.DataFrame, output_dir: str = "results/figures"):
     for i, r in enumerate(r_values):
         color = PALETTE[i % len(PALETTE)]
         sub = df[df["r"] == r]
-        mask = sub["prob_high_error"] > 0
-        sub_pos = sub[mask]
-        if len(sub_pos) > 0:
-            ax.plot(sub_pos["m"], sub_pos["prob_high_error"],
-                    marker="o", markersize=4, color=color,
-                    label=f"$r = {r}$", linewidth=1.5)
+        y = _map_zeros(sub["prob_high_error"].values, n_reps)
+        ax.plot(sub["m"], y, marker="o", markersize=4, color=color,
+                label=f"$r = {r}$", linewidth=1.5)
 
     ax.set_xscale("log")
-    ax.set_yscale("log")
+    _setup_broken_log_y(ax, n_reps)
     ax.set_xlabel("Number of queries $m$")
     ax.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-    ax.set_ylim(bottom=1e-3, top=1.5)
     ax.legend(title="Rank $r$", fontsize=9, title_fontsize=10)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -43,7 +93,7 @@ def plot_exp1(df: pd.DataFrame, output_dir: str = "results/figures"):
 def plot_exp2(df: pd.DataFrame, output_dir: str = "results/figures"):
     """Plot Exp 2: log P[error >= 0.5] vs m, one curve per rho."""
     set_paper_style()
-
+    n_reps = int(df["n_reps"].iloc[0])
     rho_values = sorted(df["rho"].unique())
 
     fig, ax = plt.subplots(figsize=(7, 5))
@@ -51,18 +101,14 @@ def plot_exp2(df: pd.DataFrame, output_dir: str = "results/figures"):
     for i, rho in enumerate(rho_values):
         color = PALETTE[i % len(PALETTE)]
         sub = df[df["rho"] == rho]
-        mask = sub["prob_high_error"] > 0
-        sub_pos = sub[mask]
-        if len(sub_pos) > 0:
-            ax.plot(sub_pos["m"], sub_pos["prob_high_error"],
-                    marker="o", markersize=4, color=color,
-                    label=f"$\\rho = {rho:.1f}$", linewidth=1.5)
+        y = _map_zeros(sub["prob_high_error"].values, n_reps)
+        ax.plot(sub["m"], y, marker="o", markersize=4, color=color,
+                label=f"$\\rho = {rho:.1f}$", linewidth=1.5)
 
     ax.set_xscale("log")
-    ax.set_yscale("log")
+    _setup_broken_log_y(ax, n_reps)
     ax.set_xlabel("Number of queries $m$")
     ax.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-    ax.set_ylim(bottom=1e-3, top=1.5)
     ax.legend(title="$\\rho$", fontsize=9, title_fontsize=10)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -78,43 +124,37 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(16, 4.5))
 
     # --- Panel A: vary r ---
+    n_reps1 = int(df_exp1["n_reps"].iloc[0])
     r_values = sorted(df_exp1["r"].unique())
 
     for i, r in enumerate(r_values):
         color = PALETTE[i % len(PALETTE)]
         sub = df_exp1[df_exp1["r"] == r]
-        mask = sub["prob_high_error"] > 0
-        sub_pos = sub[mask]
-        if len(sub_pos) > 0:
-            ax1.plot(sub_pos["m"], sub_pos["prob_high_error"],
-                     marker="o", markersize=3, color=color,
-                     label=f"$r = {r}$", linewidth=1.5)
+        y = _map_zeros(sub["prob_high_error"].values, n_reps1)
+        ax1.plot(sub["m"], y, marker="o", markersize=3, color=color,
+                 label=f"$r = {r}$", linewidth=1.5)
 
     ax1.set_xscale("log")
-    ax1.set_yscale("log")
+    _setup_broken_log_y(ax1, n_reps1)
     ax1.set_xlabel("Number of queries $m$")
     ax1.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-    ax1.set_ylim(bottom=1e-3, top=1.5)
     ax1.set_title("(a) Varying rank $r$  ($p = 0.3$)", fontsize=11)
     ax1.legend(fontsize=7, loc="upper right", ncol=2)
 
     # --- Panel B: vary rho ---
+    n_reps2 = int(df_exp2["n_reps"].iloc[0])
     rho_values = sorted(df_exp2["rho"].unique())
 
     for i, rho in enumerate(rho_values):
         color = PALETTE[i % len(PALETTE)]
         sub = df_exp2[df_exp2["rho"] == rho]
-        mask = sub["prob_high_error"] > 0
-        sub_pos = sub[mask]
-        if len(sub_pos) > 0:
-            ax2.plot(sub_pos["m"], sub_pos["prob_high_error"],
-                     marker="o", markersize=3, color=color,
-                     label=f"$\\rho = {rho:.1f}$", linewidth=1.5)
+        y = _map_zeros(sub["prob_high_error"].values, n_reps2)
+        ax2.plot(sub["m"], y, marker="o", markersize=3, color=color,
+                 label=f"$\\rho = {rho:.1f}$", linewidth=1.5)
 
     ax2.set_xscale("log")
-    ax2.set_yscale("log")
+    _setup_broken_log_y(ax2, n_reps2)
     ax2.set_xlabel("Number of queries $m$")
-    ax2.set_ylim(bottom=1e-3, top=1.5)
     ax2.set_title("(b) Varying $\\rho$  ($r = 5$)", fontsize=11)
     ax2.legend(fontsize=8, loc="upper right")
 
