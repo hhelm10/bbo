@@ -49,7 +49,8 @@ class Exp1Config(SyntheticConfig):
     """
 
     name: str = "exp1_error_vs_m_rank"
-    r_values: List[int] = field(default_factory=lambda: [2, 5, 10, 25, 50, 100])
+    n_models: int = 1000  # need n >> 2^r for parity + kNN
+    r_values: List[int] = field(default_factory=lambda: [2, 4, 6, 8])
     m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
 
 
@@ -76,6 +77,7 @@ class Exp3Config(SyntheticConfig):
 
     name: str = "exp3_query_distribution"
     r: int = 5
+    signal_prob_values: List[float] = field(default_factory=lambda: [0.1, 0.3])
     m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
     concentration: float = 0.9
 
@@ -89,9 +91,9 @@ class Exp4Config(SyntheticConfig):
     """
 
     name: str = "exp4_error_vs_n"
-    r: int = 5
+    r_values: List[int] = field(default_factory=lambda: [3, 5, 7])
     m: int = 50
-    n_values: List[int] = field(default_factory=lambda: [20, 50, 100, 200, 500, 1000, 2000])
+    n_values: List[int] = field(default_factory=lambda: [20, 50, 100, 200, 500, 1000])
 
 
 @dataclass

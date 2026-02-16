@@ -220,37 +220,79 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     ax2.set_title("(b) Varying $\\rho$  ($r = 5$)", fontsize=11)
     ax2.legend(h2, l2, fontsize=8, loc="upper right")
 
-    # --- Panel C: query distribution ---
-    dist_labels = {"uniform": "Uniform", "signal": "Signal-concentrated",
-                   "orthogonal": "Orthogonal-concentrated"}
+    # --- Panel C: query distribution (multiple rho values) ---
+    dist_labels = {"uniform": "Uniform", "signal": "Signal",
+                   "orthogonal": "Orthogonal"}
+    dist_colors = {"uniform": PALETTE[0], "signal": PALETTE[1],
+                   "orthogonal": PALETTE[2]}
 
-    for i, (dist_name, label) in enumerate(dist_labels.items()):
-        sub = df_exp3[df_exp3["distribution"] == dist_name]
-        ax3.plot(sub["m"], sub["accuracy"],
-                 marker="o", markersize=3, color=PALETTE[i],
-                 label=label, linewidth=1.5)
+    # Check if multiple signal_prob values exist
+    if "signal_prob" in df_exp3.columns:
+        sp_values = sorted(df_exp3["signal_prob"].unique())
+    else:
+        sp_values = [None]
+
+    linestyles = ["-", "--", ":", "-."]
+
+    for j, sp in enumerate(sp_values):
+        if sp is not None:
+            sub_sp = df_exp3[df_exp3["signal_prob"] == sp]
+            rho_val = 1.0 - sp
+        else:
+            sub_sp = df_exp3
+            rho_val = None
+        ls = linestyles[j % len(linestyles)]
+
+        for dist_name, label in dist_labels.items():
+            sub = sub_sp[sub_sp["distribution"] == dist_name]
+            if sub.empty:
+                continue
+            color = dist_colors[dist_name]
+            full_label = label if j == 0 else None
+            ax3.plot(sub["m"], sub["accuracy"],
+                     marker="o", markersize=3, color=color,
+                     label=full_label, linewidth=1.5, linestyle=ls)
+
+    # Add linestyle legend entries for rho values
+    if len(sp_values) > 1:
+        dist_handles = [mlines.Line2D([], [], color=dist_colors[d], linewidth=1.5,
+                        label=dist_labels[d]) for d in dist_labels]
+        rho_handles = [mlines.Line2D([], [], color="gray",
+                       linestyle=linestyles[j], linewidth=1.5,
+                       label=f"$\\rho = {1-sp:.1f}$")
+                       for j, sp in enumerate(sp_values)]
+        ax3.legend(handles=dist_handles + rho_handles, fontsize=7,
+                   loc="lower right", ncol=2)
+    else:
+        ax3.legend(fontsize=8, loc="lower right")
 
     ax3.set_xscale("log")
     ax3.set_xlabel("Number of queries $m$")
     ax3.set_ylabel("Classification accuracy")
     ax3.set_ylim(0.4, 1.05)
-    ax3.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5)
-    ax3.set_title("(c) Query distribution  ($r = 5, p = 0.3$)", fontsize=11)
-    ax3.legend(fontsize=8, loc="lower right")
+    ax3.axhline(y=0.5, color="gray", linestyle=":", alpha=0.3, linewidth=0.8)
+    ax3.set_title("(c) Query distribution  ($r = 5$)", fontsize=11)
 
-    # --- Panel D: error vs n (sample complexity) ---
+    # --- Panel D: error vs n (multiple r values) ---
     if df_exp4 is not None:
         n_reps4 = int(df_exp4["n_reps"].iloc[0])
-        y4 = _map_zeros(df_exp4["prob_high_error"].values, n_reps4)
-        ax4.plot(df_exp4["n_models"], y4,
-                 marker="o", markersize=4, color=PALETTE[0], linewidth=1.5)
+        m_exp4 = int(df_exp4["m"].iloc[0])
+        r_values_4 = sorted(df_exp4["r"].unique())
+
+        for i, r in enumerate(r_values_4):
+            color = PALETTE[i % len(PALETTE)]
+            sub = df_exp4[df_exp4["r"] == r]
+            y4 = _map_zeros(sub["prob_high_error"].values, n_reps4)
+            ax4.plot(sub["n_models"], y4,
+                     marker="o", markersize=4, color=color,
+                     label=f"$r = {r}$", linewidth=1.5)
+
         ax4.set_xscale("log")
         _setup_broken_log_y(ax4, n_reps4)
         ax4.set_xlabel("Number of models $n$")
         ax4.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-        r_exp4 = int(df_exp4["r"].iloc[0])
-        m_exp4 = int(df_exp4["m"].iloc[0])
-        ax4.set_title(f"(d) Sample complexity  ($r = {r_exp4}, m = {m_exp4}$)", fontsize=11)
+        ax4.set_title(f"(d) Sample complexity  ($m = {m_exp4}$)", fontsize=11)
+        ax4.legend(fontsize=8, loc="upper right")
     else:
         ax4.set_visible(False)
 
@@ -268,17 +310,30 @@ def plot_exp3(df: pd.DataFrame, output_dir: str = "results/figures"):
 
     dist_labels = {"uniform": "Uniform", "signal": "Signal-concentrated",
                    "orthogonal": "Orthogonal-concentrated"}
+    linestyles = ["-", "--", ":", "-."]
 
-    for i, (dist_name, label) in enumerate(dist_labels.items()):
-        sub = df[df["distribution"] == dist_name]
-        ax.plot(sub["m"], sub["accuracy"],
-                marker="o", markersize=4, color=PALETTE[i],
-                label=label, linewidth=2)
+    if "signal_prob" in df.columns:
+        sp_values = sorted(df["signal_prob"].unique())
+    else:
+        sp_values = [None]
+
+    for j, sp in enumerate(sp_values):
+        sub_sp = df[df["signal_prob"] == sp] if sp is not None else df
+        ls = linestyles[j % len(linestyles)]
+        suffix = f" ($\\rho={1-sp:.1f}$)" if sp is not None and len(sp_values) > 1 else ""
+
+        for i, (dist_name, label) in enumerate(dist_labels.items()):
+            sub = sub_sp[sub_sp["distribution"] == dist_name]
+            if sub.empty:
+                continue
+            ax.plot(sub["m"], sub["accuracy"],
+                    marker="o", markersize=4, color=PALETTE[i],
+                    label=f"{label}{suffix}", linewidth=2, linestyle=ls)
 
     ax.set_xscale("log")
     ax.set_xlabel("Number of queries $m$")
     ax.set_ylabel("Classification accuracy")
-    ax.legend(fontsize=9)
+    ax.legend(fontsize=8)
     ax.set_ylim(0.4, 1.05)
     ax.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5)
 
@@ -288,14 +343,24 @@ def plot_exp3(df: pd.DataFrame, output_dir: str = "results/figures"):
 
 
 def plot_exp4(df: pd.DataFrame, output_dir: str = "results/figures"):
-    """Plot Exp 4: classification error vs n."""
+    """Plot Exp 4: P[error >= 0.5] vs n, one curve per r."""
     set_paper_style()
+    n_reps = int(df["n_reps"].iloc[0])
     fig, ax = plt.subplots(figsize=(6, 4))
 
-    ax.plot(df["n_models"], df["mean_error"],
-            marker="o", color=PALETTE[0])
-    ax.set_xlabel("Number of training models $n$")
-    ax.set_ylabel("Mean classification error")
+    r_values = sorted(df["r"].unique())
+    for i, r in enumerate(r_values):
+        sub = df[df["r"] == r]
+        y = _map_zeros(sub["prob_high_error"].values, n_reps)
+        ax.plot(sub["n_models"], y,
+                marker="o", markersize=4, color=PALETTE[i],
+                label=f"$r = {r}$", linewidth=1.5)
+
+    ax.set_xscale("log")
+    _setup_broken_log_y(ax, n_reps)
+    ax.set_xlabel("Number of models $n$")
+    ax.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
+    ax.legend(fontsize=9)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{output_dir}/exp4_error_vs_n.pdf")

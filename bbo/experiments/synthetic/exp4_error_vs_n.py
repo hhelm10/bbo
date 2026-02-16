@@ -1,8 +1,8 @@
 """Exp 4: Error vs n (sample complexity).
 
-Fix r=10, m=50 (large enough for dimension coverage), uniform Pi_Q.
-Vary n to characterize gamma(n) — the finite-sample term.
-Expected: P[error >= 0.5] decreases with n as kNN learns parity.
+Fix m=50 (large enough for dimension coverage), uniform Pi_Q.
+Vary n for multiple r values to characterize gamma(n).
+Expected: P[error >= 0.5] decreases with n, transition at n ~ 2^r.
 """
 
 import math
@@ -43,34 +43,37 @@ def run_exp4(config: Exp4Config = None) -> pd.DataFrame:
     if config is None:
         config = Exp4Config()
 
-    problem = make_problem(
-        M=config.M, r=config.r, signal_prob=config.signal_prob,
-        p_embed=config.p_embed, rng=np.random.default_rng(config.seed),
-    )
-
     results = []
 
-    for n_models in tqdm(config.n_values, desc="Exp 4: Error vs n"):
-        k = _knn_k(n_models)
-        n_comp = min(config.r, n_models - 1)
-        seeds = [config.seed + rep * 100003 + n_models * 1009
-                 for rep in range(config.n_reps)]
-        errors = Parallel(n_jobs=config.n_jobs, backend="loky")(
-            delayed(_run_one_rep)(problem, n_models, config.m, config.M, s,
-                                  n_comp, config.classifier, k,
-                                  config.eta)
-            for s in seeds
+    for r in config.r_values:
+        print(f"  r={r}...")
+        p_embed = max(config.p_embed, r)
+        problem = make_problem(
+            M=config.M, r=r, signal_prob=config.signal_prob,
+            p_embed=p_embed, rng=np.random.default_rng(config.seed),
         )
-        errors = np.array(errors)
 
-        results.append({
-            "n_models": n_models,
-            "r": config.r,
-            "m": config.m,
-            "mean_error": errors.mean(),
-            "std_error": errors.std(),
-            "prob_high_error": (errors >= 0.5).mean(),
-            "n_reps": config.n_reps,
-        })
+        for n_models in tqdm(config.n_values, desc=f"  r={r}", leave=False):
+            k = _knn_k(n_models)
+            n_comp = min(r, n_models - 1)
+            seeds = [config.seed + rep * 100003 + n_models * 1009 + r * 7
+                     for rep in range(config.n_reps)]
+            errors = Parallel(n_jobs=config.n_jobs, backend="loky")(
+                delayed(_run_one_rep)(problem, n_models, config.m, config.M, s,
+                                      n_comp, config.classifier, k,
+                                      config.eta)
+                for s in seeds
+            )
+            errors = np.array(errors)
+
+            results.append({
+                "r": r,
+                "n_models": n_models,
+                "m": config.m,
+                "mean_error": errors.mean(),
+                "std_error": errors.std(),
+                "prob_high_error": (errors >= 0.5).mean(),
+                "n_reps": config.n_reps,
+            })
 
     return pd.DataFrame(results)
