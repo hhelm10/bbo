@@ -45,7 +45,7 @@ class Exp1Config(SyntheticConfig):
     """Exp 1: Error vs m for varying r."""
 
     name: str = "exp1_error_vs_m_rank"
-    r_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 25, 50])
+    r_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20])
     noise_levels: List[float] = field(default_factory=lambda: [0.15, 0.3, 0.5])
     m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
 
@@ -56,7 +56,7 @@ class Exp2Config(SyntheticConfig):
 
     name: str = "exp2_error_vs_m_rho"
     r: int = 5
-    signal_prob_values: List[float] = field(default_factory=lambda: [0.1, 0.2, 0.5, 0.9])
+    signal_prob_values: List[float] = field(default_factory=lambda: [0.1, 0.5, 0.9])
     noise_levels: List[float] = field(default_factory=lambda: [0.15, 0.3, 0.5])
     m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
 
