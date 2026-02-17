@@ -1,4 +1,4 @@
-"""Plotting functions for synthetic experiments (Exp 1-5)."""
+"""Plotting functions for synthetic experiments (Exp 1-5, E-G)."""
 
 import numpy as np
 import pandas as pd
@@ -461,4 +461,190 @@ def plot_exp5(df: pd.DataFrame, output_dir: str = "results/figures"):
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{output_dir}/exp5_bayes_convergence.pdf")
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# Theorem 2 experiments (E, F, G): mean error → L* = η
+# ---------------------------------------------------------------------------
+
+def plot_exp_e(df: pd.DataFrame, output_dir: str = "results/figures"):
+    """Plot Exp E: mean error vs m, one curve per eta, horizontal L* lines."""
+    set_paper_style()
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    eta_values = sorted(df["eta"].unique())
+    for i, eta in enumerate(eta_values):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df[df["eta"] == eta]
+        ax.plot(sub["m"], sub["mean_error"], marker="o", markersize=4,
+                color=color, label=f"$\\eta = {eta}$", linewidth=1.5)
+        ax.fill_between(sub["m"],
+                        sub["mean_error"] - sub["std_error"],
+                        sub["mean_error"] + sub["std_error"],
+                        alpha=0.15, color=color)
+        ax.axhline(y=eta, color=color, linestyle="--", linewidth=1.0, alpha=0.6)
+
+    ax.set_xscale("log")
+    ax.set_ylim(0, 0.55)
+    ax.set_xlabel("Number of queries $m$")
+    ax.set_ylabel("Mean classification error")
+    ax.legend(fontsize=9)
+
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    fig.savefig(f"{output_dir}/exp_e_error_vs_m_eta.pdf")
+    plt.close(fig)
+
+
+def plot_exp_f(df: pd.DataFrame, output_dir: str = "results/figures"):
+    """Plot Exp F: mean error vs n, one curve per eta, horizontal L* lines."""
+    set_paper_style()
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    eta_values = sorted(df["eta"].unique())
+    for i, eta in enumerate(eta_values):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df[df["eta"] == eta]
+        ax.plot(sub["n_models"], sub["mean_error"], marker="o", markersize=4,
+                color=color, label=f"$\\eta = {eta}$", linewidth=1.5)
+        ax.fill_between(sub["n_models"],
+                        sub["mean_error"] - sub["std_error"],
+                        sub["mean_error"] + sub["std_error"],
+                        alpha=0.15, color=color)
+        ax.axhline(y=eta, color=color, linestyle="--", linewidth=1.0, alpha=0.6)
+
+    ax.set_xscale("log")
+    ax.set_ylim(0, 0.55)
+    ax.set_xlabel("Number of models $n$")
+    ax.set_ylabel("Mean classification error")
+    ax.legend(fontsize=9)
+
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    fig.savefig(f"{output_dir}/exp_f_error_vs_n_eta.pdf")
+    plt.close(fig)
+
+
+def plot_exp_g(df: pd.DataFrame, output_dir: str = "results/figures"):
+    """Plot Exp G: mean error vs m, one curve per r, single L* line at eta."""
+    set_paper_style()
+    fig, ax = plt.subplots(figsize=(6, 4))
+
+    eta = df["eta"].iloc[0]
+    r_values = sorted(df["r"].unique())
+    for i, r in enumerate(r_values):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df[df["r"] == r]
+        ax.plot(sub["m"], sub["mean_error"], marker="o", markersize=4,
+                color=color, label=f"$r = {r}$", linewidth=1.5)
+        ax.fill_between(sub["m"],
+                        sub["mean_error"] - sub["std_error"],
+                        sub["mean_error"] + sub["std_error"],
+                        alpha=0.15, color=color)
+
+    ax.axhline(y=eta, color="gray", linestyle="--", linewidth=1.0, alpha=0.7,
+               label=f"$L^* = {eta}$")
+
+    ax.set_xscale("log")
+    ax.set_ylim(0, 0.55)
+    ax.set_xlabel("Number of queries $m$")
+    ax.set_ylabel("Mean classification error")
+    ax.legend(fontsize=9)
+
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    fig.savefig(f"{output_dir}/exp_g_error_vs_m_rank_eta.pdf")
+    plt.close(fig)
+
+
+def plot_figure2(df_e: pd.DataFrame, df_f: pd.DataFrame,
+                 df_g: pd.DataFrame, output_dir: str = "results/figures"):
+    """Combined Figure 2: three panels for Exp E-G in a single row.
+
+    Validates Theorem 2: mean error converges to L* = eta.
+    Linear y-axis, y range [0, 0.55], horizontal dashed lines at L* = eta.
+    """
+    set_paper_style()
+
+    fig, axes = plt.subplots(1, 3, figsize=(5.5, 1.6), sharey=True)
+    ax_e, ax_f, ax_g = axes
+
+    # --- Panel (e): error vs m, varying eta ---
+    eta_values_e = sorted(df_e["eta"].unique())
+    for i, eta in enumerate(eta_values_e):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df_e[df_e["eta"] == eta]
+        ax_e.plot(sub["m"], sub["mean_error"], marker="o", color=color,
+                  label=f"$\\eta = {eta}$")
+        ax_e.axhline(y=eta, color=color, linestyle="--", linewidth=0.8,
+                     alpha=0.6)
+
+    lstar_handle = mlines.Line2D([], [], color="gray", linestyle="--",
+                                 linewidth=0.8, alpha=0.7, label="$L^* = \\eta$")
+    h_e, l_e = ax_e.get_legend_handles_labels()
+    # Remove the individual hline legend entries (they have no label by default
+    # but we added them implicitly — filter to keep only eta labels)
+    h_e = [h for h, l in zip(h_e, l_e) if l.startswith("$\\eta")]
+    l_e = [l for l in l_e if l.startswith("$\\eta")]
+    h_e.append(lstar_handle)
+    l_e.append("$L^* = \\eta$")
+
+    ax_e.set_xscale("log")
+    ax_e.set_ylim(0, 0.55)
+    ax_e.set_xlabel("Queries $m$")
+    ax_e.set_ylabel("Mean error")
+    ax_e.set_title("(e) Varying $\\eta$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; M\\!=\\!100$",
+                   fontsize=7)
+    ax_e.legend(h_e, l_e, loc="upper right")
+
+    # --- Panel (f): error vs n, varying eta ---
+    eta_values_f = sorted(df_f["eta"].unique())
+    for i, eta in enumerate(eta_values_f):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df_f[df_f["eta"] == eta]
+        ax_f.plot(sub["n_models"], sub["mean_error"], marker="o", color=color,
+                  label=f"$\\eta = {eta}$")
+        ax_f.axhline(y=eta, color=color, linestyle="--", linewidth=0.8,
+                     alpha=0.6)
+
+    h_f, l_f = ax_f.get_legend_handles_labels()
+    h_f = [h for h, l in zip(h_f, l_f) if l.startswith("$\\eta")]
+    l_f = [l for l in l_f if l.startswith("$\\eta")]
+    h_f.append(lstar_handle)
+    l_f.append("$L^* = \\eta$")
+
+    ax_f.set_xscale("log")
+    ax_f.set_xlabel("Models $n$")
+    ax_f.set_title("(f) Varying $n$\n$m\\!=\\!50,\\; r\\!=\\!5,\\; M\\!=\\!100$",
+                   fontsize=7)
+    ax_f.legend(h_f, l_f, loc="upper right")
+
+    # --- Panel (g): error vs m, varying r, fixed eta ---
+    eta_g = df_g["eta"].iloc[0]
+    r_values_g = sorted(df_g["r"].unique())
+    for i, r in enumerate(r_values_g):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df_g[df_g["r"] == r]
+        ax_g.plot(sub["m"], sub["mean_error"], marker="o", color=color,
+                  label=f"$r = {r}$")
+
+    ax_g.axhline(y=eta_g, color="gray", linestyle="--", linewidth=0.8,
+                 alpha=0.7)
+
+    h_g, l_g = ax_g.get_legend_handles_labels()
+    lstar_handle_g = mlines.Line2D([], [], color="gray", linestyle="--",
+                                   linewidth=0.8, alpha=0.7,
+                                   label=f"$L^* = {eta_g}$")
+    h_g.append(lstar_handle_g)
+    l_g.append(f"$L^* = {eta_g}$")
+
+    ax_g.set_xscale("log")
+    ax_g.set_xlabel("Queries $m$")
+    ax_g.set_title("(g) Varying rank $r$\n"
+                   f"$n\\!=\\!100,\\; \\eta\\!=\\!{eta_g},\\; M\\!=\\!100$",
+                   fontsize=7)
+    ax_g.legend(h_g, l_g, loc="upper right")
+
+    fig.subplots_adjust(left=0.07, right=0.99, bottom=0.22, top=0.82, wspace=0.08)
+
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    fig.savefig(f"{output_dir}/figure2_error_vs_eta.pdf")
     plt.close(fig)

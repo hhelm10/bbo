@@ -107,6 +107,54 @@ class Exp5Config(SyntheticConfig):
 
 
 @dataclass
+class ExpEConfig(SyntheticConfig):
+    """Exp E: Mean error vs m for varying eta (label noise).
+
+    Fix r=5, n=100 models, sweep eta.
+    Expected: mean error converges to L* = eta as m grows.
+    """
+
+    name: str = "exp_e_error_vs_m_eta"
+    r: int = 5
+    n_models: int = 100
+    eta_values: List[float] = field(default_factory=lambda: [0.05, 0.1, 0.2])
+    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100])
+    n_reps: int = 200
+
+
+@dataclass
+class ExpFConfig(SyntheticConfig):
+    """Exp F: Mean error vs n for varying eta.
+
+    Fix r=5, m=50, sweep eta and n.
+    Expected: mean error converges to L* = eta as n grows.
+    """
+
+    name: str = "exp_f_error_vs_n_eta"
+    r: int = 5
+    m: int = 50
+    eta_values: List[float] = field(default_factory=lambda: [0.05, 0.1, 0.2])
+    n_values: List[int] = field(default_factory=lambda: [10, 20, 50, 100, 200, 500])
+    n_reps: int = 200
+
+
+@dataclass
+class ExpGConfig(SyntheticConfig):
+    """Exp G: Mean error vs m for varying r with fixed eta.
+
+    Fix eta=0.1, n=100, sweep r.
+    Expected: all curves converge to L* = 0.1, larger r needs more queries.
+    """
+
+    name: str = "exp_g_error_vs_m_rank_eta"
+    eta: float = 0.1
+    n_models: int = 100
+    r_values: List[int] = field(default_factory=lambda: [3, 5, 10])
+    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100])
+    n_reps: int = 200
+
+
+@dataclass
 class RealConfig(ExperimentConfig):
     """Configuration for real LLM experiments."""
 

@@ -8,15 +8,20 @@ import pandas as pd
 
 from bbo.experiments.config import (
     Exp1Config, Exp2Config, Exp3Config, Exp4Config, Exp5Config,
+    ExpEConfig, ExpFConfig, ExpGConfig,
 )
 from bbo.experiments.synthetic.exp1_error_vs_m_rank import run_exp1
 from bbo.experiments.synthetic.exp2_error_vs_m_rho import run_exp2
 from bbo.experiments.synthetic.exp3_query_distribution import run_exp3
 from bbo.experiments.synthetic.exp4_error_vs_n import run_exp4
 from bbo.experiments.synthetic.exp5_bayes_convergence import run_exp5
+from bbo.experiments.synthetic.exp_e_error_vs_m_eta import run_exp_e
+from bbo.experiments.synthetic.exp_f_error_vs_n_eta import run_exp_f
+from bbo.experiments.synthetic.exp_g_error_vs_m_rank_eta import run_exp_g
 from bbo.plotting.synthetic_plots import (
     plot_exp1, plot_exp2, plot_exp3, plot_exp4, plot_exp5,
-    plot_figure1,
+    plot_exp_e, plot_exp_f, plot_exp_g,
+    plot_figure1, plot_figure2,
 )
 
 
@@ -26,6 +31,9 @@ EXPERIMENTS = {
     "exp3": (Exp3Config, run_exp3, plot_exp3),
     "exp4": (Exp4Config, run_exp4, plot_exp4),
     "exp5": (Exp5Config, run_exp5, plot_exp5),
+    "exp_e": (ExpEConfig, run_exp_e, plot_exp_e),
+    "exp_f": (ExpFConfig, run_exp_f, plot_exp_f),
+    "exp_g": (ExpGConfig, run_exp_g, plot_exp_g),
 }
 
 
@@ -87,6 +95,12 @@ def main():
                      df_exp4=results.get("exp4"),
                      output_dir=args.figure_dir)
         print(f"Combined figure1 saved to {args.figure_dir}/figure1_error_vs_m.pdf")
+
+    # Generate combined Figure 2 if experiments E-G were run
+    if not args.no_plot and all(k in results for k in ["exp_e", "exp_f", "exp_g"]):
+        plot_figure2(results["exp_e"], results["exp_f"], results["exp_g"],
+                     output_dir=args.figure_dir)
+        print(f"Combined figure2 saved to {args.figure_dir}/figure2_error_vs_eta.pdf")
 
 
 if __name__ == "__main__":
