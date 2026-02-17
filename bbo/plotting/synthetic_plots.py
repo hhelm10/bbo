@@ -187,7 +187,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     """
     set_paper_style()
 
-    fig, axes = plt.subplots(1, 4, figsize=(5.5, 2.3))
+    fig, axes = plt.subplots(1, 4, figsize=(5.5, 1.6))
     ax1, ax2, ax4, ax3 = axes
 
     # --- Panel A: vary r ---
@@ -300,6 +300,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     _setup_broken_log_y(ax3, n_reps)
     ax3.set_yticklabels([])
     ax3.set_xlabel("Queries $m$")
+
     ax3.set_title("(d) Query distribution\n$n\\!=\\!100,\\; r\\!=\\!5,\\; M\\!=\\!100$",
                   fontsize=7)
 
@@ -340,7 +341,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     else:
         ax4.set_visible(False)
 
-    fig.tight_layout(w_pad=0.8)
+    fig.tight_layout(w_pad=0.3)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{output_dir}/figure1_error_vs_m.pdf")
