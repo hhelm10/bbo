@@ -66,7 +66,7 @@ def plot_motivating_figure(
 
     # --- Panel (a): MDS scatter plots (stacked), using m=10 queries ---
     rng = np.random.RandomState(0)
-    m_mds = 20
+    m_mds = 50
     sens_sub = rng.choice(sensitive_indices, size=m_mds, replace=False)
     orth_sub = rng.choice(orthogonal_indices, size=m_mds, replace=False)
 
