@@ -214,7 +214,8 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     _setup_broken_log_y(ax1, n_reps1)
     ax1.set_xlabel("Number of queries $m$")
     ax1.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-    ax1.set_title("(a) Varying rank $r$  ($\\rho \\approx 0.7$)", fontsize=10)
+    ax1.set_title("(a) Varying rank $r$\n($n = 100,\\; \\rho \\approx 0.7,\\; M = 100$)",
+                  fontsize=9)
     ax1.legend(h1, l1, fontsize=6, loc="upper right", ncol=2)
 
     # --- Panel B: vary rho ---
@@ -242,7 +243,8 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     ax2.set_xscale("log")
     _setup_broken_log_y(ax2, n_reps2)
     ax2.set_xlabel("Number of queries $m$")
-    ax2.set_title("(b) Varying $\\rho$  ($r = 5$)", fontsize=10)
+    ax2.set_title("(b) Varying $\\rho$\n($n = 100,\\; r = 5,\\; M = 100$)",
+                  fontsize=9)
     ax2.legend(h2, l2, fontsize=6, loc="upper right")
 
     # --- Panel C: query distribution (multiple rho values) ---
@@ -294,7 +296,8 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     ax3.set_xscale("log")
     _setup_broken_log_y(ax3, n_reps3)
     ax3.set_xlabel("Number of queries $m$")
-    ax3.set_title("(c) Query distribution  ($r = 5$)", fontsize=10)
+    ax3.set_title("(c) Query distribution\n($n = 100,\\; r = 5,\\; M = 100$)",
+                  fontsize=9)
 
     # --- Panel D: error vs n (multiple m values, fixed r) ---
     if df_exp4 is not None:
@@ -331,7 +334,8 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         _setup_broken_log_y(ax4, n_reps4, min_power=d_min_power)
         ax4.set_xlabel("Number of models $n$")
         ax4.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-        ax4.set_title(f"(d) Sample complexity  ($r = {r_exp4}$)", fontsize=10)
+        ax4.set_title(f"(d) Varying $n$\n($r = {r_exp4},\\; \\rho = 0.7,\\; M = 100$)",
+                      fontsize=9)
         ax4.legend(h4, l4, fontsize=6, loc="upper right")
     else:
         ax4.set_visible(False)
