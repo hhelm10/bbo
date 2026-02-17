@@ -221,7 +221,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     ax1.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
     ax1.set_title("(a) Varying rank $r$\n$n\\!=\\!100,\\; \\rho\\!\\approx\\!0.7,\\; M\\!=\\!100$",
                   fontsize=7)
-    ax1.legend(h1, l1, loc="upper right", ncol=2)
+    ax1.legend(h1, l1, loc="lower left", ncol=2)
 
     # --- Panel B: vary rho ---
     n_reps2 = int(df_exp2["n_reps"].iloc[0])
@@ -251,7 +251,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     ax2.set_xlabel("Queries $m$")
     ax2.set_title("(b) Varying $\\rho$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; M\\!=\\!100$",
                   fontsize=7)
-    ax2.legend(h2, l2, loc="upper right")
+    ax2.legend(h2, l2, loc="lower left")
 
     # --- Panel D: query distribution ---
     n_reps3 = int(df_exp3["n_reps"].iloc[0])
@@ -292,9 +292,9 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                        label=f"$\\rho = {1-sp:.1f}$")
                        for j, sp in enumerate(sp_values)]
         ax3.legend(handles=dist_handles + rho_handles,
-                   loc="upper right", ncol=2)
+                   loc="lower left", ncol=2)
     else:
-        ax3.legend(loc="upper right")
+        ax3.legend(loc="lower left")
 
     ax3.set_xscale("log")
     _setup_broken_log_y(ax3, n_reps)
@@ -337,7 +337,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         ax4.set_title("(c) Varying $n$\n"
                       f"$r\\!=\\!{r_exp4},\\; \\rho\\!=\\!0.7,\\; M\\!=\\!100$",
                       fontsize=7)
-        ax4.legend(h4, l4, loc="upper right")
+        ax4.legend(h4, l4, loc="lower left")
     else:
         ax4.set_visible(False)
 
