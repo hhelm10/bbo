@@ -7,24 +7,41 @@ import seaborn as sns
 
 
 def set_paper_style():
-    """Set matplotlib/seaborn defaults for paper-quality figures."""
-    sns.set_context("paper", font_scale=1.4)
+    """Set matplotlib/seaborn defaults for camera-ready figures.
+
+    Sized for ICLR/NeurIPS: textwidth ≈ 5.5 in.
+    All font sizes are set so that they remain legible at 1:1 scale
+    when included via \\includegraphics[width=\\textwidth].
+    """
+    sns.set_context("paper", font_scale=1.0)
     sns.set_style("whitegrid")
 
     plt.rcParams.update({
-        "figure.figsize": (6, 4),
+        "figure.figsize": (5.5, 2.0),
         "figure.dpi": 150,
         "savefig.dpi": 300,
         "savefig.bbox": "tight",
         "font.family": "serif",
-        "font.size": 12,
-        "axes.labelsize": 14,
-        "axes.titlesize": 14,
-        "legend.fontsize": 11,
-        "xtick.labelsize": 11,
-        "ytick.labelsize": 11,
-        "lines.linewidth": 2,
-        "lines.markersize": 6,
+        "text.usetex": False,
+        "font.size": 7,
+        "axes.labelsize": 8,
+        "axes.titlesize": 8,
+        "legend.fontsize": 6,
+        "xtick.labelsize": 6,
+        "ytick.labelsize": 6,
+        "lines.linewidth": 1.0,
+        "lines.markersize": 3,
+        "axes.linewidth": 0.5,
+        "grid.linewidth": 0.3,
+        "xtick.major.width": 0.5,
+        "ytick.major.width": 0.5,
+        "xtick.major.size": 2,
+        "ytick.major.size": 2,
+        "legend.handlelength": 1.5,
+        "legend.handletextpad": 0.4,
+        "legend.columnspacing": 0.8,
+        "legend.borderpad": 0.3,
+        "legend.labelspacing": 0.2,
         "pdf.fonttype": 42,  # TrueType fonts in PDF
         "ps.fonttype": 42,
     })

@@ -181,10 +181,13 @@ def plot_exp2(df: pd.DataFrame, output_dir: str = "results/figures"):
 def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                  df_exp3: pd.DataFrame, df_exp4: pd.DataFrame = None,
                  output_dir: str = "results/figures"):
-    """Combined Figure 1: four panels for Exp 1-4 in a single row."""
+    """Combined Figure 1: four panels for Exp 1-4 in a single row.
+
+    Sized for ICLR/NeurIPS full-textwidth (≈5.5 in).
+    """
     set_paper_style()
 
-    fig, axes = plt.subplots(1, 4, figsize=(20, 4.5))
+    fig, axes = plt.subplots(1, 4, figsize=(5.5, 2.3))
     ax1, ax2, ax4, ax3 = axes
 
     # --- Panel A: vary r ---
@@ -198,25 +201,25 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         sub = df_exp1[df_exp1["r"] == r]
         rho = sub["rho"].iloc[0]
         y = _map_zeros(sub["prob_high_error"].values, n_reps1)
-        ax1.plot(sub["m"], y, marker="o", markersize=3, color=color,
-                 label=f"$r = {r}$", linewidth=1.5)
+        ax1.plot(sub["m"], y, marker="o", color=color,
+                 label=f"$r = {r}$")
         bound = _theory_bound(m_dense, r, rho, clip_min=clip_min1)
-        ax1.plot(m_dense, bound, color=color, linestyle="--", linewidth=0.8,
-                 alpha=0.5)
+        ax1.plot(m_dense, bound, color=color, linestyle="--",
+                 linewidth=0.6, alpha=0.5)
 
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
-                                  linewidth=1.8, alpha=0.8, label="$r\\rho^m$")
+                                  linewidth=1.0, alpha=0.7, label="$r\\rho^m$")
     h1, l1 = ax1.get_legend_handles_labels()
     h1.append(theory_handle)
     l1.append("$r\\rho^m$")
 
     ax1.set_xscale("log")
     _setup_broken_log_y(ax1, n_reps1)
-    ax1.set_xlabel("Number of queries $m$")
+    ax1.set_xlabel("Queries $m$")
     ax1.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-    ax1.set_title("(a) Varying rank $r$\n($n = 100,\\; \\rho \\approx 0.7,\\; M = 100$)",
-                  fontsize=9)
-    ax1.legend(h1, l1, fontsize=6, loc="upper right", ncol=2)
+    ax1.set_title("(a) Varying rank $r$\n$n\\!=\\!100,\\; \\rho\\!\\approx\\!0.7,\\; M\\!=\\!100$",
+                  fontsize=7)
+    ax1.legend(h1, l1, loc="upper right", ncol=2)
 
     # --- Panel B: vary rho ---
     n_reps2 = int(df_exp2["n_reps"].iloc[0])
@@ -226,35 +229,34 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     for i, rho in enumerate(rho_values):
         color = PALETTE[i % len(PALETTE)]
         sub = df_exp2[df_exp2["rho"] == rho]
-        r_exp2 = 5  # Exp 2 uses fixed r=5
+        r_exp2 = 5
         y = _map_zeros(sub["prob_high_error"].values, n_reps2)
-        ax2.plot(sub["m"], y, marker="o", markersize=3, color=color,
-                 label=f"$\\rho = {rho:.1f}$", linewidth=1.5)
+        ax2.plot(sub["m"], y, marker="o", color=color,
+                 label=f"$\\rho = {rho:.1f}$")
         bound = _theory_bound(m_dense, r_exp2, rho, clip_min=clip_min2)
-        ax2.plot(m_dense, bound, color=color, linestyle="--", linewidth=0.8,
-                 alpha=0.5)
+        ax2.plot(m_dense, bound, color=color, linestyle="--",
+                 linewidth=0.6, alpha=0.5)
 
     theory_handle2 = mlines.Line2D([], [], color="gray", linestyle="--",
-                                   linewidth=1.8, alpha=0.8, label="$r\\rho^m$")
+                                   linewidth=1.0, alpha=0.7, label="$r\\rho^m$")
     h2, l2 = ax2.get_legend_handles_labels()
     h2.append(theory_handle2)
     l2.append("$r\\rho^m$")
 
     ax2.set_xscale("log")
     _setup_broken_log_y(ax2, n_reps2)
-    ax2.set_xlabel("Number of queries $m$")
-    ax2.set_title("(b) Varying $\\rho$\n($n = 100,\\; r = 5,\\; M = 100$)",
-                  fontsize=9)
-    ax2.legend(h2, l2, fontsize=6, loc="upper right")
+    ax2.set_xlabel("Queries $m$")
+    ax2.set_title("(b) Varying $\\rho$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; M\\!=\\!100$",
+                  fontsize=7)
+    ax2.legend(h2, l2, loc="upper right")
 
-    # --- Panel D: query distribution (multiple rho values) ---
+    # --- Panel D: query distribution ---
     n_reps3 = int(df_exp3["n_reps"].iloc[0])
     dist_labels = {"uniform": "Uniform", "signal": "Signal",
                    "orthogonal": "Orthogonal"}
     dist_colors = {"uniform": PALETTE[0], "signal": PALETTE[1],
                    "orthogonal": PALETTE[2]}
 
-    # Check if multiple signal_prob values exist
     if "signal_prob" in df_exp3.columns:
         sp_values = sorted(df_exp3["signal_prob"].unique())
     else:
@@ -276,36 +278,34 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
             color = dist_colors[dist_name]
             full_label = label if j == 0 else None
             y3 = _map_zeros(sub["prob_high_error"].values, n_reps3)
-            ax3.plot(sub["m"], y3,
-                     marker="o", markersize=3, color=color,
-                     label=full_label, linewidth=1.5, linestyle=ls)
+            ax3.plot(sub["m"], y3, marker="o", color=color,
+                     label=full_label, linestyle=ls)
 
-    # Add linestyle legend entries for rho values
     if len(sp_values) > 1:
-        dist_handles = [mlines.Line2D([], [], color=dist_colors[d], linewidth=1.5,
+        dist_handles = [mlines.Line2D([], [], color=dist_colors[d],
                         label=dist_labels[d]) for d in dist_labels]
         rho_handles = [mlines.Line2D([], [], color="gray",
-                       linestyle=linestyles[j], linewidth=1.5,
+                       linestyle=linestyles[j],
                        label=f"$\\rho = {1-sp:.1f}$")
                        for j, sp in enumerate(sp_values)]
-        ax3.legend(handles=dist_handles + rho_handles, fontsize=6,
+        ax3.legend(handles=dist_handles + rho_handles,
                    loc="upper right", ncol=2)
     else:
-        ax3.legend(fontsize=6, loc="upper right")
+        ax3.legend(loc="upper right")
 
     ax3.set_xscale("log")
     _setup_broken_log_y(ax3, n_reps3)
-    ax3.set_xlabel("Number of queries $m$")
-    ax3.set_title("(d) Query distribution\n($n = 100,\\; r = 5,\\; M = 100$)",
-                  fontsize=9)
+    ax3.set_xlabel("Queries $m$")
+    ax3.set_title("(d) Query distribution\n$n\\!=\\!100,\\; r\\!=\\!5,\\; M\\!=\\!100$",
+                  fontsize=7)
 
-    # --- Panel D: error vs n (multiple m values, fixed r) ---
+    # --- Panel C: error vs n ---
     if df_exp4 is not None:
         n_reps4 = int(df_exp4["n_reps"].iloc[0])
         r_exp4 = int(df_exp4["r"].iloc[0])
         m_values_4 = sorted(df_exp4["m"].unique())
-        rho4 = 1.0 - 0.3  # default signal_prob = 0.3
-        d_min_power = -3  # extend y-axis to 10^-3 for this panel
+        rho4 = 1.0 - 0.3
+        d_min_power = -3
         zp4 = _zero_pos(n_reps4, min_power=d_min_power)
 
         for i, m in enumerate(m_values_4):
@@ -313,18 +313,15 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
             sub = df_exp4[df_exp4["m"] == m]
             y4 = _map_zeros(sub["prob_high_error"].values, n_reps4,
                             min_power=d_min_power)
-            ax4.plot(sub["n_models"], y4,
-                     marker="o", markersize=4, color=color,
-                     label=f"$m = {m}$", linewidth=1.5)
-            # Theoretical bound r*rho^m (horizontal); show if above zero_pos
+            ax4.plot(sub["n_models"], y4, marker="o", color=color,
+                     label=f"$m = {m}$")
             bound_val = r_exp4 * rho4 ** m
             if bound_val > zp4:
                 ax4.axhline(y=bound_val, color=color, linestyle="--",
-                            linewidth=1.8, alpha=0.8)
+                            linewidth=1.0, alpha=0.7)
 
-        # Single legend entry for theory
         theory_handle4 = mlines.Line2D([], [], color="gray", linestyle="--",
-                                       linewidth=1.8, alpha=0.8,
+                                       linewidth=1.0, alpha=0.7,
                                        label="$r\\rho^m$")
         h4, l4 = ax4.get_legend_handles_labels()
         h4.append(theory_handle4)
@@ -332,15 +329,16 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
 
         ax4.set_xscale("log")
         _setup_broken_log_y(ax4, n_reps4, min_power=d_min_power)
-        ax4.set_xlabel("Number of models $n$")
+        ax4.set_xlabel("Models $n$")
         ax4.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-        ax4.set_title(f"(c) Varying $n$\n($r = {r_exp4},\\; \\rho = 0.7,\\; M = 100$)",
-                      fontsize=9)
-        ax4.legend(h4, l4, fontsize=6, loc="upper right")
+        ax4.set_title("(c) Varying $n$\n"
+                      f"$r\\!=\\!{r_exp4},\\; \\rho\\!=\\!0.7,\\; M\\!=\\!100$",
+                      fontsize=7)
+        ax4.legend(h4, l4, loc="upper right")
     else:
         ax4.set_visible(False)
 
-    fig.tight_layout()
+    fig.tight_layout(w_pad=0.8)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{output_dir}/figure1_error_vs_m.pdf")
