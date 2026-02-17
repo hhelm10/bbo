@@ -194,7 +194,6 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     n_reps1 = int(df_exp1["n_reps"].iloc[0])
     r_values = sorted(df_exp1["r"].unique())
     m_dense = np.logspace(np.log10(1), np.log10(100), 200)
-    clip_min1 = 1.0 / n_reps1
 
     for i, r in enumerate(r_values):
         color = PALETTE[i % len(PALETTE)]
@@ -203,9 +202,9 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         y = _map_zeros(sub["prob_high_error"].values, n_reps1)
         ax1.plot(sub["m"], y, marker="o", color=color,
                  label=f"$r = {r}$")
-        bound = _theory_bound(m_dense, r, rho, clip_min=clip_min1)
-        ax1.plot(m_dense, bound, color=color, linestyle="--",
-                 linewidth=1.0, alpha=0.7)
+        bound = _theory_bound(m_dense, r, rho)
+        ax1.plot(m_dense, _map_zeros(bound, n_reps1), color=color,
+                 linestyle="--", linewidth=1.0, alpha=0.7)
 
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
                                   linewidth=1.0, alpha=0.7, label="$r\\rho^m$")
@@ -226,7 +225,6 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     # --- Panel B: vary rho ---
     n_reps2 = int(df_exp2["n_reps"].iloc[0])
     rho_values = sorted(df_exp2["rho"].unique())
-    clip_min2 = 1.0 / n_reps2
 
     for i, rho in enumerate(rho_values):
         color = PALETTE[i % len(PALETTE)]
@@ -235,9 +233,9 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         y = _map_zeros(sub["prob_high_error"].values, n_reps)
         ax2.plot(sub["m"], y, marker="o", color=color,
                  label=f"$\\rho = {rho:.1f}$")
-        bound = _theory_bound(m_dense, r_exp2, rho, clip_min=clip_min2)
-        ax2.plot(m_dense, bound, color=color, linestyle="--",
-                 linewidth=1.0, alpha=0.7)
+        bound = _theory_bound(m_dense, r_exp2, rho)
+        ax2.plot(m_dense, _map_zeros(bound, n_reps), color=color,
+                 linestyle="--", linewidth=1.0, alpha=0.7)
 
     theory_handle2 = mlines.Line2D([], [], color="gray", linestyle="--",
                                    linewidth=1.0, alpha=0.7, label="$r\\rho^m$")
