@@ -42,6 +42,7 @@ def set_paper_style():
         "legend.columnspacing": 0.8,
         "legend.borderpad": 0.3,
         "legend.labelspacing": 0.2,
+        "legend.framealpha": 0.6,
         "pdf.fonttype": 42,  # TrueType fonts in PDF
         "ps.fonttype": 42,
     })
