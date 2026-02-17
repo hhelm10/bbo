@@ -60,7 +60,7 @@ class MotivatingConfig(ExperimentConfig):
     n_orthogonal_queries: int = 100
 
     # Generation
-    max_new_tokens: int = 32
+    max_new_tokens: int = 128
     gen_batch_size: int = 16
 
     # Embedding
