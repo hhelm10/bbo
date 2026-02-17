@@ -330,7 +330,6 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         ax4.set_xscale("log")
         _setup_broken_log_y(ax4, n_reps4, min_power=d_min_power)
         ax4.set_xlabel("Models $n$")
-        ax4.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
         ax4.set_title("(c) Varying $n$\n"
                       f"$r\\!=\\!{r_exp4},\\; \\rho\\!=\\!0.7,\\; M\\!=\\!100$",
                       fontsize=7)
