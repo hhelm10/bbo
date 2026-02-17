@@ -64,11 +64,16 @@ def plot_motivating_figure(
         "orange_grad", [light_orange, PALETTE[1]]
     )
 
-    # --- Panel (a): MDS scatter plots (stacked) ---
-    D_sens = pairwise_energy_distances_t0(responses, sensitive_indices)
+    # --- Panel (a): MDS scatter plots (stacked), using m=10 queries ---
+    rng = np.random.RandomState(0)
+    m_mds = 10
+    sens_sub = rng.choice(sensitive_indices, size=m_mds, replace=False)
+    orth_sub = rng.choice(orthogonal_indices, size=m_mds, replace=False)
+
+    D_sens = pairwise_energy_distances_t0(responses, sens_sub)
     X_sens = ClassicalMDS(n_components=2).fit_transform(D_sens)
 
-    D_orth = pairwise_energy_distances_t0(responses, orthogonal_indices)
+    D_orth = pairwise_energy_distances_t0(responses, orth_sub)
     X_orth = ClassicalMDS(n_components=2).fit_transform(D_orth)
 
     class0_mask = labels == 0
