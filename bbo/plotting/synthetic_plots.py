@@ -657,15 +657,29 @@ def plot_figure_combined(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                          output_dir: str = "results/figures"):
     """Combined Figure: Row 1 = Theorem 1 (a-d), Row 2 = Theorem 2 (e-g).
 
-    2×4 grid; bottom row has 3 panels with the 4th axis hidden.
+    Uses a 12-column GridSpec so row 1 has 4×3-col panels and
+    row 2 has 3×4-col panels, giving both rows equal total width.
     """
     set_paper_style()
+    from matplotlib.gridspec import GridSpec
 
-    fig, axes = plt.subplots(2, 4, figsize=(5.5, 3.5))
+    fig = plt.figure(figsize=(5.5, 3.2))
+    gs = GridSpec(2, 12, figure=fig,
+                  left=0.07, right=0.99, bottom=0.09, top=0.92,
+                  wspace=0.4, hspace=0.65)
 
-    # ===== ROW 1: Theorem 1 (identical to plot_figure1 logic) =====
-    ax1, ax2, ax4, ax3 = axes[0]
+    # Row 1: 4 panels, each spanning 3 of 12 columns
+    ax1 = fig.add_subplot(gs[0, 0:3])
+    ax2 = fig.add_subplot(gs[0, 3:6])
+    ax4 = fig.add_subplot(gs[0, 6:9])   # panel (c) — error vs n
+    ax3 = fig.add_subplot(gs[0, 9:12])   # panel (d) — query dist
 
+    # Row 2: 3 panels, each spanning 4 of 12 columns
+    ax_e = fig.add_subplot(gs[1, 0:4])
+    ax_f = fig.add_subplot(gs[1, 4:8])
+    ax_g = fig.add_subplot(gs[1, 8:12])
+
+    # ===== ROW 1: Theorem 1 =====
     n_reps = int(df_exp1["n_reps"].iloc[0])
     r_values = sorted(df_exp1["r"].unique())
     m_dense = np.logspace(np.log10(1), np.log10(100), 200)
@@ -798,8 +812,6 @@ def plot_figure_combined(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                   fontsize=7)
 
     # ===== ROW 2: Theorem 2 (e, f, g) =====
-    ax_e, ax_f, ax_g, ax_empty = axes[1]
-    ax_empty.set_visible(False)
 
     # Panel (e): error vs m, varying eta
     eta_values_e = sorted(df_e["eta"].unique())
@@ -878,9 +890,6 @@ def plot_figure_combined(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                    f"$n\\!=\\!100,\\; \\eta\\!=\\!{eta_g},\\; M\\!=\\!100$",
                    fontsize=7)
     ax_g.legend(h_g, l_g, loc="lower left", bbox_to_anchor=(0.02, 0))
-
-    fig.subplots_adjust(left=0.07, right=0.99, bottom=0.08, top=0.92,
-                        wspace=0.08, hspace=0.75)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{output_dir}/figure_combined.pdf")
