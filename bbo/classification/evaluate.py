@@ -9,6 +9,7 @@ from sklearn.model_selection import LeaveOneOut, cross_val_predict
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 
 from bbo.embedding.mds import ClassicalMDS
 from bbo.distances.energy import pairwise_energy_distances_t0
@@ -34,6 +35,11 @@ def make_classifier(name: str, **kwargs):
         return LinearDiscriminantAnalysis()
     elif name == "svm":
         return SVC(kernel=kwargs.get("kernel", "rbf"), C=kwargs.get("C", 1.0))
+    elif name == "rf":
+        return RandomForestClassifier(
+            n_estimators=kwargs.get("n_estimators", 10),
+            random_state=kwargs.get("random_state", 0),
+        )
     else:
         raise ValueError(f"Unknown classifier: {name}")
 

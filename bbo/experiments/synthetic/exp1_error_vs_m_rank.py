@@ -1,11 +1,10 @@
 """Exp 1: Error vs m for varying discriminative rank r.
 
-Fix M=100, n=200 models, uniform Pi_Q, p=0.3 (rho=0.7).
-Sweep r in {2, 5, 10, 25, 50, 100}.
+Fix M=100, n=1000 models, uniform Pi_Q, p=0.3 (rho=0.7).
+Sweep r in {2, 4, 6, 8}.
 Expected: log P[error >= 0.5] vs m has slope log(0.7), intercept log(r).
 """
 
-import math
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -17,21 +16,11 @@ from bbo.classification.evaluate import single_trial
 from bbo.experiments.config import Exp1Config
 
 
-def _knn_k(n):
-    """k = floor(log(n)) rounded down to nearest odd integer."""
-    k = int(math.log(n))
-    if k % 2 == 0:
-        k -= 1
-    return max(k, 1)
-
-
-def _run_one_rep(responses, labels, M, m, seed, n_components, classifier,
-                 n_neighbors):
+def _run_one_rep(responses, labels, M, m, seed, n_components, classifier):
     rng = np.random.default_rng(seed)
     query_idx = sample_queries(M, m, rng=rng)
     return single_trial(responses, labels, query_idx,
-                        n_components=n_components, classifier_name=classifier,
-                        n_neighbors=n_neighbors)
+                        n_components=n_components, classifier_name=classifier)
 
 
 def run_exp1(config: Exp1Config = None) -> pd.DataFrame:
@@ -39,7 +28,6 @@ def run_exp1(config: Exp1Config = None) -> pd.DataFrame:
     if config is None:
         config = Exp1Config()
 
-    k = _knn_k(config.n_models)
     results = []
 
     for r in config.r_values:
@@ -63,7 +51,7 @@ def run_exp1(config: Exp1Config = None) -> pd.DataFrame:
                      for rep in range(config.n_reps)]
             errors = Parallel(n_jobs=config.n_jobs, backend="loky")(
                 delayed(_run_one_rep)(responses, labels, config.M, m, s,
-                                      n_comp, config.classifier, k)
+                                      n_comp, config.classifier)
                 for s in seeds
             )
             errors = np.array(errors)

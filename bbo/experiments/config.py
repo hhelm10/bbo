@@ -36,7 +36,7 @@ class SyntheticConfig(ExperimentConfig):
     p_embed: int = 20
     signal_prob: float = 0.3  # rho = 1 - signal_prob = 0.7
     eta: float = 0.0  # label noise probability
-    classifier: str = "knn"
+    classifier: str = "rf"
     n_components: int = 10
 
 
@@ -49,8 +49,8 @@ class Exp1Config(SyntheticConfig):
     """
 
     name: str = "exp1_error_vs_m_rank"
-    n_models: int = 1000  # need n >> 2^r for parity + kNN
-    r_values: List[int] = field(default_factory=lambda: [2, 4, 6, 8])
+    n_models: int = 200  # consistent with exp2/exp3
+    r_values: List[int] = field(default_factory=lambda: [2, 5, 10, 50])
     m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
 
 
@@ -86,14 +86,14 @@ class Exp3Config(SyntheticConfig):
 class Exp4Config(SyntheticConfig):
     """Exp 4: Error vs n (sample complexity).
 
-    Fix r=10, m=50 (all dimensions covered), vary n.
-    Shows gamma(n) -> 0 as n -> infinity.
+    Fix r=5, vary m and n.
+    Shows interplay: rρ^m sets the floor, γ(n) → 0 lifts you to it.
     """
 
     name: str = "exp4_error_vs_n"
-    r_values: List[int] = field(default_factory=lambda: [3, 5, 7])
-    m: int = 50
-    n_values: List[int] = field(default_factory=lambda: [20, 50, 100, 200, 500, 1000])
+    r: int = 5
+    m_values: List[int] = field(default_factory=lambda: [5, 10, 20, 50])
+    n_values: List[int] = field(default_factory=lambda: [20, 50, 100, 200, 500])
 
 
 @dataclass
@@ -113,7 +113,7 @@ class RealConfig(ExperimentConfig):
     data_path: str = ""
     embedding_model: str = "nomic-embed-text-v1.5"
     n_reps: int = 100
-    classifier: str = "knn"
+    classifier: str = "rf"
     n_components: int = 10
 
 

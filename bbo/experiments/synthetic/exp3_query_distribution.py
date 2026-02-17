@@ -9,7 +9,6 @@ Expected: signal-concentrated converges fastest; orthogonal never converges.
 Distribution effect is more dramatic when rho is large (small signal_prob).
 """
 
-import math
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -26,21 +25,11 @@ from bbo.experiments.config import Exp3Config
 _DIST_SEED_OFFSET = {"uniform": 0, "signal": 1, "orthogonal": 2}
 
 
-def _knn_k(n):
-    """k = floor(log(n)) rounded down to nearest odd integer."""
-    k = int(math.log(n))
-    if k % 2 == 0:
-        k -= 1
-    return max(k, 1)
-
-
-def _run_one_rep(responses, labels, M, m, dist, seed, n_components, classifier,
-                 n_neighbors):
+def _run_one_rep(responses, labels, M, m, dist, seed, n_components, classifier):
     rng = np.random.default_rng(seed)
     query_idx = sample_queries(M, m, distribution=dist, rng=rng)
     return single_trial(responses, labels, query_idx,
-                        n_components=n_components, classifier_name=classifier,
-                        n_neighbors=n_neighbors)
+                        n_components=n_components, classifier_name=classifier)
 
 
 def run_exp3(config: Exp3Config = None) -> pd.DataFrame:
@@ -48,7 +37,6 @@ def run_exp3(config: Exp3Config = None) -> pd.DataFrame:
     if config is None:
         config = Exp3Config()
 
-    k = _knn_k(config.n_models)
     n_comp = min(config.r, config.n_models - 1)
 
     results = []
@@ -91,7 +79,7 @@ def run_exp3(config: Exp3Config = None) -> pd.DataFrame:
                          for rep in range(config.n_reps)]
                 errors = Parallel(n_jobs=config.n_jobs, backend="loky")(
                     delayed(_run_one_rep)(responses, labels, config.M, m, dist, s,
-                                          n_comp, config.classifier, k)
+                                          n_comp, config.classifier)
                     for s in seeds
                 )
                 errors = np.array(errors)

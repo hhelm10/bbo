@@ -287,25 +287,26 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     ax3.axhline(y=0.5, color="gray", linestyle=":", alpha=0.3, linewidth=0.8)
     ax3.set_title("(c) Query distribution  ($r = 5$)", fontsize=11)
 
-    # --- Panel D: error vs n (multiple r values) ---
+    # --- Panel D: error vs n (multiple m values, fixed r) ---
     if df_exp4 is not None:
         n_reps4 = int(df_exp4["n_reps"].iloc[0])
-        m_exp4 = int(df_exp4["m"].iloc[0])
-        r_values_4 = sorted(df_exp4["r"].unique())
+        r_exp4 = int(df_exp4["r"].iloc[0])
+        m_values_4 = sorted(df_exp4["m"].unique())
         clip_min4 = 1.0 / n_reps4
         rho4 = 1.0 - 0.3  # default signal_prob = 0.3
 
-        for i, r in enumerate(r_values_4):
+        for i, m in enumerate(m_values_4):
             color = PALETTE[i % len(PALETTE)]
-            sub = df_exp4[df_exp4["r"] == r]
+            sub = df_exp4[df_exp4["m"] == m]
             y4 = _map_zeros(sub["prob_high_error"].values, n_reps4)
             ax4.plot(sub["n_models"], y4,
                      marker="o", markersize=4, color=color,
-                     label=f"$r = {r}$", linewidth=1.5)
-            # Theoretical bound r*rho^m (horizontal, since m is fixed)
-            bound_val = max(r * rho4 ** m_exp4, clip_min4)
-            ax4.axhline(y=bound_val, color=color, linestyle="--",
-                        linewidth=0.8, alpha=0.5)
+                     label=f"$m = {m}$", linewidth=1.5)
+            # Theoretical bound r*rho^m (horizontal)
+            bound_val = r_exp4 * rho4 ** m
+            if bound_val > clip_min4:
+                ax4.axhline(y=bound_val, color=color, linestyle="--",
+                            linewidth=0.8, alpha=0.5)
 
         # Single legend entry for theory
         theory_handle4 = mlines.Line2D([], [], color="gray", linestyle="--",
@@ -319,7 +320,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         _setup_broken_log_y(ax4, n_reps4)
         ax4.set_xlabel("Number of models $n$")
         ax4.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-        ax4.set_title(f"(d) Sample complexity  ($m = {m_exp4}$)", fontsize=11)
+        ax4.set_title(f"(d) Sample complexity  ($r = {r_exp4}$)", fontsize=11)
         ax4.legend(h4, l4, fontsize=7, loc="upper right")
     else:
         ax4.set_visible(False)
@@ -371,26 +372,25 @@ def plot_exp3(df: pd.DataFrame, output_dir: str = "results/figures"):
 
 
 def plot_exp4(df: pd.DataFrame, output_dir: str = "results/figures"):
-    """Plot Exp 4: P[error >= 0.5] vs n, one curve per r."""
+    """Plot Exp 4: P[error >= 0.5] vs n, one curve per m."""
     set_paper_style()
     n_reps = int(df["n_reps"].iloc[0])
     clip_min = 1.0 / n_reps
+    r_exp4 = int(df["r"].iloc[0])
+    rho4 = 1.0 - 0.3  # default signal_prob = 0.3
     fig, ax = plt.subplots(figsize=(6, 4))
 
-    m_exp4 = int(df["m"].iloc[0])
-    rho4 = 1.0 - 0.3  # default signal_prob = 0.3
-
-    r_values = sorted(df["r"].unique())
-    for i, r in enumerate(r_values):
-        sub = df[df["r"] == r]
+    m_values = sorted(df["m"].unique())
+    for i, m in enumerate(m_values):
+        sub = df[df["m"] == m]
         y = _map_zeros(sub["prob_high_error"].values, n_reps)
         ax.plot(sub["n_models"], y,
                 marker="o", markersize=4, color=PALETTE[i],
-                label=f"$r = {r}$", linewidth=1.5)
-        # Theoretical bound r*rho^m (horizontal, since m is fixed)
-        bound_val = max(r * rho4 ** m_exp4, clip_min)
-        ax.axhline(y=bound_val, color=PALETTE[i], linestyle="--",
-                   linewidth=1.0, alpha=0.6)
+                label=f"$m = {m}$", linewidth=1.5)
+        bound_val = r_exp4 * rho4 ** m
+        if bound_val > clip_min:
+            ax.axhline(y=bound_val, color=PALETTE[i], linestyle="--",
+                       linewidth=1.0, alpha=0.6)
 
     # Single legend entry for theory
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
