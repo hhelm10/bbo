@@ -24,7 +24,7 @@ def _run_one_rep(problem, n_models, m, M, seed, n_components, classifier,
     query_idx = sample_queries(M, m, rng=rng)
     return single_trial(responses, labels, query_idx,
                         n_components=min(n_components, n_models - 1),
-                        classifier_name=classifier)
+                        classifier_name=classifier, seed=seed)
 
 
 def run_exp5(config: Exp5Config = None) -> pd.DataFrame:

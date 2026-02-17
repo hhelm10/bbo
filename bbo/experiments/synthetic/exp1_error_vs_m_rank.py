@@ -20,7 +20,8 @@ def _run_one_rep(responses, labels, M, m, seed, n_components, classifier):
     rng = np.random.default_rng(seed)
     query_idx = sample_queries(M, m, rng=rng)
     return single_trial(responses, labels, query_idx,
-                        n_components=n_components, classifier_name=classifier)
+                        n_components=n_components, classifier_name=classifier,
+                        seed=seed)
 
 
 def run_exp1(config: Exp1Config = None) -> pd.DataFrame:
