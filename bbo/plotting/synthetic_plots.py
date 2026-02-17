@@ -112,7 +112,7 @@ def plot_exp1(df: pd.DataFrame, output_dir: str = "results/figures"):
 
     # Single legend entry for theory
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
-                                  linewidth=1.0, alpha=0.6, label="$r\\rho^m$")
+                                  linewidth=1.2, alpha=0.7, label="$r\\rho^m$")
     handles, labels = ax.get_legend_handles_labels()
     handles.append(theory_handle)
     labels.append("$r\\rho^m$")
@@ -151,7 +151,7 @@ def plot_exp2(df: pd.DataFrame, output_dir: str = "results/figures"):
                 alpha=0.6)
 
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
-                                  linewidth=1.0, alpha=0.6, label="$r\\rho^m$")
+                                  linewidth=1.2, alpha=0.7, label="$r\\rho^m$")
     handles, labels = ax.get_legend_handles_labels()
     handles.append(theory_handle)
     labels.append("$r\\rho^m$")
@@ -194,7 +194,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                  alpha=0.5)
 
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
-                                  linewidth=0.8, alpha=0.5, label="$r\\rho^m$")
+                                  linewidth=1.2, alpha=0.7, label="$r\\rho^m$")
     h1, l1 = ax1.get_legend_handles_labels()
     h1.append(theory_handle)
     l1.append("$r\\rho^m$")
@@ -223,7 +223,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                  alpha=0.5)
 
     theory_handle2 = mlines.Line2D([], [], color="gray", linestyle="--",
-                                   linewidth=0.8, alpha=0.5, label="$r\\rho^m$")
+                                   linewidth=1.2, alpha=0.7, label="$r\\rho^m$")
     h2, l2 = ax2.get_legend_handles_labels()
     h2.append(theory_handle2)
     l2.append("$r\\rho^m$")
@@ -306,11 +306,11 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
             bound_val = r_exp4 * rho4 ** m
             if bound_val > clip_min4:
                 ax4.axhline(y=bound_val, color=color, linestyle="--",
-                            linewidth=0.8, alpha=0.5)
+                            linewidth=1.2, alpha=0.7)
 
         # Single legend entry for theory
         theory_handle4 = mlines.Line2D([], [], color="gray", linestyle="--",
-                                       linewidth=0.8, alpha=0.5,
+                                       linewidth=1.2, alpha=0.7,
                                        label="$r\\rho^m$")
         h4, l4 = ax4.get_legend_handles_labels()
         h4.append(theory_handle4)
@@ -390,11 +390,11 @@ def plot_exp4(df: pd.DataFrame, output_dir: str = "results/figures"):
         bound_val = r_exp4 * rho4 ** m
         if bound_val > clip_min:
             ax.axhline(y=bound_val, color=PALETTE[i], linestyle="--",
-                       linewidth=1.0, alpha=0.6)
+                       linewidth=1.2, alpha=0.7)
 
     # Single legend entry for theory
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
-                                  linewidth=1.0, alpha=0.6,
+                                  linewidth=1.2, alpha=0.7,
                                   label="$r\\rho^m$")
     handles, labels = ax.get_legend_handles_labels()
     handles.append(theory_handle)

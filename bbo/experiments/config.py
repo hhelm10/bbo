@@ -64,7 +64,7 @@ class Exp2Config(SyntheticConfig):
 
     name: str = "exp2_error_vs_m_rho"
     r: int = 5
-    signal_prob_values: List[float] = field(default_factory=lambda: [0.1, 0.3, 0.5, 0.8])
+    signal_prob_values: List[float] = field(default_factory=lambda: [0.1, 0.3, 0.5, 0.7])
     m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
 
 
