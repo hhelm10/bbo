@@ -27,11 +27,13 @@ def plot_motivating_figure(
 ):
     """Create the 3-panel motivating figure.
 
-    Layout (GridSpec 2x3):
-        gs[0, 0] = (a) Sensitive MDS scatter (top-left)
-        gs[1, 0] = Orthogonal MDS scatter (bottom-left)
-        gs[:, 1] = (b) Error vs m for multiple n (spans both rows)
-        gs[:, 2] = (c) Cumulative variance for multiple n (spans both rows)
+    Layout (GridSpec 6x3):
+        gs[0:3, 0] = (a) Sensitive MDS scatter
+        gs[3:6, 0] = Orthogonal MDS scatter
+        gs[0:6, 1] = (b) Error vs m
+        gs[0:2, 2] = (c) Cumul. variance — sensitive queries
+        gs[2:4, 2] = Cumul. variance — orthogonal queries
+        gs[4:6, 2] = Cumul. variance — all queries
     """
     set_paper_style()
 
@@ -41,13 +43,15 @@ def plot_motivating_figure(
     sensitive_fracs = np.array([m["sensitive_frac"] for m in metadata])
 
     # --- Layout ---
-    fig = plt.figure(figsize=(5.5, 1.6))
-    gs = GridSpec(2, 3, figure=fig, wspace=0.5, hspace=0.45)
+    fig = plt.figure(figsize=(5.5, 2.2))
+    gs = GridSpec(6, 3, figure=fig, wspace=0.5, hspace=0.45)
 
-    ax_a_top = fig.add_subplot(gs[0, 0])
-    ax_a_bot = fig.add_subplot(gs[1, 0])
-    ax_b = fig.add_subplot(gs[:, 1])
-    ax_c = fig.add_subplot(gs[:, 2])
+    ax_a_top = fig.add_subplot(gs[0:3, 0])
+    ax_a_bot = fig.add_subplot(gs[3:6, 0])
+    ax_b = fig.add_subplot(gs[0:6, 1])
+    ax_c_sens = fig.add_subplot(gs[0:2, 2])
+    ax_c_orth = fig.add_subplot(gs[2:4, 2])
+    ax_c_all = fig.add_subplot(gs[4:6, 2])
 
     # --- Orange gradient colormap for class-1 adapters ---
     light_orange = (1.0, 0.85, 0.6)
@@ -105,12 +109,11 @@ def plot_motivating_figure(
     # --- Panel (b): Mean error vs m, multiple n ---
     df = pd.read_csv(classification_csv)
 
-    # Color per n value, line style per distribution
     has_n_col = "n" in df.columns
     if has_n_col:
         n_values = sorted(df["n"].unique())
     else:
-        n_values = [int(df["m"].max())]  # fallback: treat as single n
+        n_values = [int(df["m"].max())]
 
     n_colors = {n: PALETTE[i] for i, n in enumerate(n_values)}
     dist_styles = {"relevant": "-", "orthogonal": "--", "uniform": ":"}
@@ -127,57 +130,68 @@ def plot_motivating_figure(
 
     ax_b.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5, linewidth=0.5)
     ax_b.set_xscale("log")
-    ax_b.set_ylim(0.0, 0.5)
+    ax_b.set_ylim(0.1, 0.55)
     ax_b.set_xlabel("Number of queries $m$")
     ax_b.set_ylabel("Mean error")
     ax_b.set_title("(b) Error vs $m$")
 
-    # Legend: n values (color) + distributions (line style)
     leg_n = [Line2D([0], [0], color=n_colors[n], lw=1.0, label=f"$n={n}$")
              for n in n_values]
-    leg_dist = [Line2D([0], [0], color="0.4", linestyle=ls, lw=1.0, label=name.capitalize())
+    leg_dist = [Line2D([0], [0], color="0.4", linestyle=ls, lw=1.0,
+                        label=name.capitalize())
                 for name, ls in dist_styles.items()]
     ax_b.legend(handles=leg_n + leg_dist, loc="upper right", ncol=2)
 
-    # --- Panel (c): Cumulative variance for multiple n ---
+    # --- Panel (c): Cumulative variance per query set, multiple n ---
     n_total = len(labels)
-    c_rng = np.random.RandomState(42)
     n_show = 50
+    plot_n_values = n_values if has_n_col else [n_total]
 
-    if has_n_col:
-        plot_n_values = n_values
-    else:
-        plot_n_values = [n_total]
+    query_sets = [
+        (ax_c_sens, sensitive_indices, "(c) Sensitive"),
+        (ax_c_orth, orthogonal_indices, "Orthogonal"),
+        (ax_c_all, None, "All queries"),
+    ]
 
-    for n in plot_n_values:
-        if n < n_total:
-            # Subsample n/2 per class (deterministic seed per n)
-            c_rng_n = np.random.RandomState(42 + n)
-            c0 = np.where(labels == 0)[0]
-            c1 = np.where(labels == 1)[0]
-            sel0 = c_rng_n.choice(c0, size=n // 2, replace=False)
-            sel1 = c_rng_n.choice(c1, size=n // 2, replace=False)
-            sel = np.sort(np.concatenate([sel0, sel1]))
-            resp_sub = responses[sel]
-        else:
-            resp_sub = responses
+    for ax_c, q_idx, title in query_sets:
+        for n in plot_n_values:
+            if n < n_total:
+                c_rng_n = np.random.RandomState(42 + n)
+                c0 = np.where(labels == 0)[0]
+                c1 = np.where(labels == 1)[0]
+                sel0 = c_rng_n.choice(c0, size=n // 2, replace=False)
+                sel1 = c_rng_n.choice(c1, size=n // 2, replace=False)
+                sel = np.sort(np.concatenate([sel0, sel1]))
+                resp_sub = responses[sel]
+            else:
+                resp_sub = responses
 
-        result = run_exp6(resp_sub)
-        cumvar = result["cumulative_variance"]
-        k = min(n_show, len(cumvar))
-        components = np.arange(1, k + 1)
-        ax_c.plot(components, cumvar[:k], color=n_colors[n], linewidth=0.8,
-                  label=f"$n={n}$")
+            # Slice to query subset
+            if q_idx is not None:
+                resp_sub = resp_sub[:, q_idx, :]
 
-    ax_c.set_xlabel("Components $r$")
-    ax_c.set_ylabel("Cumul. variance")
-    ax_c.set_title("(c) SVD of distance matrix")
-    ax_c.set_ylim(0, 1.05)
+            result = run_exp6(resp_sub)
+            cumvar = result["cumulative_variance"]
+            k = min(n_show, len(cumvar))
+            components = np.arange(1, k + 1)
+            ax_c.plot(components, cumvar[:k], color=n_colors[n], linewidth=0.7)
 
-    # Threshold lines
-    ax_c.axhline(y=0.9, color="gray", linestyle="--", linewidth=0.5, alpha=0.6)
-    ax_c.axhline(y=0.95, color="gray", linestyle="--", linewidth=0.5, alpha=0.6)
-    ax_c.legend(loc="lower right")
+        ax_c.set_ylim(0, 1.05)
+        ax_c.set_title(title)
+        ax_c.axhline(y=0.9, color="gray", linestyle="--", linewidth=0.4, alpha=0.5)
+        ax_c.set_xticklabels([])
+
+    # Only bottom panel gets x-label and tick labels
+    ax_c_all.tick_params(labelbottom=True)
+    ax_c_all.set_xlabel("Components $r$")
+
+    # Shared y-label on middle panel
+    ax_c_orth.set_ylabel("Cumul. variance")
+
+    # Legend on top panel only
+    leg = [Line2D([0], [0], color=n_colors[n], lw=1.0, label=f"$n={n}$")
+           for n in plot_n_values]
+    ax_c_sens.legend(handles=leg, loc="lower right", fontsize=4)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
