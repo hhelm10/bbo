@@ -213,8 +213,10 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     h1.append(theory_handle)
     l1.append("$r\\rho^m$")
 
+    # Use consistent n_reps for shared y-axis
+    n_reps = n_reps1
     ax1.set_xscale("log")
-    _setup_broken_log_y(ax1, n_reps1)
+    _setup_broken_log_y(ax1, n_reps)
     ax1.set_xlabel("Queries $m$")
     ax1.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
     ax1.set_title("(a) Varying rank $r$\n$n\\!=\\!100,\\; \\rho\\!\\approx\\!0.7,\\; M\\!=\\!100$",
@@ -230,7 +232,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         color = PALETTE[i % len(PALETTE)]
         sub = df_exp2[df_exp2["rho"] == rho]
         r_exp2 = 5
-        y = _map_zeros(sub["prob_high_error"].values, n_reps2)
+        y = _map_zeros(sub["prob_high_error"].values, n_reps)
         ax2.plot(sub["m"], y, marker="o", color=color,
                  label=f"$\\rho = {rho:.1f}$")
         bound = _theory_bound(m_dense, r_exp2, rho, clip_min=clip_min2)
@@ -244,7 +246,8 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     l2.append("$r\\rho^m$")
 
     ax2.set_xscale("log")
-    _setup_broken_log_y(ax2, n_reps2)
+    _setup_broken_log_y(ax2, n_reps)
+    ax2.set_yticklabels([])
     ax2.set_xlabel("Queries $m$")
     ax2.set_title("(b) Varying $\\rho$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; M\\!=\\!100$",
                   fontsize=7)
@@ -277,7 +280,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                 continue
             color = dist_colors[dist_name]
             full_label = label if j == 0 else None
-            y3 = _map_zeros(sub["prob_high_error"].values, n_reps3)
+            y3 = _map_zeros(sub["prob_high_error"].values, n_reps)
             ax3.plot(sub["m"], y3, marker="o", color=color,
                      label=full_label, linestyle=ls)
 
@@ -294,7 +297,8 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         ax3.legend(loc="upper right")
 
     ax3.set_xscale("log")
-    _setup_broken_log_y(ax3, n_reps3)
+    _setup_broken_log_y(ax3, n_reps)
+    ax3.set_yticklabels([])
     ax3.set_xlabel("Queries $m$")
     ax3.set_title("(d) Query distribution\n$n\\!=\\!100,\\; r\\!=\\!5,\\; M\\!=\\!100$",
                   fontsize=7)
@@ -305,14 +309,12 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         r_exp4 = int(df_exp4["r"].iloc[0])
         m_values_4 = sorted(df_exp4["m"].unique())
         rho4 = 1.0 - 0.3
-        d_min_power = -3
-        zp4 = _zero_pos(n_reps4, min_power=d_min_power)
+        zp4 = _zero_pos(n_reps)
 
         for i, m in enumerate(m_values_4):
             color = PALETTE[i % len(PALETTE)]
             sub = df_exp4[df_exp4["m"] == m]
-            y4 = _map_zeros(sub["prob_high_error"].values, n_reps4,
-                            min_power=d_min_power)
+            y4 = _map_zeros(sub["prob_high_error"].values, n_reps)
             ax4.plot(sub["n_models"], y4, marker="o", color=color,
                      label=f"$m = {m}$")
             bound_val = r_exp4 * rho4 ** m
@@ -328,7 +330,8 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         l4.append("$r\\rho^m$")
 
         ax4.set_xscale("log")
-        _setup_broken_log_y(ax4, n_reps4, min_power=d_min_power)
+        _setup_broken_log_y(ax4, n_reps)
+        ax4.set_yticklabels([])
         ax4.set_xlabel("Models $n$")
         ax4.set_title("(c) Varying $n$\n"
                       f"$r\\!=\\!{r_exp4},\\; \\rho\\!=\\!0.7,\\; M\\!=\\!100$",
