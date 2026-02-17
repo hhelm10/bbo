@@ -341,7 +341,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     else:
         ax4.set_visible(False)
 
-    fig.tight_layout(w_pad=0.3)
+    fig.subplots_adjust(left=0.07, right=0.99, bottom=0.22, top=0.82, wspace=0.08)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{output_dir}/figure1_error_vs_m.pdf")
