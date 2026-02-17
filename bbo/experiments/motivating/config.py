@@ -60,7 +60,7 @@ class MotivatingConfig(ExperimentConfig):
     n_orthogonal_queries: int = 100
 
     # Generation
-    max_new_tokens: int = 256
+    max_new_tokens: int = 32
     gen_batch_size: int = 16
 
     # Embedding
@@ -68,7 +68,7 @@ class MotivatingConfig(ExperimentConfig):
 
     # Classification
     m_values: List[int] = field(
-        default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200]
+        default_factory=lambda: [1, 2, 5, 10, 20, 50, 100]
     )
     n_reps: int = 200
     classifier: str = "rf"

@@ -53,8 +53,10 @@ def run_step(step: str, config: MotivatingConfig):
         print(df.to_string(index=False))
 
     elif step == "plot":
+        import numpy as np
         import pandas as pd
         from bbo.plotting.real_plots import plot_exp8
+        from bbo.plotting.motivating_plots import plot_motivating_figure
 
         csv_path = Path(config.output_dir) / "classification_results.csv"
         if not csv_path.exists():
@@ -62,9 +64,32 @@ def run_step(step: str, config: MotivatingConfig):
                 f"Classification results not found at {csv_path}. "
                 "Run 'classify' step first."
             )
-        df = pd.read_csv(csv_path)
+
+        npz_path = config.npz_path
+        if not npz_path.exists():
+            raise FileNotFoundError(
+                f"Embedded responses not found at {npz_path}. "
+                "Run 'embed' step first."
+            )
+
         fig_dir = Path(config.output_dir) / "figures"
+
+        # Existing per-experiment plot
+        df = pd.read_csv(csv_path)
         plot_exp8(df, str(fig_dir))
+
+        # Motivating combined figure
+        data = np.load(str(npz_path), allow_pickle=True)
+        metadata_path = str(config.data_dir / "adapter_metadata.json")
+        plot_motivating_figure(
+            responses=data["responses"],
+            labels=data["labels"],
+            sensitive_indices=data["sensitive_indices"],
+            orthogonal_indices=data["orthogonal_indices"],
+            metadata_path=metadata_path,
+            classification_csv=str(csv_path),
+            output_dir=str(fig_dir),
+        )
         print(f"Figures saved to {fig_dir}")
 
     else:

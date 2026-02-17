@@ -55,26 +55,43 @@ def run_generate(config: MotivatingConfig):
     with open(query_path) as f:
         queries = json.load(f)
 
-    query_texts = [q["text"] for q in queries]
-    n_queries = len(query_texts)
+    n_queries = len(queries)
     print(f"Loaded {n_queries} queries")
 
-    # Load base model
-    print(f"Loading base model {config.base_model}...")
-    tokenizer = AutoTokenizer.from_pretrained(config.base_model)
+    # Use instruct variant for generation (same architecture, better at following prompts)
+    instruct_model_name = config.base_model + "-Instruct"
+    print(f"Loading instruct model {instruct_model_name}...")
+    tokenizer = AutoTokenizer.from_pretrained(instruct_model_name)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"  # left-pad for generation
 
+    # Format queries using the model's chat template
+    query_texts = []
+    for q in queries:
+        messages = [{"role": "user", "content": q["text"]}]
+        text = tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
+        query_texts.append(text)
+
     base_model = AutoModelForCausalLM.from_pretrained(
-        config.base_model,
+        instruct_model_name,
         torch_dtype=torch.float16,
         device_map="auto",
     )
 
     config.responses_dir.mkdir(parents=True, exist_ok=True)
 
-    for adapter_id in range(config.n_adapters):
+    # Interleave class-0 and class-1 adapters so we can monitor classification
+    # accuracy as more models complete (0, 50, 1, 51, 2, 52, ...)
+    n_per_class = config.n_per_class
+    adapter_order = []
+    for i in range(n_per_class):
+        adapter_order.append(i)              # class-0
+        adapter_order.append(i + n_per_class) # class-1
+
+    for adapter_id in adapter_order:
         adapter_dir = config.adapters_dir / f"adapter_{adapter_id:03d}"
         response_path = config.responses_dir / f"adapter_{adapter_id:03d}.json"
 
