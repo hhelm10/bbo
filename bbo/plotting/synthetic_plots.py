@@ -666,7 +666,7 @@ def plot_figure_combined(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     fig = plt.figure(figsize=(5.5, 3.2))
     gs = GridSpec(2, 12, figure=fig,
                   left=0.07, right=0.99, bottom=0.09, top=0.92,
-                  wspace=0.4, hspace=0.65)
+                  wspace=0.4, hspace=0.72)
 
     # Row 1: 4 panels, each spanning 3 of 12 columns
     ax1 = fig.add_subplot(gs[0, 0:3])
