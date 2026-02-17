@@ -28,6 +28,22 @@ def _map_zeros(y, n_reps, min_power=None):
     return np.where(np.asarray(y, dtype=float) > 0, y, zp)
 
 
+def _smooth_floor(y, n_reps):
+    """Smooth floor for continuous theory curves on log scale.
+
+    Uses a temperature-scaled soft-max in log space so the theory line
+    visibly curves over ~2 decades before levelling off at zero_pos,
+    instead of bending only in the narrow break zone.
+    """
+    zp = _zero_pos(n_reps)
+    y = np.asarray(y, dtype=float)
+    log_y = np.log(np.maximum(y, 1e-30))
+    log_zp = np.log(zp)
+    T = 3.0  # wider T → wider visible transition
+    smooth_log = T * np.logaddexp(log_y / T, log_zp / T)
+    return np.minimum(np.exp(smooth_log), 1.0)
+
+
 def _setup_broken_log_y(ax, n_reps, min_power=None):
     """Configure log y-axis with a break to show y = 0.
 
@@ -203,7 +219,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         ax1.plot(sub["m"], y, marker="o", color=color,
                  label=f"$r = {r}$")
         bound = _theory_bound(m_dense, r, rho)
-        ax1.plot(m_dense, _map_zeros(bound, n_reps1), color=color,
+        ax1.plot(m_dense, _smooth_floor(bound, n_reps1), color=color,
                  linestyle="--", linewidth=1.0, alpha=0.7)
 
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
@@ -234,7 +250,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         ax2.plot(sub["m"], y, marker="o", color=color,
                  label=f"$\\rho = {rho:.1f}$")
         bound = _theory_bound(m_dense, r_exp2, rho)
-        ax2.plot(m_dense, _map_zeros(bound, n_reps), color=color,
+        ax2.plot(m_dense, _smooth_floor(bound, n_reps), color=color,
                  linestyle="--", linewidth=1.0, alpha=0.7)
 
     theory_handle2 = mlines.Line2D([], [], color="gray", linestyle="--",
