@@ -32,7 +32,7 @@ class SyntheticConfig(ExperimentConfig):
     """Configuration for synthetic experiments."""
 
     M: int = 100
-    n_models: int = 200
+    n_models: int = 100
     p_embed: int = 20
     signal_prob: float = 0.3  # rho = 1 - signal_prob = 0.7
     eta: float = 0.0  # label noise probability
@@ -49,7 +49,7 @@ class Exp1Config(SyntheticConfig):
     """
 
     name: str = "exp1_error_vs_m_rank"
-    n_models: int = 200  # consistent with exp2/exp3
+    n_models: int = 100  # consistent with exp2/exp3
     r_values: List[int] = field(default_factory=lambda: [1, 5, 10, 50])
     m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
 
