@@ -21,7 +21,7 @@ from bbo.experiments.synthetic.exp_g_error_vs_m_rank_eta import run_exp_g
 from bbo.plotting.synthetic_plots import (
     plot_exp1, plot_exp2, plot_exp3, plot_exp4, plot_exp5,
     plot_exp_e, plot_exp_f, plot_exp_g,
-    plot_figure1, plot_figure2,
+    plot_figure1, plot_figure2, plot_figure_combined,
 )
 
 
@@ -101,6 +101,17 @@ def main():
         plot_figure2(results["exp_e"], results["exp_f"], results["exp_g"],
                      output_dir=args.figure_dir)
         print(f"Combined figure2 saved to {args.figure_dir}/figure2_error_vs_eta.pdf")
+
+    # Generate combined 2-row figure if all experiments 1-4 + E-G were run
+    row1_keys = ["exp1", "exp2", "exp3", "exp4"]
+    row2_keys = ["exp_e", "exp_f", "exp_g"]
+    if not args.no_plot and all(k in results for k in row1_keys + row2_keys):
+        plot_figure_combined(
+            results["exp1"], results["exp2"], results["exp3"], results["exp4"],
+            results["exp_e"], results["exp_f"], results["exp_g"],
+            output_dir=args.figure_dir,
+        )
+        print(f"Combined 2-row figure saved to {args.figure_dir}/figure_combined.pdf")
 
 
 if __name__ == "__main__":
