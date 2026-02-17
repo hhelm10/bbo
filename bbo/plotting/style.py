@@ -26,7 +26,7 @@ def set_paper_style():
         "font.size": 7,
         "axes.labelsize": 8,
         "axes.titlesize": 8,
-        "legend.fontsize": 6,
+        "legend.fontsize": 5,
         "xtick.labelsize": 6,
         "ytick.labelsize": 6,
         "lines.linewidth": 1.0,
