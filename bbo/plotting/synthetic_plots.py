@@ -348,7 +348,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         _setup_broken_log_y(ax4, n_reps)
         ax4.set_yticklabels([])
         ax4.set_xlabel("Models $n$")
-        ax4.set_title("(c) Sample complexity\n"
+        ax4.set_title("(c) Effect of $n$\n"
                       f"$r\\!=\\!{r_exp4},\\; \\rho\\!=\\!0.7,\\; \\eta\\!=\\!0$",
                       fontsize=7)
         ax4.legend(h4, l4, loc="lower left", bbox_to_anchor=(0.02, 0))
@@ -591,7 +591,7 @@ def plot_figure2(df_e: pd.DataFrame, df_f: pd.DataFrame,
     ax_e.set_ylim(0, 0.55)
     ax_e.set_xlabel("Queries $m$")
     ax_e.set_ylabel("Mean error")
-    ax_e.set_title("(e) Varying noise $\\eta$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\rho\\!\\approx\\!0.7$",
+    ax_e.set_title("(e) Label noise $\\eta$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\rho\\!\\approx\\!0.7$",
                    fontsize=7)
     ax_e.legend(h_e, l_e, loc="lower left", bbox_to_anchor=(0.02, 0))
 
@@ -638,7 +638,7 @@ def plot_figure2(df_e: pd.DataFrame, df_f: pd.DataFrame,
 
     ax_g.set_xscale("log")
     ax_g.set_xlabel("Queries $m$")
-    ax_g.set_title("(g) Rank with noise\n"
+    ax_g.set_title("(g) Effect of $r$ (noisy)\n"
                    f"$n\\!=\\!100,\\; \\eta\\!=\\!{eta_g},\\; \\rho\\!\\approx\\!0.7$",
                    fontsize=7)
     ax_g.legend(h_g, l_g, loc="lower left", bbox_to_anchor=(0.02, 0))
@@ -762,7 +762,7 @@ def plot_figure_combined(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     _setup_broken_log_y(ax4, n_reps)
     ax4.set_yticklabels([])
     ax4.set_xlabel("Models $n$")
-    ax4.set_title("(c) Sample complexity\n"
+    ax4.set_title("(c) Effect of $n$\n"
                   f"$r\\!=\\!{r_exp4},\\; \\rho\\!=\\!0.7,\\; \\eta\\!=\\!0$",
                   fontsize=7)
     ax4.legend(h4, l4, loc="lower left", bbox_to_anchor=(0.02, 0))
@@ -835,7 +835,7 @@ def plot_figure_combined(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     ax_e.set_ylim(0, 0.55)
     ax_e.set_xlabel("Queries $m$")
     ax_e.set_ylabel("Mean error")
-    ax_e.set_title("(e) Varying noise $\\eta$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\rho\\!\\approx\\!0.7$",
+    ax_e.set_title("(e) Label noise $\\eta$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\rho\\!\\approx\\!0.7$",
                    fontsize=7)
     ax_e.legend(h_e, l_e, loc="lower left", bbox_to_anchor=(0.02, 0))
 
@@ -886,7 +886,7 @@ def plot_figure_combined(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     ax_g.set_ylim(0, 0.55)
     ax_g.set_yticklabels([])
     ax_g.set_xlabel("Queries $m$")
-    ax_g.set_title("(g) Rank with noise\n"
+    ax_g.set_title("(g) Effect of $r$ (noisy)\n"
                    f"$n\\!=\\!100,\\; \\eta\\!=\\!{eta_g},\\; \\rho\\!\\approx\\!0.7$",
                    fontsize=7)
     ax_g.legend(h_g, l_g, loc="lower left", bbox_to_anchor=(0.02, 0))
