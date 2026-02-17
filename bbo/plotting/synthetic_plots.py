@@ -15,27 +15,38 @@ from bbo.plotting.style import set_paper_style, PALETTE
 # Helpers for log y-axis with a break to display y = 0
 # ---------------------------------------------------------------------------
 
-def _zero_pos(n_reps):
-    """Position on log axis where y=0 is displayed (below 1/n_reps)."""
+def _zero_pos(n_reps, min_power=None):
+    """Position on log axis where y=0 is displayed (below smallest visible tick)."""
+    if min_power is not None:
+        return 10.0 ** min_power / 3.0
     return 1.0 / (n_reps * 3)
 
 
-def _map_zeros(y, n_reps):
+def _map_zeros(y, n_reps, min_power=None):
     """Replace 0 values with zero_pos for log-scale plotting."""
-    zp = _zero_pos(n_reps)
+    zp = _zero_pos(n_reps, min_power)
     return np.where(np.asarray(y, dtype=float) > 0, y, zp)
 
 
-def _setup_broken_log_y(ax, n_reps):
+def _setup_broken_log_y(ax, n_reps, min_power=None):
     """Configure log y-axis with a break to show y = 0.
 
     Adds:
-      - "0" tick at zero_pos (below 1/n_reps)
+      - "0" tick at zero_pos (below smallest visible tick)
       - Two diagonal slash marks indicating the axis break
       - Standard log ticks above the break
+
+    Parameters
+    ----------
+    min_power : int, optional
+        Lowest power of 10 to show (e.g., -3 for 10^-3).
+        If None, uses floor(log10(1/n_reps)).
     """
-    threshold = 1.0 / n_reps
-    zp = _zero_pos(n_reps)
+    if min_power is not None:
+        threshold = 10.0 ** min_power
+    else:
+        threshold = 1.0 / n_reps
+    zp = _zero_pos(n_reps, min_power)
 
     ax.set_yscale("log")
     ax.set_ylim(bottom=zp * 0.5, top=1.5)
@@ -96,7 +107,7 @@ def plot_exp1(df: pd.DataFrame, output_dir: str = "results/figures"):
 
     fig, ax = plt.subplots(figsize=(7, 5))
 
-    m_dense = np.logspace(np.log10(1), np.log10(200), 200)
+    m_dense = np.logspace(np.log10(1), np.log10(100), 200)
 
     for i, r in enumerate(r_values):
         color = PALETTE[i % len(PALETTE)]
@@ -112,7 +123,7 @@ def plot_exp1(df: pd.DataFrame, output_dir: str = "results/figures"):
 
     # Single legend entry for theory
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
-                                  linewidth=1.2, alpha=0.7, label="$r\\rho^m$")
+                                  linewidth=1.8, alpha=0.8, label="$r\\rho^m$")
     handles, labels = ax.get_legend_handles_labels()
     handles.append(theory_handle)
     labels.append("$r\\rho^m$")
@@ -137,7 +148,7 @@ def plot_exp2(df: pd.DataFrame, output_dir: str = "results/figures"):
 
     fig, ax = plt.subplots(figsize=(7, 5))
 
-    m_dense = np.logspace(np.log10(1), np.log10(200), 200)
+    m_dense = np.logspace(np.log10(1), np.log10(100), 200)
 
     for i, rho in enumerate(rho_values):
         color = PALETTE[i % len(PALETTE)]
@@ -151,7 +162,7 @@ def plot_exp2(df: pd.DataFrame, output_dir: str = "results/figures"):
                 alpha=0.6)
 
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
-                                  linewidth=1.2, alpha=0.7, label="$r\\rho^m$")
+                                  linewidth=1.8, alpha=0.8, label="$r\\rho^m$")
     handles, labels = ax.get_legend_handles_labels()
     handles.append(theory_handle)
     labels.append("$r\\rho^m$")
@@ -179,7 +190,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     # --- Panel A: vary r ---
     n_reps1 = int(df_exp1["n_reps"].iloc[0])
     r_values = sorted(df_exp1["r"].unique())
-    m_dense = np.logspace(np.log10(1), np.log10(200), 200)
+    m_dense = np.logspace(np.log10(1), np.log10(100), 200)
     clip_min1 = 1.0 / n_reps1
 
     for i, r in enumerate(r_values):
@@ -194,7 +205,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                  alpha=0.5)
 
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
-                                  linewidth=1.2, alpha=0.7, label="$r\\rho^m$")
+                                  linewidth=1.8, alpha=0.8, label="$r\\rho^m$")
     h1, l1 = ax1.get_legend_handles_labels()
     h1.append(theory_handle)
     l1.append("$r\\rho^m$")
@@ -223,7 +234,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                  alpha=0.5)
 
     theory_handle2 = mlines.Line2D([], [], color="gray", linestyle="--",
-                                   linewidth=1.2, alpha=0.7, label="$r\\rho^m$")
+                                   linewidth=1.8, alpha=0.8, label="$r\\rho^m$")
     h2, l2 = ax2.get_legend_handles_labels()
     h2.append(theory_handle2)
     l2.append("$r\\rho^m$")
@@ -292,32 +303,34 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         n_reps4 = int(df_exp4["n_reps"].iloc[0])
         r_exp4 = int(df_exp4["r"].iloc[0])
         m_values_4 = sorted(df_exp4["m"].unique())
-        clip_min4 = 1.0 / n_reps4
         rho4 = 1.0 - 0.3  # default signal_prob = 0.3
+        d_min_power = -3  # extend y-axis to 10^-3 for this panel
+        zp4 = _zero_pos(n_reps4, min_power=d_min_power)
 
         for i, m in enumerate(m_values_4):
             color = PALETTE[i % len(PALETTE)]
             sub = df_exp4[df_exp4["m"] == m]
-            y4 = _map_zeros(sub["prob_high_error"].values, n_reps4)
+            y4 = _map_zeros(sub["prob_high_error"].values, n_reps4,
+                            min_power=d_min_power)
             ax4.plot(sub["n_models"], y4,
                      marker="o", markersize=4, color=color,
                      label=f"$m = {m}$", linewidth=1.5)
-            # Theoretical bound r*rho^m (horizontal)
+            # Theoretical bound r*rho^m (horizontal); show if above zero_pos
             bound_val = r_exp4 * rho4 ** m
-            if bound_val > clip_min4:
+            if bound_val > zp4:
                 ax4.axhline(y=bound_val, color=color, linestyle="--",
-                            linewidth=1.2, alpha=0.7)
+                            linewidth=1.8, alpha=0.8)
 
         # Single legend entry for theory
         theory_handle4 = mlines.Line2D([], [], color="gray", linestyle="--",
-                                       linewidth=1.2, alpha=0.7,
+                                       linewidth=1.8, alpha=0.8,
                                        label="$r\\rho^m$")
         h4, l4 = ax4.get_legend_handles_labels()
         h4.append(theory_handle4)
         l4.append("$r\\rho^m$")
 
         ax4.set_xscale("log")
-        _setup_broken_log_y(ax4, n_reps4)
+        _setup_broken_log_y(ax4, n_reps4, min_power=d_min_power)
         ax4.set_xlabel("Number of models $n$")
         ax4.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
         ax4.set_title(f"(d) Sample complexity  ($r = {r_exp4}$)", fontsize=11)
@@ -388,13 +401,13 @@ def plot_exp4(df: pd.DataFrame, output_dir: str = "results/figures"):
                 marker="o", markersize=4, color=PALETTE[i],
                 label=f"$m = {m}$", linewidth=1.5)
         bound_val = r_exp4 * rho4 ** m
-        if bound_val > clip_min:
-            ax.axhline(y=bound_val, color=PALETTE[i], linestyle="--",
-                       linewidth=1.2, alpha=0.7)
+        zp = _zero_pos(n_reps)
+        ax.axhline(y=max(bound_val, zp), color=PALETTE[i], linestyle="--",
+                   linewidth=1.8, alpha=0.8)
 
     # Single legend entry for theory
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
-                                  linewidth=1.2, alpha=0.7,
+                                  linewidth=1.8, alpha=0.8,
                                   label="$r\\rho^m$")
     handles, labels = ax.get_legend_handles_labels()
     handles.append(theory_handle)

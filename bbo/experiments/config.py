@@ -51,7 +51,7 @@ class Exp1Config(SyntheticConfig):
     name: str = "exp1_error_vs_m_rank"
     n_models: int = 100  # consistent with exp2/exp3
     r_values: List[int] = field(default_factory=lambda: [3, 5, 10])
-    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
+    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100])
 
 
 @dataclass
@@ -65,7 +65,7 @@ class Exp2Config(SyntheticConfig):
     name: str = "exp2_error_vs_m_rho"
     r: int = 5
     signal_prob_values: List[float] = field(default_factory=lambda: [0.1, 0.3, 0.5, 0.7])
-    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
+    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100])
 
 
 @dataclass
@@ -78,7 +78,7 @@ class Exp3Config(SyntheticConfig):
     name: str = "exp3_query_distribution"
     r: int = 5
     signal_prob_values: List[float] = field(default_factory=lambda: [0.1, 0.3])
-    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
+    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100])
     concentration: float = 0.9
 
 
@@ -122,4 +122,4 @@ class Exp7Config(RealConfig):
     """Exp 7: Accuracy vs m (main real result)."""
 
     name: str = "exp7_accuracy_vs_m"
-    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
+    m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100])
