@@ -205,7 +205,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                  label=f"$r = {r}$")
         bound = _theory_bound(m_dense, r, rho, clip_min=clip_min1)
         ax1.plot(m_dense, bound, color=color, linestyle="--",
-                 linewidth=0.6, alpha=0.5)
+                 linewidth=1.0, alpha=0.7)
 
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
                                   linewidth=1.0, alpha=0.7, label="$r\\rho^m$")
@@ -237,7 +237,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                  label=f"$\\rho = {rho:.1f}$")
         bound = _theory_bound(m_dense, r_exp2, rho, clip_min=clip_min2)
         ax2.plot(m_dense, bound, color=color, linestyle="--",
-                 linewidth=0.6, alpha=0.5)
+                 linewidth=1.0, alpha=0.7)
 
     theory_handle2 = mlines.Line2D([], [], color="gray", linestyle="--",
                                    linewidth=1.0, alpha=0.7, label="$r\\rho^m$")
