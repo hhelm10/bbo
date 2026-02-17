@@ -30,17 +30,8 @@ def plot_motivating_figure(
     Layout (GridSpec 2x3):
         gs[0, 0] = (a) Sensitive MDS scatter (top-left)
         gs[1, 0] = Orthogonal MDS scatter (bottom-left)
-        gs[:, 1] = (b) Accuracy vs m (spans both rows)
-        gs[:, 2] = (c) Cumulative variance / effective rank (spans both rows)
-
-    Parameters
-    ----------
-    responses : ndarray of shape (n_models, M, p)
-    labels : ndarray of shape (n_models,)
-    sensitive_indices, orthogonal_indices : ndarray
-    metadata_path : str, path to adapter_metadata.json
-    classification_csv : str, path to classification_results.csv
-    output_dir : str
+        gs[:, 1] = (b) Error vs m for multiple n (spans both rows)
+        gs[:, 2] = (c) Cumulative variance for multiple n (spans both rows)
     """
     set_paper_style()
 
@@ -64,7 +55,7 @@ def plot_motivating_figure(
         "orange_grad", [light_orange, PALETTE[1]]
     )
 
-    # --- Panel (a): MDS scatter plots (stacked), using m=10 queries ---
+    # --- Panel (a): MDS scatter plots (stacked), m=50 queries ---
     rng = np.random.RandomState(0)
     m_mds = 50
     sens_sub = rng.choice(sensitive_indices, size=m_mds, replace=False)
@@ -98,10 +89,9 @@ def plot_motivating_figure(
         ax.set_xticklabels([])
         ax.set_yticklabels([])
         ax.set_title(title)
-        ax.set_ylabel("MDS dim 2")
+        ax.set_ylabel("MDS 2")
 
         if is_top:
-            # Legend on top panel only
             legend_elements = [
                 Line2D([0], [0], marker="o", color="w",
                        markerfacecolor=PALETTE[0], markersize=4, label="Class 0"),
@@ -110,30 +100,30 @@ def plot_motivating_figure(
             ]
             ax.legend(handles=legend_elements, loc="best")
         else:
-            ax.set_xlabel("MDS dim 1")
+            ax.set_xlabel("MDS 1")
 
-    # --- Panel (b): Mean classification error vs m ---
+    # --- Panel (b): Mean error vs m, multiple n ---
     df = pd.read_csv(classification_csv)
 
-    line_styles = ["-", "--", ":"]
-    markers = ["o", "s", "^"]
-    dist_config = [
-        ("relevant", "Relevant", PALETTE[1]),
-        ("orthogonal", "Orthogonal", PALETTE[2]),
-        ("uniform", "Uniform", PALETTE[0]),
-    ]
+    # Color per n value, line style per distribution
+    has_n_col = "n" in df.columns
+    if has_n_col:
+        n_values = sorted(df["n"].unique())
+    else:
+        n_values = [int(df["m"].max())]  # fallback: treat as single n
 
-    for (dist_name, label, color), ls, mk in zip(dist_config, line_styles, markers):
-        sub = df[df["distribution"] == dist_name].sort_values("m")
-        mean_err = 1.0 - sub["mean_accuracy"]
-        ax_b.plot(sub["m"], mean_err, marker=mk, markersize=3,
-                  color=color, label=label, linestyle=ls, linewidth=1.0)
-        ax_b.fill_between(
-            sub["m"],
-            mean_err - sub["std_accuracy"],
-            mean_err + sub["std_accuracy"],
-            color=color, alpha=0.10,
-        )
+    n_colors = {n: PALETTE[i] for i, n in enumerate(n_values)}
+    dist_styles = {"relevant": "-", "orthogonal": "--", "uniform": ":"}
+
+    for n in n_values:
+        sub_n = df[df["n"] == n] if has_n_col else df
+        for dist_name, ls in dist_styles.items():
+            sub = sub_n[sub_n["distribution"] == dist_name].sort_values("m")
+            if sub.empty:
+                continue
+            mean_err = 1.0 - sub["mean_accuracy"]
+            ax_b.plot(sub["m"], mean_err, marker="o", markersize=2,
+                      color=n_colors[n], linestyle=ls, linewidth=0.8)
 
     ax_b.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5, linewidth=0.5)
     ax_b.set_xscale("log")
@@ -141,43 +131,53 @@ def plot_motivating_figure(
     ax_b.set_xlabel("Number of queries $m$")
     ax_b.set_ylabel("Mean error")
     ax_b.set_title("(b) Error vs $m$")
-    ax_b.legend(loc="upper right")
 
-    # --- Panel (c): Cumulative explained variance ---
-    result = run_exp6(responses)
-    cumvar = result["cumulative_variance"]
-    r90 = result["r90"]
-    r95 = result["r95"]
+    # Legend: n values (color) + distributions (line style)
+    leg_n = [Line2D([0], [0], color=n_colors[n], lw=1.0, label=f"$n={n}$")
+             for n in n_values]
+    leg_dist = [Line2D([0], [0], color="0.4", linestyle=ls, lw=1.0, label=name.capitalize())
+                for name, ls in dist_styles.items()]
+    ax_b.legend(handles=leg_n + leg_dist, loc="upper right", ncol=2)
 
-    n_show = min(50, len(cumvar))
-    components = np.arange(1, n_show + 1)
+    # --- Panel (c): Cumulative variance for multiple n ---
+    n_total = len(labels)
+    c_rng = np.random.RandomState(42)
+    n_show = 50
 
-    ax_c.plot(components, cumvar[:n_show], color=PALETTE[0], linewidth=1.0)
+    if has_n_col:
+        plot_n_values = n_values
+    else:
+        plot_n_values = [n_total]
+
+    for n in plot_n_values:
+        if n < n_total:
+            # Subsample n/2 per class (deterministic seed per n)
+            c_rng_n = np.random.RandomState(42 + n)
+            c0 = np.where(labels == 0)[0]
+            c1 = np.where(labels == 1)[0]
+            sel0 = c_rng_n.choice(c0, size=n // 2, replace=False)
+            sel1 = c_rng_n.choice(c1, size=n // 2, replace=False)
+            sel = np.sort(np.concatenate([sel0, sel1]))
+            resp_sub = responses[sel]
+        else:
+            resp_sub = responses
+
+        result = run_exp6(resp_sub)
+        cumvar = result["cumulative_variance"]
+        k = min(n_show, len(cumvar))
+        components = np.arange(1, k + 1)
+        ax_c.plot(components, cumvar[:k], color=n_colors[n], linewidth=0.8,
+                  label=f"$n={n}$")
+
     ax_c.set_xlabel("Components $r$")
-    ax_c.set_ylabel("Cumul. variance of $T$")
-    ax_c.set_title("(c) SVD of distance tensor")
+    ax_c.set_ylabel("Cumul. variance")
+    ax_c.set_title("(c) SVD of distance matrix")
     ax_c.set_ylim(0, 1.05)
 
     # Threshold lines
     ax_c.axhline(y=0.9, color="gray", linestyle="--", linewidth=0.5, alpha=0.6)
     ax_c.axhline(y=0.95, color="gray", linestyle="--", linewidth=0.5, alpha=0.6)
-
-    # Vertical drop-lines at r_90 and r_95
-    ax_c.axvline(x=r90, color=PALETTE[1], linestyle=":", linewidth=0.7, alpha=0.7)
-    ax_c.axvline(x=r95, color=PALETTE[3], linestyle=":", linewidth=0.7, alpha=0.7)
-
-    ax_c.annotate(
-        f"$r_{{90}}={r90}$", xy=(r90, 0.9), fontsize=5.5,
-        xytext=(r90 + 3, 0.75),
-        arrowprops=dict(arrowstyle="->", lw=0.5, color="0.4"),
-        color=PALETTE[1],
-    )
-    ax_c.annotate(
-        f"$r_{{95}}={r95}$", xy=(r95, 0.95), fontsize=5.5,
-        xytext=(r95 + 2, 0.82),
-        arrowprops=dict(arrowstyle="->", lw=0.5, color="0.4"),
-        color=PALETTE[3],
-    )
+    ax_c.legend(loc="lower right")
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)

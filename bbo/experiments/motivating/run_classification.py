@@ -15,9 +15,22 @@ from bbo.classification.evaluate import single_trial
 from bbo.experiments.motivating.config import MotivatingConfig
 
 
-def _run_one_rep(responses, labels, M, m, dist, seed, n_components, classifier):
-    """Single trial: sample queries -> MDS -> classify -> accuracy."""
+def _run_one_rep(responses, labels, M, m, dist, seed, n_components, classifier,
+                 n_subsample=None):
+    """Single trial: optionally subsample adapters, sample queries -> MDS -> classify."""
     rng = np.random.default_rng(seed)
+
+    # Subsample adapters if requested
+    if n_subsample is not None and n_subsample < len(labels):
+        class0 = np.where(labels == 0)[0]
+        class1 = np.where(labels == 1)[0]
+        n_per = n_subsample // 2
+        sel0 = rng.choice(class0, size=n_per, replace=False)
+        sel1 = rng.choice(class1, size=n_per, replace=False)
+        sel = np.sort(np.concatenate([sel0, sel1]))
+        responses = responses[sel]
+        labels = labels[sel]
+
     query_idx = sample_queries(M, m, distribution=dist, rng=rng)
     error = single_trial(responses, labels, query_idx,
                          n_components=n_components, classifier_name=classifier)
@@ -27,13 +40,15 @@ def _run_one_rep(responses, labels, M, m, dist, seed, n_components, classifier):
 def run_classification(config: MotivatingConfig) -> pd.DataFrame:
     """Run the classification experiment with a-priori query partition.
 
+    Sweeps over n_values (number of adapters) and m_values (number of queries).
+
     Parameters
     ----------
     config : MotivatingConfig
 
     Returns
     -------
-    df : DataFrame with columns: distribution, m, mean_accuracy, std_accuracy
+    df : DataFrame with columns: n, distribution, m, mean_accuracy, std_accuracy
     """
     # Load embedded responses
     data = np.load(config.npz_path, allow_pickle=True)
@@ -48,34 +63,40 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
     print(f"  Orthogonal queries: {len(orthogonal_indices)}")
     print(f"  Labels: {np.unique(labels, return_counts=True)}")
 
-    # A-priori distributions (mass=1.0 for pure subset sampling)
-    # Keys match plot_exp8() expectations: "relevant", "orthogonal", "uniform"
+    # A-priori distributions
     distributions = {
         "relevant": SubsetDistribution(sensitive_indices, mass=1.0),
         "orthogonal": SubsetDistribution(orthogonal_indices, mass=1.0),
         "uniform": UniformDistribution(),
     }
 
-    results = []
-    for dist_name, dist in distributions.items():
-        dist_offset = hash(dist_name) % 10000
-        for m in tqdm(config.m_values, desc=f"Classification ({dist_name})"):
-            seeds = [config.seed + rep * 100003 + m * 1009 + dist_offset * 7
-                     for rep in range(config.n_reps)]
-            accuracies = Parallel(n_jobs=config.n_jobs, backend="loky")(
-                delayed(_run_one_rep)(
-                    responses, labels, M, m, dist, s,
-                    config.n_components, config.classifier
-                )
-                for s in seeds
-            )
-            accuracies = np.array(accuracies)
+    n_values = getattr(config, "n_values", [n_models])
 
-            results.append({
-                "distribution": dist_name,
-                "m": m,
-                "mean_accuracy": accuracies.mean(),
-                "std_accuracy": accuracies.std(),
-            })
+    results = []
+    for n in n_values:
+        n_sub = n if n < n_models else None
+        for dist_name, dist in distributions.items():
+            dist_offset = hash(dist_name) % 10000
+            desc = f"n={n}, {dist_name}"
+            for m in tqdm(config.m_values, desc=desc):
+                seeds = [config.seed + rep * 100003 + m * 1009 + dist_offset * 7
+                         + n * 31
+                         for rep in range(config.n_reps)]
+                accuracies = Parallel(n_jobs=config.n_jobs, backend="loky")(
+                    delayed(_run_one_rep)(
+                        responses, labels, M, m, dist, s,
+                        config.n_components, config.classifier, n_sub
+                    )
+                    for s in seeds
+                )
+                accuracies = np.array(accuracies)
+
+                results.append({
+                    "n": n,
+                    "distribution": dist_name,
+                    "m": m,
+                    "mean_accuracy": accuracies.mean(),
+                    "std_accuracy": accuracies.std(),
+                })
 
     return pd.DataFrame(results)

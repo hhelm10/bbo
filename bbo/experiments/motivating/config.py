@@ -67,6 +67,9 @@ class MotivatingConfig(ExperimentConfig):
     embedding_model: str = "nomic-embed-text-v1.5"
 
     # Classification
+    n_values: List[int] = field(
+        default_factory=lambda: [10, 20, 50, 100]
+    )
     m_values: List[int] = field(
         default_factory=lambda: [1, 2, 5, 10, 20, 50, 100]
     )
