@@ -185,7 +185,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     set_paper_style()
 
     fig, axes = plt.subplots(1, 4, figsize=(20, 4.5))
-    ax1, ax2, ax3, ax4 = axes
+    ax1, ax2, ax4, ax3 = axes
 
     # --- Panel A: vary r ---
     n_reps1 = int(df_exp1["n_reps"].iloc[0])
@@ -247,7 +247,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                   fontsize=9)
     ax2.legend(h2, l2, fontsize=6, loc="upper right")
 
-    # --- Panel C: query distribution (multiple rho values) ---
+    # --- Panel D: query distribution (multiple rho values) ---
     n_reps3 = int(df_exp3["n_reps"].iloc[0])
     dist_labels = {"uniform": "Uniform", "signal": "Signal",
                    "orthogonal": "Orthogonal"}
@@ -296,7 +296,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     ax3.set_xscale("log")
     _setup_broken_log_y(ax3, n_reps3)
     ax3.set_xlabel("Number of queries $m$")
-    ax3.set_title("(c) Query distribution\n($n = 100,\\; r = 5,\\; M = 100$)",
+    ax3.set_title("(d) Query distribution\n($n = 100,\\; r = 5,\\; M = 100$)",
                   fontsize=9)
 
     # --- Panel D: error vs n (multiple m values, fixed r) ---
@@ -334,7 +334,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         _setup_broken_log_y(ax4, n_reps4, min_power=d_min_power)
         ax4.set_xlabel("Number of models $n$")
         ax4.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-        ax4.set_title(f"(d) Varying $n$\n($r = {r_exp4},\\; \\rho = 0.7,\\; M = 100$)",
+        ax4.set_title(f"(c) Varying $n$\n($r = {r_exp4},\\; \\rho = 0.7,\\; M = 100$)",
                       fontsize=9)
         ax4.legend(h4, l4, fontsize=6, loc="upper right")
     else:
