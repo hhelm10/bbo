@@ -50,7 +50,7 @@ def plot_motivating_figure(
     sensitive_fracs = np.array([m["sensitive_frac"] for m in metadata])
 
     # --- Layout ---
-    fig = plt.figure(figsize=(5.5, 2.0))
+    fig = plt.figure(figsize=(5.5, 1.6))
     gs = GridSpec(2, 3, figure=fig, wspace=0.5, hspace=0.45)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
