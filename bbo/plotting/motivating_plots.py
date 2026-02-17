@@ -107,7 +107,7 @@ def plot_motivating_figure(
         else:
             ax.set_xlabel("MDS dim 1")
 
-    # --- Panel (b): Classification accuracy vs m ---
+    # --- Panel (b): Mean classification error vs m ---
     df = pd.read_csv(classification_csv)
 
     line_styles = ["-", "--", ":"]
@@ -120,22 +120,23 @@ def plot_motivating_figure(
 
     for (dist_name, label, color), ls, mk in zip(dist_config, line_styles, markers):
         sub = df[df["distribution"] == dist_name].sort_values("m")
-        ax_b.plot(sub["m"], sub["mean_accuracy"], marker=mk, markersize=3,
+        mean_err = 1.0 - sub["mean_accuracy"]
+        ax_b.plot(sub["m"], mean_err, marker=mk, markersize=3,
                   color=color, label=label, linestyle=ls, linewidth=1.0)
         ax_b.fill_between(
             sub["m"],
-            sub["mean_accuracy"] - sub["std_accuracy"],
-            sub["mean_accuracy"] + sub["std_accuracy"],
+            mean_err - sub["std_accuracy"],
+            mean_err + sub["std_accuracy"],
             color=color, alpha=0.10,
         )
 
     ax_b.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5, linewidth=0.5)
     ax_b.set_xscale("log")
-    ax_b.set_ylim(0.55, 0.95)
+    ax_b.set_ylim(0.0, 0.5)
     ax_b.set_xlabel("Number of queries $m$")
-    ax_b.set_ylabel("Accuracy")
-    ax_b.set_title("(b) Accuracy vs $m$")
-    ax_b.legend(loc="lower right")
+    ax_b.set_ylabel("Mean error")
+    ax_b.set_title("(b) Error vs $m$")
+    ax_b.legend(loc="upper right")
 
     # --- Panel (c): Cumulative explained variance ---
     result = run_exp6(responses)
@@ -147,9 +148,9 @@ def plot_motivating_figure(
     components = np.arange(1, n_show + 1)
 
     ax_c.plot(components, cumvar[:n_show], color=PALETTE[0], linewidth=1.0)
-    ax_c.set_xlabel("Number of components $r$")
-    ax_c.set_ylabel("Cumulative variance explained")
-    ax_c.set_title("(c) Effective rank")
+    ax_c.set_xlabel("Components $r$")
+    ax_c.set_ylabel("Cumul. variance of $T$")
+    ax_c.set_title("(c) SVD of distance tensor")
     ax_c.set_ylim(0, 1.05)
 
     # Threshold lines
