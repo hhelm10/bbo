@@ -181,11 +181,11 @@ def plot_exp2(df: pd.DataFrame, output_dir: str = "results/figures"):
 def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                  df_exp3: pd.DataFrame, df_exp4: pd.DataFrame = None,
                  output_dir: str = "results/figures"):
-    """Combined Figure 1: four panels for Exp 1-4 in a 2x2 layout."""
+    """Combined Figure 1: four panels for Exp 1-4 in a single row."""
     set_paper_style()
 
-    fig, axes = plt.subplots(2, 2, figsize=(12, 9))
-    ax1, ax2, ax3, ax4 = axes.flat
+    fig, axes = plt.subplots(1, 4, figsize=(20, 4.5))
+    ax1, ax2, ax3, ax4 = axes
 
     # --- Panel A: vary r ---
     n_reps1 = int(df_exp1["n_reps"].iloc[0])
@@ -214,8 +214,8 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     _setup_broken_log_y(ax1, n_reps1)
     ax1.set_xlabel("Number of queries $m$")
     ax1.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-    ax1.set_title("(a) Varying rank $r$  ($\\rho \\approx 0.7$)", fontsize=11)
-    ax1.legend(h1, l1, fontsize=7, loc="upper right", ncol=2)
+    ax1.set_title("(a) Varying rank $r$  ($\\rho \\approx 0.7$)", fontsize=10)
+    ax1.legend(h1, l1, fontsize=6, loc="upper right", ncol=2)
 
     # --- Panel B: vary rho ---
     n_reps2 = int(df_exp2["n_reps"].iloc[0])
@@ -242,10 +242,11 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     ax2.set_xscale("log")
     _setup_broken_log_y(ax2, n_reps2)
     ax2.set_xlabel("Number of queries $m$")
-    ax2.set_title("(b) Varying $\\rho$  ($r = 5$)", fontsize=11)
-    ax2.legend(h2, l2, fontsize=8, loc="upper right")
+    ax2.set_title("(b) Varying $\\rho$  ($r = 5$)", fontsize=10)
+    ax2.legend(h2, l2, fontsize=6, loc="upper right")
 
     # --- Panel C: query distribution (multiple rho values) ---
+    n_reps3 = int(df_exp3["n_reps"].iloc[0])
     dist_labels = {"uniform": "Uniform", "signal": "Signal",
                    "orthogonal": "Orthogonal"}
     dist_colors = {"uniform": PALETTE[0], "signal": PALETTE[1],
@@ -262,10 +263,8 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     for j, sp in enumerate(sp_values):
         if sp is not None:
             sub_sp = df_exp3[df_exp3["signal_prob"] == sp]
-            rho_val = 1.0 - sp
         else:
             sub_sp = df_exp3
-            rho_val = None
         ls = linestyles[j % len(linestyles)]
 
         for dist_name, label in dist_labels.items():
@@ -274,7 +273,8 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                 continue
             color = dist_colors[dist_name]
             full_label = label if j == 0 else None
-            ax3.plot(sub["m"], sub["accuracy"],
+            y3 = _map_zeros(sub["prob_high_error"].values, n_reps3)
+            ax3.plot(sub["m"], y3,
                      marker="o", markersize=3, color=color,
                      label=full_label, linewidth=1.5, linestyle=ls)
 
@@ -286,17 +286,15 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                        linestyle=linestyles[j], linewidth=1.5,
                        label=f"$\\rho = {1-sp:.1f}$")
                        for j, sp in enumerate(sp_values)]
-        ax3.legend(handles=dist_handles + rho_handles, fontsize=7,
-                   loc="lower right", ncol=2)
+        ax3.legend(handles=dist_handles + rho_handles, fontsize=6,
+                   loc="upper right", ncol=2)
     else:
-        ax3.legend(fontsize=8, loc="lower right")
+        ax3.legend(fontsize=6, loc="upper right")
 
     ax3.set_xscale("log")
+    _setup_broken_log_y(ax3, n_reps3)
     ax3.set_xlabel("Number of queries $m$")
-    ax3.set_ylabel("Classification accuracy")
-    ax3.set_ylim(0.4, 1.05)
-    ax3.axhline(y=0.5, color="gray", linestyle=":", alpha=0.3, linewidth=0.8)
-    ax3.set_title("(c) Query distribution  ($r = 5$)", fontsize=11)
+    ax3.set_title("(c) Query distribution  ($r = 5$)", fontsize=10)
 
     # --- Panel D: error vs n (multiple m values, fixed r) ---
     if df_exp4 is not None:
@@ -333,8 +331,8 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         _setup_broken_log_y(ax4, n_reps4, min_power=d_min_power)
         ax4.set_xlabel("Number of models $n$")
         ax4.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-        ax4.set_title(f"(d) Sample complexity  ($r = {r_exp4}$)", fontsize=11)
-        ax4.legend(h4, l4, fontsize=7, loc="upper right")
+        ax4.set_title(f"(d) Sample complexity  ($r = {r_exp4}$)", fontsize=10)
+        ax4.legend(h4, l4, fontsize=6, loc="upper right")
     else:
         ax4.set_visible(False)
 
@@ -346,8 +344,9 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
 
 
 def plot_exp3(df: pd.DataFrame, output_dir: str = "results/figures"):
-    """Plot Exp 3: accuracy vs m for three query distributions."""
+    """Plot Exp 3: P[error >= 0.5] vs m for three query distributions."""
     set_paper_style()
+    n_reps = int(df["n_reps"].iloc[0])
     fig, ax = plt.subplots(figsize=(6, 4))
 
     dist_labels = {"uniform": "Uniform", "signal": "Signal-concentrated",
@@ -368,16 +367,16 @@ def plot_exp3(df: pd.DataFrame, output_dir: str = "results/figures"):
             sub = sub_sp[sub_sp["distribution"] == dist_name]
             if sub.empty:
                 continue
-            ax.plot(sub["m"], sub["accuracy"],
+            y = _map_zeros(sub["prob_high_error"].values, n_reps)
+            ax.plot(sub["m"], y,
                     marker="o", markersize=4, color=PALETTE[i],
                     label=f"{label}{suffix}", linewidth=2, linestyle=ls)
 
     ax.set_xscale("log")
+    _setup_broken_log_y(ax, n_reps)
     ax.set_xlabel("Number of queries $m$")
-    ax.set_ylabel("Classification accuracy")
+    ax.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
     ax.legend(fontsize=8)
-    ax.set_ylim(0.4, 1.05)
-    ax.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{output_dir}/exp3_query_distribution.pdf")
