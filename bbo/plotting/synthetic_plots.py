@@ -203,7 +203,7 @@ def plot_figure1(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
     _setup_broken_log_y(ax1, n_reps1)
     ax1.set_xlabel("Number of queries $m$")
     ax1.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-    ax1.set_title("(a) Varying rank $r$  ($p = 0.3$)", fontsize=11)
+    ax1.set_title("(a) Varying rank $r$  ($\\rho \\approx 0.7$)", fontsize=11)
     ax1.legend(h1, l1, fontsize=7, loc="upper right", ncol=2)
 
     # --- Panel B: vary rho ---

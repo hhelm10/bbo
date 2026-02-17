@@ -50,7 +50,7 @@ class Exp1Config(SyntheticConfig):
 
     name: str = "exp1_error_vs_m_rank"
     n_models: int = 100  # consistent with exp2/exp3
-    r_values: List[int] = field(default_factory=lambda: [2, 3, 5, 10])
+    r_values: List[int] = field(default_factory=lambda: [3, 5, 10])
     m_values: List[int] = field(default_factory=lambda: [1, 2, 5, 10, 20, 50, 100, 200])
 
 
@@ -93,7 +93,7 @@ class Exp4Config(SyntheticConfig):
     name: str = "exp4_error_vs_n"
     r: int = 5
     m_values: List[int] = field(default_factory=lambda: [5, 10, 20, 50])
-    n_values: List[int] = field(default_factory=lambda: [20, 50, 100, 200, 500])
+    n_values: List[int] = field(default_factory=lambda: [5, 10, 20, 50, 100, 200])
 
 
 @dataclass
