@@ -92,8 +92,8 @@ class Exp4Config(SyntheticConfig):
 
     name: str = "exp4_error_vs_n"
     r: int = 5
-    m_values: List[int] = field(default_factory=lambda: [5, 10, 20, 50])
-    n_values: List[int] = field(default_factory=lambda: [5, 10, 20, 50, 100, 200])
+    m_values: List[int] = field(default_factory=lambda: [5, 10, 20])
+    n_values: List[int] = field(default_factory=lambda: [10, 20, 50, 100, 200])
 
 
 @dataclass
