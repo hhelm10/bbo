@@ -23,7 +23,7 @@ def plot_motivating_figure(
     orthogonal_indices: np.ndarray,
     metadata_path: str,
     classification_csv: str,
-    output_dir: str = "results/motivating/figures",
+    output_dir: str = "figures",
 ):
     """Create the 3-panel (4 sub-panel) motivating figure.
 
