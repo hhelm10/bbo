@@ -108,13 +108,59 @@ def prepare_training_sets(config: MotivatingConfig) -> List[dict]:
     return adapter_specs
 
 
+def _load_trivia_qa_pool(rng, min_pool_size: int = 500) -> List[str]:
+    """Load TriviaQA questions as a pool of orthogonal queries.
+
+    Filters out questions likely related to Yahoo Answers training topics
+    (politics, science, health, sports, computers, education).
+    """
+    from datasets import load_dataset
+
+    ds = load_dataset("trivia_qa", "unfiltered.nocontext", split="train")
+
+    # Keywords to filter out (related to training topics)
+    exclude_kw = {
+        "president", "senator", "congress", "democrat", "republican",
+        "election", "governor", "parliament", "minister", "political",
+        "government", "legislation", "vote", "campaign",
+        "sport", "football", "baseball", "basketball", "soccer", "tennis",
+        "olympic", "athlete", "championship", "tournament", "super bowl",
+        "nfl", "nba", "mlb", "fifa", "cricket",
+        "disease", "medical", "hospital", "doctor", "symptom", "cancer",
+        "surgery", "drug", "vitamin", "health",
+        "computer", "software", "internet", "programming", "algorithm",
+        "website", "google", "microsoft", "apple inc",
+        "school", "university", "college", "education", "student",
+        "professor", "degree", "curriculum",
+        "science", "physics", "chemistry", "biology", "molecule", "atom",
+        "equation", "experiment", "hypothesis", "laboratory",
+    }
+
+    pool = []
+    for row in ds:
+        q = row["question"]
+        q_lower = q.lower()
+        if any(kw in q_lower for kw in exclude_kw):
+            continue
+        if len(q) < 10:
+            continue
+        pool.append(q)
+
+    rng.shuffle(pool)
+    print(f"  TriviaQA pool after filtering: {len(pool)} questions")
+    return pool
+
+
 def prepare_queries(config: MotivatingConfig) -> Tuple[List[dict], np.ndarray, np.ndarray]:
-    """Create query sets from Yahoo Answers questions.
+    """Create query sets: sensitive from Yahoo Answers, orthogonal from TriviaQA.
+
+    Each orthogonal query is paired 1:1 with a sensitive query and is at least
+    as long (in characters) as its paired sensitive query.
 
     Returns
     -------
     queries : list of dict
-        Each dict has: query_id, text, topic, category ('sensitive' or 'orthogonal').
+        Each dict has: query_id, text, category ('sensitive' or 'orthogonal').
     sensitive_indices : ndarray of int
     orthogonal_indices : ndarray of int
     """
@@ -128,34 +174,62 @@ def prepare_queries(config: MotivatingConfig) -> Tuple[List[dict], np.ndarray, n
     rng.shuffle(sensitive_pool)
     sensitive_pool = sensitive_pool[:config.n_sensitive_queries]
 
-    # Orthogonal queries: questions from orthogonal topics
-    orthogonal_pool = _pool_by_topic(ds, config.orthogonal_topics)
-    rng.shuffle(orthogonal_pool)
-    orthogonal_pool = orthogonal_pool[:config.n_orthogonal_queries]
+    sensitive_texts = [row["question_title"] for row in sensitive_pool]
+    sensitive_lengths = [len(t) for t in sensitive_texts]
 
+    # Orthogonal queries: from TriviaQA, paired by length
+    trivia_pool = _load_trivia_qa_pool(rng)
+
+    # Sort trivia pool by length for efficient matching
+    trivia_by_len = sorted(trivia_pool, key=len)
+    used = set()
+    orthogonal_texts = []
+
+    for s_len in sensitive_lengths:
+        # Find the shortest trivia question that is >= s_len and not yet used
+        matched = False
+        for j, t in enumerate(trivia_by_len):
+            if j not in used and len(t) >= s_len:
+                orthogonal_texts.append(t)
+                used.add(j)
+                matched = True
+                break
+        if not matched:
+            # Fallback: pick any unused question
+            for j, t in enumerate(trivia_by_len):
+                if j not in used:
+                    orthogonal_texts.append(t)
+                    used.add(j)
+                    break
+
+    # Build query list
     queries = []
     sensitive_indices = []
     orthogonal_indices = []
 
-    for i, row in enumerate(sensitive_pool):
+    for i, text in enumerate(sensitive_texts):
         queries.append({
             "query_id": i,
-            "text": row["question_title"],
-            "topic": int(row["topic"]),
+            "text": text,
             "category": "sensitive",
         })
         sensitive_indices.append(i)
 
-    offset = len(sensitive_pool)
-    for i, row in enumerate(orthogonal_pool):
+    offset = len(sensitive_texts)
+    for i, text in enumerate(orthogonal_texts):
         qid = offset + i
         queries.append({
             "query_id": qid,
-            "text": row["question_title"],
-            "topic": int(row["topic"]),
+            "text": text,
             "category": "orthogonal",
         })
         orthogonal_indices.append(qid)
+
+    # Report pairing stats
+    for i in range(min(5, len(sensitive_texts))):
+        s = sensitive_texts[i]
+        o = orthogonal_texts[i]
+        print(f"  Pair {i}: sensitive[{len(s):3d}] '{s[:50]}...' <-> orthogonal[{len(o):3d}] '{o[:50]}...'")
 
     return queries, np.array(sensitive_indices), np.array(orthogonal_indices)
 

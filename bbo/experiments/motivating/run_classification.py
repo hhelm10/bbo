@@ -94,6 +94,11 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
     n_values = getattr(config, "n_values", [n_models])
 
     results = []
+    # Cap n_values based on available class sizes
+    min_class_size = min(np.sum(labels == 0), np.sum(labels == 1))
+    n_values = [n for n in n_values if n // 2 <= min_class_size]
+    print(f"  n_values (after capping to min class size {min_class_size}): {n_values}")
+
     for n in n_values:
         n_train = n if n < n_models else None
         for dist_name, dist in distributions.items():
