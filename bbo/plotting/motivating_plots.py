@@ -35,6 +35,13 @@ def plot_motivating_figure(
         gs[:, 2] = (c) Singular value spectrum
     """
     set_paper_style()
+    plt.rcParams.update({
+        "font.size": 6,
+        "axes.labelsize": 7,
+        "axes.titlesize": 7,
+        "xtick.labelsize": 5.5,
+        "ytick.labelsize": 5.5,
+    })
 
     # Load adapter metadata for sensitive_frac, matching to actual adapters
     with open(metadata_path) as f:
@@ -47,7 +54,7 @@ def plot_motivating_figure(
     sensitive_fracs = np.array([meta_by_id[i]["sensitive_frac"] for i in valid_ids])
 
     # --- Layout ---
-    fig = plt.figure(figsize=(5.5, 1.8))
+    fig = plt.figure(figsize=(5.5, 1.6))
     gs = GridSpec(2, 3, figure=fig, wspace=0.5, hspace=0.35)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
