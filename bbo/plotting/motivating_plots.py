@@ -108,36 +108,36 @@ def plot_motivating_figure(
         else:
             ax.set_xlabel("MDS 1")
 
-    # --- Panel (b): Mean error vs n, multiple m ---
+    # --- Panel (b): Mean error vs m, colored by n ---
     df = pd.read_csv(classification_csv)
 
-    m_values = sorted(df["m"].unique())
-    m_colors = {m: PALETTE[i] for i, m in enumerate(m_values)}
+    n_values_plot = [8, 16, 32]
+    n_colors = {n: PALETTE[i] for i, n in enumerate(n_values_plot)}
     dist_styles = {"relevant": "-", "orthogonal": "--", "uniform": ":"}
 
-    for m in m_values:
-        sub_m = df[df["m"] == m]
+    for n in n_values_plot:
+        sub_n = df[df["n"] == n]
         for dist_name, ls in dist_styles.items():
-            sub = sub_m[sub_m["distribution"] == dist_name].sort_values("n")
+            sub = sub_n[sub_n["distribution"] == dist_name].sort_values("m")
             if sub.empty:
                 continue
             mean_err = 1.0 - sub["mean_accuracy"]
-            ax_b.plot(sub["n"], mean_err, marker="o", markersize=2,
-                      color=m_colors[m], linestyle=ls, linewidth=0.8)
+            ax_b.plot(sub["m"], mean_err, marker="o", markersize=2,
+                      color=n_colors[n], linestyle=ls, linewidth=0.8)
 
     ax_b.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5, linewidth=0.5)
     ax_b.set_xscale("log")
     ax_b.set_ylim(0.1, 0.55)
-    ax_b.set_xlabel("Number of models $n$")
+    ax_b.set_xlabel("Number of queries $m$")
     ax_b.set_ylabel("Mean error")
-    ax_b.set_title("(b) Error vs $n$")
+    ax_b.set_title("(b) Error vs $m$")
 
-    leg_m = [Line2D([0], [0], color=m_colors[m], lw=1.0, label=f"$m={m}$")
-             for m in m_values]
+    leg_n = [Line2D([0], [0], color=n_colors[n], lw=1.0, label=f"$n={n}$")
+             for n in n_values_plot]
     leg_dist = [Line2D([0], [0], color="0.4", linestyle=ls, lw=1.0,
                         label=name.capitalize())
                 for name, ls in dist_styles.items()]
-    ax_b.legend(handles=leg_m + leg_dist, loc="upper right", ncol=2)
+    ax_b.legend(handles=leg_n + leg_dist, loc="upper right", ncol=2)
 
     # --- Panel (c): Singular value spectrum ---
     query_sets = [
