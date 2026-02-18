@@ -47,8 +47,8 @@ def plot_motivating_figure(
     sensitive_fracs = np.array([meta_by_id[i]["sensitive_frac"] for i in valid_ids])
 
     # --- Layout ---
-    fig = plt.figure(figsize=(5.5, 1.9))
-    gs = GridSpec(2, 3, figure=fig, wspace=0.55, hspace=0.45)
+    fig = plt.figure(figsize=(5.5, 1.65))
+    gs = GridSpec(2, 3, figure=fig, wspace=0.55, hspace=0.35)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
     ax_a_bot = fig.add_subplot(gs[1, 0])
@@ -81,8 +81,8 @@ def plot_motivating_figure(
     colors_1 = orange_cmap(frac_norm)
 
     for ax, X, is_top, title in [
-        (ax_a_top, X_sens, True, f'(a) Signal queries ($m={m_mds}$)'),
-        (ax_a_bot, X_orth, False, f'"Orthogonal" queries ($m={m_mds}$)'),
+        (ax_a_top, X_sens, True, f'(a) Signal queries\n($m={m_mds}$)'),
+        (ax_a_bot, X_orth, False, f'"Orthogonal" queries\n($m={m_mds}$)'),
     ]:
         ax.scatter(
             X[class0_mask, 0], X[class0_mask, 1],
