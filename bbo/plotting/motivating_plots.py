@@ -35,13 +35,6 @@ def plot_motivating_figure(
         gs[:, 2] = (c) Singular value spectrum
     """
     set_paper_style()
-    plt.rcParams.update({
-        "font.size": 6,
-        "axes.labelsize": 7,
-        "axes.titlesize": 7,
-        "xtick.labelsize": 5.5,
-        "ytick.labelsize": 5.5,
-    })
 
     # Load adapter metadata for sensitive_frac, matching to actual adapters
     with open(metadata_path) as f:
@@ -54,8 +47,8 @@ def plot_motivating_figure(
     sensitive_fracs = np.array([meta_by_id[i]["sensitive_frac"] for i in valid_ids])
 
     # --- Layout ---
-    fig = plt.figure(figsize=(5.5, 1.6))
-    gs = GridSpec(2, 3, figure=fig, wspace=0.5, hspace=0.35)
+    fig = plt.figure(figsize=(5.5, 1.9))
+    gs = GridSpec(2, 3, figure=fig, wspace=0.55, hspace=0.45)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
     ax_a_bot = fig.add_subplot(gs[1, 0])
@@ -88,8 +81,8 @@ def plot_motivating_figure(
     colors_1 = orange_cmap(frac_norm)
 
     for ax, X, is_top, title in [
-        (ax_a_top, X_sens, True, "(a) Sensitive queries"),
-        (ax_a_bot, X_orth, False, "Orthogonal queries"),
+        (ax_a_top, X_sens, True, f'(a) Signal queries ($m={m_mds}$)'),
+        (ax_a_bot, X_orth, False, f'"Orthogonal" queries ($m={m_mds}$)'),
     ]:
         ax.scatter(
             X[class0_mask, 0], X[class0_mask, 1],
@@ -111,7 +104,7 @@ def plot_motivating_figure(
                 Line2D([0], [0], marker="s", color="w",
                        markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
             ]
-            ax.legend(handles=legend_elements, loc="best")
+            ax.legend(handles=legend_elements, loc="best", fontsize=5)
         else:
             ax.set_xlabel("MDS 1")
 
@@ -121,6 +114,7 @@ def plot_motivating_figure(
     n_values_plot = [10, 20, 80]
     n_colors = {n: PALETTE[i] for i, n in enumerate(n_values_plot)}
     dist_styles = {"relevant": "-", "orthogonal": "--"}
+    dist_labels = {"relevant": "Signal", "orthogonal": '"Orthogonal"'}
 
     for n in n_values_plot:
         sub_n = df[df["n"] == n]
@@ -142,14 +136,14 @@ def plot_motivating_figure(
     leg_n = [Line2D([0], [0], color=n_colors[n], lw=1.0, label=f"$n={n}$")
              for n in n_values_plot]
     leg_dist = [Line2D([0], [0], color="0.4", linestyle=ls, lw=1.0,
-                        label=name.capitalize())
+                        label=dist_labels[name])
                 for name, ls in dist_styles.items()]
-    ax_b.legend(handles=leg_n + leg_dist, loc="upper right", ncol=2)
+    ax_b.legend(handles=leg_n + leg_dist, loc="upper right", ncol=2, fontsize=5)
 
     # --- Panel (c): Singular value spectrum of D ---
     query_sets = [
-        (sensitive_indices, "Sensitive", PALETTE[1], "-"),
-        (orthogonal_indices, "Orthogonal", PALETTE[2], "--"),
+        (sensitive_indices, "Signal", PALETTE[1], "-"),
+        (orthogonal_indices, '"Orthogonal"', PALETTE[2], "--"),
     ]
 
     n_show = 50
@@ -166,7 +160,7 @@ def plot_motivating_figure(
     ax_c.set_xlabel("Component $r$")
     ax_c.set_ylabel("$\\sigma_r / \\sigma_1$")
     ax_c.set_title("(c) Singular values of $D$")
-    ax_c.legend(loc="upper right", fontsize=4)
+    ax_c.legend(loc="upper right", fontsize=5)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
