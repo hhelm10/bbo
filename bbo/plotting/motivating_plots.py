@@ -55,7 +55,7 @@ def plot_motivating_figure(
 
     # --- Layout ---
     fig = plt.figure(figsize=(5.5, 1.65))
-    gs = GridSpec(2, 3, figure=fig, wspace=0.55, hspace=0.35)
+    gs = GridSpec(2, 3, figure=fig, wspace=0.55, hspace=0.55)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
     ax_a_bot = fig.add_subplot(gs[1, 0])
