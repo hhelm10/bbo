@@ -155,9 +155,10 @@ def plot_motivating_figure(
         sv = result["singular_values"]
         k = min(n_show, len(sv))
         ax_c.plot(np.arange(1, k + 1), sv[:k],
-                  color=color, linestyle=ls, linewidth=0.8, label=label)
+                  color=color, linestyle=ls, linewidth=1.2,
+                  marker="o", markersize=2, label=label)
 
-    ax_c.set_yscale("log")
+
     ax_c.set_xlabel("Component $r$")
     ax_c.set_ylabel("$\\sigma_r$")
     ax_c.set_title("(c) Singular values of $D$")
