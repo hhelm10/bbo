@@ -88,8 +88,8 @@ def plot_motivating_figure(
     colors_1 = orange_cmap(frac_norm)
 
     for ax, X, is_top, title in [
-        (ax_a_top, X_sens, True, f'(a) Signal queries\n($m={m_mds}$)'),
-        (ax_a_bot, X_orth, False, f'"Orthogonal" queries\n($m={m_mds}$)'),
+        (ax_a_top, X_sens, True, f'(a) Signal queries, $m={m_mds}$'),
+        (ax_a_bot, X_orth, False, f'"Orthogonal" queries, $m={m_mds}$'),
     ]:
         ax.scatter(
             X[class0_mask, 0], X[class0_mask, 1],
