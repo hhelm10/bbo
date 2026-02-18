@@ -12,6 +12,23 @@ from typing import List
 from bbo.experiments.motivating.config import MotivatingConfig
 
 
+def _format_as_chat(texts: List[dict], tokenizer) -> List[str]:
+    """Format structured QA items as chat conversations using the model's template.
+
+    Each item is a dict with 'question' and 'answer' keys.
+    """
+    formatted = []
+    for item in texts:
+        messages = [
+            {"role": "user", "content": item["question"]},
+            {"role": "assistant", "content": item["answer"]},
+        ]
+        formatted.append(
+            tokenizer.apply_chat_template(messages, tokenize=False)
+        )
+    return formatted
+
+
 def _make_dataset(texts: List[str], tokenizer, max_length: int = 512):
     """Create a torch Dataset from a list of texts for causal LM training."""
     from torch.utils.data import Dataset
@@ -72,8 +89,9 @@ def train_single_adapter(
     # Wrap base model with LoRA
     model = get_peft_model(base_model, lora_config)
 
-    # Build dataset
-    dataset = _make_dataset(texts, tokenizer)
+    # Format texts as chat conversations and build dataset
+    chat_texts = _format_as_chat(texts, tokenizer)
+    dataset = _make_dataset(chat_texts, tokenizer)
 
     # Training args
     training_args = TrainingArguments(
@@ -124,7 +142,19 @@ def run_train(config: MotivatingConfig):
     with open(train_path) as f:
         adapter_specs = json.load(f)
 
-    print(f"Training {len(adapter_specs)} adapters with base model {config.base_model}")
+    # Index specs by adapter_id for interleaved access
+    specs_by_id = {spec["adapter_id"]: spec for spec in adapter_specs}
+    n_per_class = config.n_per_class
+
+    # Interleave class-0 and class-1: (0, 50, 1, 51, 2, 52, ...)
+    train_order = []
+    for i in range(n_per_class):
+        if i in specs_by_id:
+            train_order.append(specs_by_id[i])
+        if (i + n_per_class) in specs_by_id:
+            train_order.append(specs_by_id[i + n_per_class])
+
+    print(f"Training {len(train_order)} adapters with base model {config.base_model}")
 
     # Load base model and tokenizer once
     print("Loading base model...")
@@ -140,7 +170,7 @@ def run_train(config: MotivatingConfig):
 
     config.adapters_dir.mkdir(parents=True, exist_ok=True)
 
-    for spec in adapter_specs:
+    for spec in train_order:
         adapter_id = spec["adapter_id"]
         adapter_dir = config.adapters_dir / f"adapter_{adapter_id:03d}"
 

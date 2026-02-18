@@ -58,10 +58,8 @@ def run_generate(config: MotivatingConfig):
     n_queries = len(queries)
     print(f"Loaded {n_queries} queries")
 
-    # Use instruct variant for generation (same architecture, better at following prompts)
-    instruct_model_name = config.base_model + "-Instruct"
-    print(f"Loading instruct model {instruct_model_name}...")
-    tokenizer = AutoTokenizer.from_pretrained(instruct_model_name)
+    print(f"Loading model {config.base_model}...")
+    tokenizer = AutoTokenizer.from_pretrained(config.base_model)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"  # left-pad for generation
@@ -76,7 +74,7 @@ def run_generate(config: MotivatingConfig):
         query_texts.append(text)
 
     base_model = AutoModelForCausalLM.from_pretrained(
-        instruct_model_name,
+        config.base_model,
         torch_dtype=torch.float16,
         device_map="auto",
     )

@@ -18,13 +18,11 @@ def _load_yahoo_answers() -> "datasets.Dataset":
     return ds
 
 
-def _format_text(row: dict) -> str:
-    """Format a Yahoo Answers row into a training string."""
-    title = row.get("question_title", "")
-    content = row.get("question_content", "")
-    answer = row.get("best_answer", "")
-    parts = [p for p in [title, content, answer] if p]
-    return "\n".join(parts)
+def _format_text(row: dict) -> dict:
+    """Format a Yahoo Answers row into question/answer fields."""
+    question = row.get("question_title", "")
+    answer = row.get("best_answer", "") or question
+    return {"question": question, "answer": answer}
 
 
 def _pool_by_topic(ds, topic_ids: List[int]) -> List[dict]:
@@ -65,18 +63,18 @@ def prepare_training_sets(config: MotivatingConfig) -> List[dict]:
     rng.shuffle(sensitive_raw)
 
     pool_size = config.shared_pool_size
-    ns_pool_texts = [_format_text(r) for r in not_sensitive_raw[:pool_size]]
-    s_pool_texts = [_format_text(r) for r in sensitive_raw[:pool_size]]
-    print(f"  Shared not-sensitive pool: {len(ns_pool_texts)} texts")
-    print(f"  Shared sensitive pool: {len(s_pool_texts)} texts")
+    ns_pool_items = [_format_text(r) for r in not_sensitive_raw[:pool_size]]
+    s_pool_items = [_format_text(r) for r in sensitive_raw[:pool_size]]
+    print(f"  Shared not-sensitive pool: {len(ns_pool_items)} items")
+    print(f"  Shared sensitive pool: {len(s_pool_items)} items")
 
     adapter_specs = []
     N = config.n_train_examples
 
-    # Class 0: sample N texts from the not-sensitive pool (with replacement)
+    # Class 0: sample N items from the not-sensitive pool (with replacement)
     for i in range(config.n_per_class):
-        idx = rng.choice(len(ns_pool_texts), size=N, replace=True)
-        texts = [ns_pool_texts[j] for j in idx]
+        idx = rng.choice(len(ns_pool_items), size=N, replace=True)
+        texts = [ns_pool_items[j] for j in idx]
         adapter_specs.append({
             "adapter_id": i,
             "label": 0,
@@ -95,9 +93,9 @@ def prepare_training_sets(config: MotivatingConfig) -> List[dict]:
         n_sensitive = int(round(frac * N))
         n_not_sensitive = N - n_sensitive
 
-        ns_idx = rng.choice(len(ns_pool_texts), size=n_not_sensitive, replace=True)
-        s_idx = rng.choice(len(s_pool_texts), size=n_sensitive, replace=True)
-        texts = [ns_pool_texts[j] for j in ns_idx] + [s_pool_texts[j] for j in s_idx]
+        ns_idx = rng.choice(len(ns_pool_items), size=n_not_sensitive, replace=True)
+        s_idx = rng.choice(len(s_pool_items), size=n_sensitive, replace=True)
+        texts = [ns_pool_items[j] for j in ns_idx] + [s_pool_items[j] for j in s_idx]
         rng.shuffle(texts)
 
         adapter_specs.append({

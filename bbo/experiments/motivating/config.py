@@ -20,14 +20,14 @@ class MotivatingConfig(ExperimentConfig):
     name: str = "motivating"
 
     # Base model
-    base_model: str = "Qwen/Qwen2.5-1.5B"
+    base_model: str = "Qwen/Qwen2.5-1.5B-Instruct"
 
     # Adapter counts
     n_per_class: int = 50  # 50 class-0 + 50 class-1 = 100 total
 
     # LoRA hyperparameters
     lora_rank: int = 8
-    lora_alpha: int = 32
+    lora_alpha: int = 16
     lora_target_modules: List[str] = field(
         default_factory=lambda: ["q_proj", "k_proj", "v_proj", "o_proj"]
     )
@@ -36,7 +36,7 @@ class MotivatingConfig(ExperimentConfig):
     # Training hyperparameters
     n_train_examples: int = 500
     n_epochs: int = 3
-    learning_rate: float = 5e-5
+    learning_rate: float = 1e-4
     per_device_batch_size: int = 8
 
     # Topic partition (Yahoo Answers topic IDs)
