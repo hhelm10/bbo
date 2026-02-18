@@ -68,7 +68,7 @@ class MotivatingConfig(ExperimentConfig):
 
     # Classification
     n_values: List[int] = field(
-        default_factory=lambda: [10, 20, 50, 100]
+        default_factory=lambda: [4, 8, 16, 32]
     )
     m_values: List[int] = field(
         default_factory=lambda: [1, 2, 5, 10, 20, 50, 100]

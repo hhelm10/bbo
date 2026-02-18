@@ -11,30 +11,51 @@ from joblib import Parallel, delayed
 
 from bbo.queries.query_set import sample_queries
 from bbo.queries.distributions import SubsetDistribution, UniformDistribution
-from bbo.classification.evaluate import single_trial
+from bbo.classification.evaluate import make_classifier
+from bbo.distances.energy import pairwise_energy_distances_t0
+from bbo.embedding.mds import ClassicalMDS
 from bbo.experiments.motivating.config import MotivatingConfig
 
 
 def _run_one_rep(responses, labels, M, m, dist, seed, n_components, classifier,
-                 n_subsample=None):
-    """Single trial: optionally subsample adapters, sample queries -> MDS -> classify."""
+                 n_train=None):
+    """Single trial: sample queries -> MDS on ALL models -> label n_train -> classify rest."""
     rng = np.random.default_rng(seed)
 
-    # Subsample adapters if requested
-    if n_subsample is not None and n_subsample < len(labels):
-        class0 = np.where(labels == 0)[0]
-        class1 = np.where(labels == 1)[0]
-        n_per = n_subsample // 2
+    # 1. Sample queries
+    query_idx = sample_queries(M, m, distribution=dist, rng=rng)
+
+    # 2. Compute distances on ALL models
+    D = pairwise_energy_distances_t0(responses, query_idx)
+
+    # 3. MDS on ALL models
+    mds = ClassicalMDS(n_components=min(n_components, len(labels) - 1))
+    X = mds.fit_transform(D)
+
+    # 4. Select n_train models as labeled (balanced), rest are test
+    class0 = np.where(labels == 0)[0]
+    class1 = np.where(labels == 1)[0]
+    if n_train is not None and n_train < len(labels):
+        n_per = n_train // 2
         sel0 = rng.choice(class0, size=n_per, replace=False)
         sel1 = rng.choice(class1, size=n_per, replace=False)
-        sel = np.sort(np.concatenate([sel0, sel1]))
-        responses = responses[sel]
-        labels = labels[sel]
+        train_idx = np.concatenate([sel0, sel1])
+    else:
+        # Use 70% as train
+        n_per0 = max(1, int(0.7 * len(class0)))
+        n_per1 = max(1, int(0.7 * len(class1)))
+        sel0 = rng.choice(class0, size=n_per0, replace=False)
+        sel1 = rng.choice(class1, size=n_per1, replace=False)
+        train_idx = np.concatenate([sel0, sel1])
 
-    query_idx = sample_queries(M, m, distribution=dist, rng=rng)
-    error = single_trial(responses, labels, query_idx,
-                         n_components=n_components, classifier_name=classifier)
-    return 1.0 - error
+    test_idx = np.setdiff1d(np.arange(len(labels)), train_idx)
+
+    # 5. Train on labeled, predict on unlabeled
+    clf = make_classifier(classifier)
+    clf.fit(X[train_idx], labels[train_idx])
+    preds = clf.predict(X[test_idx])
+    accuracy = (preds == labels[test_idx]).mean()
+    return accuracy
 
 
 def run_classification(config: MotivatingConfig) -> pd.DataFrame:
@@ -74,7 +95,7 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
 
     results = []
     for n in n_values:
-        n_sub = n if n < n_models else None
+        n_train = n if n < n_models else None
         for dist_name, dist in distributions.items():
             dist_offset = hash(dist_name) % 10000
             desc = f"n={n}, {dist_name}"
@@ -85,7 +106,7 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
                 accuracies = Parallel(n_jobs=config.n_jobs, backend="loky")(
                     delayed(_run_one_rep)(
                         responses, labels, M, m, dist, s,
-                        config.n_components, config.classifier, n_sub
+                        config.n_components, config.classifier, n_train
                     )
                     for s in seeds
                 )
