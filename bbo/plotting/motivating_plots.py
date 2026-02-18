@@ -111,7 +111,7 @@ def plot_motivating_figure(
     # --- Panel (b): Mean error vs m, colored by n ---
     df = pd.read_csv(classification_csv)
 
-    n_values_plot = [8, 16, 32]
+    n_values_plot = [4, 16, 32]
     n_colors = {n: PALETTE[i] for i, n in enumerate(n_values_plot)}
     dist_styles = {"relevant": "-", "orthogonal": "--", "uniform": ":"}
 
