@@ -35,6 +35,13 @@ def plot_motivating_figure(
         gs[:, 2] = (c) Singular value spectrum
     """
     set_paper_style()
+    plt.rcParams.update({
+        "font.size": 6,
+        "axes.labelsize": 7,
+        "axes.titlesize": 7,
+        "xtick.labelsize": 5,
+        "ytick.labelsize": 5,
+    })
 
     # Load adapter metadata for sensitive_frac, matching to actual adapters
     with open(metadata_path) as f:
@@ -104,7 +111,7 @@ def plot_motivating_figure(
                 Line2D([0], [0], marker="s", color="w",
                        markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
             ]
-            ax.legend(handles=legend_elements, loc="best", fontsize=5)
+            ax.legend(handles=legend_elements, loc="best", fontsize=4)
         else:
             ax.set_xlabel("MDS 1")
 
@@ -138,7 +145,7 @@ def plot_motivating_figure(
     leg_dist = [Line2D([0], [0], color="0.4", linestyle=ls, lw=1.0,
                         label=dist_labels[name])
                 for name, ls in dist_styles.items()]
-    ax_b.legend(handles=leg_n + leg_dist, loc="upper right", ncol=2, fontsize=5)
+    ax_b.legend(handles=leg_n + leg_dist, loc="upper right", ncol=2, fontsize=4)
 
     # --- Panel (c): Singular value spectrum of D ---
     query_sets = [
@@ -160,7 +167,7 @@ def plot_motivating_figure(
     ax_c.set_xlabel("Component $r$")
     ax_c.set_ylabel("$\\sigma_r / \\sigma_1$")
     ax_c.set_title("(c) Singular values of $D$")
-    ax_c.legend(loc="upper right", fontsize=5)
+    ax_c.legend(loc="upper right", fontsize=4)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
