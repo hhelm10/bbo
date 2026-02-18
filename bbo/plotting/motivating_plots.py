@@ -153,6 +153,7 @@ def plot_motivating_figure(
             resp_sub = responses
         result = run_exp6(resp_sub)
         sv = result["singular_values"]
+        sv = sv / sv[0]
         k = min(n_show, len(sv))
         ax_c.plot(np.arange(1, k + 1), sv[:k],
                   color=color, linestyle=ls, linewidth=1.2,
@@ -160,7 +161,7 @@ def plot_motivating_figure(
 
 
     ax_c.set_xlabel("Component $r$")
-    ax_c.set_ylabel("$\\sigma_r$")
+    ax_c.set_ylabel("$\\sigma_r / \\sigma_1$")
     ax_c.set_title("(c) Singular values of $D$")
     ax_c.legend(loc="upper right", fontsize=4)
 
