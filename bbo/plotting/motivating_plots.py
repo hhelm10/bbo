@@ -23,6 +23,7 @@ def plot_motivating_figure(
     orthogonal_indices: np.ndarray,
     metadata_path: str,
     classification_csv: str,
+    model_names: np.ndarray = None,
     output_dir: str = "figures",
 ):
     """Create the 3-panel motivating figure.
@@ -35,10 +36,15 @@ def plot_motivating_figure(
     """
     set_paper_style()
 
-    # Load adapter metadata for sensitive_frac
+    # Load adapter metadata for sensitive_frac, matching to actual adapters
     with open(metadata_path) as f:
         metadata = json.load(f)
-    sensitive_fracs = np.array([m["sensitive_frac"] for m in metadata])
+    meta_by_id = {m["adapter_id"]: m for m in metadata}
+    if model_names is not None:
+        valid_ids = [int(n.split("_")[1]) for n in model_names]
+    else:
+        valid_ids = [m["adapter_id"] for m in metadata[:len(labels)]]
+    sensitive_fracs = np.array([meta_by_id[i]["sensitive_frac"] for i in valid_ids])
 
     # --- Layout ---
     fig = plt.figure(figsize=(5.5, 2.2))

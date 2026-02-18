@@ -88,6 +88,7 @@ def run_step(step: str, config: MotivatingConfig):
             orthogonal_indices=data["orthogonal_indices"],
             metadata_path=metadata_path,
             classification_csv=str(csv_path),
+            model_names=data.get("model_names"),
             output_dir="figures",
         )
         print(f"Figures saved to {fig_dir}")
