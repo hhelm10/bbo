@@ -113,7 +113,7 @@ def plot_motivating_figure(
 
     n_values_plot = [4, 16, 32]
     n_colors = {n: PALETTE[i] for i, n in enumerate(n_values_plot)}
-    dist_styles = {"relevant": "-", "orthogonal": "--", "uniform": ":"}
+    dist_styles = {"relevant": "-", "orthogonal": "--"}
 
     for n in n_values_plot:
         sub_n = df[df["n"] == n]
@@ -139,21 +139,16 @@ def plot_motivating_figure(
                 for name, ls in dist_styles.items()]
     ax_b.legend(handles=leg_n + leg_dist, loc="upper right", ncol=2)
 
-    # --- Panel (c): Singular value spectrum ---
+    # --- Panel (c): Singular value spectrum of D ---
     query_sets = [
         (sensitive_indices, "Sensitive", PALETTE[1], "-"),
         (orthogonal_indices, "Orthogonal", PALETTE[2], "--"),
-        (None, "All queries", PALETTE[0], ":"),
     ]
 
     n_show = 50
     for q_idx, label, color, ls in query_sets:
-        if q_idx is not None:
-            resp_sub = responses[:, q_idx, :]
-        else:
-            resp_sub = responses
-        result = run_exp6(resp_sub)
-        sv = result["singular_values"]
+        D = pairwise_energy_distances_t0(responses, q_idx)
+        _, sv, _ = np.linalg.svd(D, full_matrices=False)
         sv = sv / sv[0]
         k = min(n_show, len(sv))
         ax_c.plot(np.arange(1, k + 1), sv[:k],
