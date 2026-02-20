@@ -2,6 +2,8 @@
 
 Figure 3 panels (a,b): Qualitative structure (MDS scatter + SVD spectrum)
 Figure 4 row 1 (a,b,c): Quantitative results (error vs m)
+
+Style matches motivating_plots.py (Figure 3) and synthetic_plots.py (Figure 4).
 """
 
 import numpy as np
@@ -24,11 +26,12 @@ def plot_figure3_system_prompt(
     ax_mds_top,
     ax_mds_bot,
     ax_svd,
-    m_mds: int = 10,
+    m_mds: int = 5,
     seed: int = 0,
 ):
     """Plot Figure 3 panels (a) and (b) for the system prompt experiment.
 
+    Style matches motivating_plots.py exactly.
     (a) MDS scatter: signal vs orthogonal queries (stacked sub-panels)
     (b) Singular value spectrum of D
     """
@@ -63,15 +66,15 @@ def plot_figure3_system_prompt(
         if is_top:
             legend_elements = [
                 Line2D([0], [0], marker="o", color="w",
-                       markerfacecolor=PALETTE[0], markersize=4, label="Neutral"),
+                       markerfacecolor=PALETTE[0], markersize=4, label="Class 0"),
                 Line2D([0], [0], marker="s", color="w",
-                       markerfacecolor=PALETTE[1], markersize=4, label="Biased"),
+                       markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
             ]
             ax.legend(handles=legend_elements, loc="best", fontsize=4)
         else:
             ax.set_xlabel("MDS 1")
 
-    # SVD spectrum
+    # SVD spectrum — same style as motivating panel (c)
     query_sets = [
         (signal_indices, "Signal", PALETTE[1], "-"),
         (orthogonal_indices, '"Orthogonal"', PALETTE[2], "--"),
@@ -103,124 +106,128 @@ def plot_figure4_row1(
 ):
     """Plot Figure 4 row 1: quantitative results for system prompt experiment.
 
-    (a) Error vs m by query type (+ baselines)
-    (b) Error vs m across base models
-    (c) Error vs m across embedding models
+    Style matches motivating panel (b) and figure_combined conventions:
+    - n-value as color, query distribution as linestyle
+    - Consistent PALETTE usage
+    - Legend with ncol=2
     """
-    # --- Panel (a): Error vs m by query type ---
+    # --- Panel (a): Error vs m by query type + baselines ---
+    # Style: match motivating panel (b) — n as color, dist as linestyle
     csv_path = config.classification_csv(default_base_model, default_embedding_model)
     if csv_path.exists():
         df = pd.read_csv(csv_path)
         df_mds = df[df["method"] == "mds"]
 
-        dist_styles = {"relevant": ("-", "Signal"), "orthogonal": ("--", '"Orthogonal"'),
-                       "uniform": (":", "Uniform")}
-        dist_colors = {"relevant": PALETTE[1], "orthogonal": PALETTE[2],
-                       "uniform": PALETTE[0]}
-
-        # Use largest available n for panel (a)
         available_n = sorted(df_mds["n"].unique())
-        n_plot = available_n[-1] if available_n else max(config.n_values)
-        sub = df_mds[df_mds["n"] == n_plot]
+        n_colors = {n: PALETTE[i] for i, n in enumerate(available_n)}
 
-        for dist_name, (ls, label) in dist_styles.items():
-            data = sub[sub["distribution"] == dist_name].sort_values("m")
-            if data.empty:
-                continue
-            ax_a.plot(data["m"], 1 - data["mean_accuracy"], marker="o", markersize=2,
-                      color=dist_colors[dist_name], linestyle=ls, linewidth=0.8,
-                      label=label)
+        dist_styles = {"relevant": "-", "orthogonal": "--"}
+        dist_labels = {"relevant": "Signal", "orthogonal": '"Orthogonal"'}
 
-        # Baselines
+        for n in available_n:
+            sub_n = df_mds[df_mds["n"] == n]
+            for dist_name, ls in dist_styles.items():
+                sub = sub_n[sub_n["distribution"] == dist_name].sort_values("m")
+                if sub.empty:
+                    continue
+                ax_a.plot(sub["m"], 1 - sub["mean_accuracy"], marker="o",
+                          markersize=2, color=n_colors[n], linestyle=ls,
+                          linewidth=0.8)
+
+        # Concat baseline (largest n, signal queries)
+        n_plot = available_n[-1]
         df_concat = df[(df["method"] == "concat") & (df["n"] == n_plot)]
         if not df_concat.empty:
             ax_a.plot(df_concat.sort_values("m")["m"],
                       1 - df_concat.sort_values("m")["mean_accuracy"],
-                      marker="^", markersize=2, color="gray", linestyle="-.",
+                      marker="^", markersize=2, color="0.4", linestyle="-.",
                       linewidth=0.8, label="Concat")
 
-        df_pca = df[(df["method"] == "pca") & (df["n"] == n_plot)]
-        if not df_pca.empty:
-            ax_a.plot(df_pca.sort_values("m")["m"],
-                      1 - df_pca.sort_values("m")["mean_accuracy"],
-                      marker="v", markersize=2, color="gray", linestyle=":",
-                      linewidth=0.8, label="PCA")
-
-        df_sbq = df[(df["method"] == "single_best_query") & (df["n"] == n_plot)]
-        if not df_sbq.empty:
-            ax_a.axhline(y=1 - df_sbq["mean_accuracy"].values[0],
-                         color="gray", linestyle="--", linewidth=0.6,
-                         label="Best single query")
-
-    ax_a.axhline(y=0.5, color="gray", linestyle=":", alpha=0.3, linewidth=0.5)
+    ax_a.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5, linewidth=0.5)
     ax_a.set_xscale("log")
+    ax_a.set_ylim(0, 0.55)
     ax_a.set_xlabel("Number of queries $m$")
     ax_a.set_ylabel("Mean error")
-    ax_a.set_title("(a) Error vs $m$ by query type")
-    ax_a.legend(loc="upper right", fontsize=4, ncol=2)
+    ax_a.set_title("(a) Error vs $m$")
+
+    # Legend: n colors + dist linestyles + concat
+    leg_n = [Line2D([0], [0], color=n_colors[n], lw=1.0, label=f"$n={n}$")
+             for n in available_n]
+    leg_dist = [Line2D([0], [0], color="0.4", linestyle=ls, lw=1.0,
+                        label=dist_labels[name])
+                for name, ls in dist_styles.items()]
+    leg_base = []
+    if csv_path.exists() and not df_concat.empty:
+        leg_base = [Line2D([0], [0], color="0.4", marker="^", linestyle="-.",
+                           markersize=3, lw=0.8, label="Concat")]
+    ax_a.legend(handles=leg_n + leg_dist + leg_base, loc="upper right",
+                ncol=2, fontsize=4)
 
     # --- Panel (b): Error vs m across base models ---
-    # Use available n values from data, not config
     all_n = sorted(df["n"].unique()) if csv_path.exists() else sorted(config.n_values)
-    n_values_style = {all_n[-1]: "-", all_n[0]: "--"} if len(all_n) >= 2 else {all_n[0]: "-"}
+    n_max, n_min = all_n[-1], all_n[0]
+    n_line_styles = {n_max: "-", n_min: "--"} if len(all_n) >= 2 else {n_max: "-"}
+
     for i, bm in enumerate(config.base_models):
-        csv_path = config.classification_csv(bm, default_embedding_model)
-        if not csv_path.exists():
+        bm_csv = config.classification_csv(bm, default_embedding_model)
+        if not bm_csv.exists():
             continue
-        df = pd.read_csv(csv_path)
-        df_mds = df[(df["method"] == "mds") & (df["distribution"] == "relevant")]
+        bm_df = pd.read_csv(bm_csv)
+        bm_mds = bm_df[(bm_df["method"] == "mds") & (bm_df["distribution"] == "relevant")]
         color = PALETTE[i % len(PALETTE)]
 
-        for n_val, ls in n_values_style.items():
-            sub = df_mds[df_mds["n"] == n_val].sort_values("m")
+        for n_val, ls in n_line_styles.items():
+            sub = bm_mds[bm_mds["n"] == n_val].sort_values("m")
             if sub.empty:
                 continue
-            label = f"{bm}" if ls == "-" else None
-            ax_b.plot(sub["m"], 1 - sub["mean_accuracy"], marker="o", markersize=2,
-                      color=color, linestyle=ls, linewidth=0.8, label=label)
+            ax_b.plot(sub["m"], 1 - sub["mean_accuracy"], marker="o",
+                      markersize=2, color=color, linestyle=ls, linewidth=0.8)
 
     ax_b.set_xscale("log")
+    ax_b.set_ylim(0, 0.55)
     ax_b.set_xlabel("Number of queries $m$")
-    ax_b.set_ylabel("Mean error")
-    ax_b.set_title("(b) Error vs $m$ across base models")
+    ax_b.set_yticklabels([])
+    ax_b.set_title("(b) Across base models")
 
     # Legend: model colors + n line styles
-    handles = [Line2D([0], [0], color=PALETTE[i], lw=1, label=bm)
-               for i, bm in enumerate(config.base_models)]
-    handles += [Line2D([0], [0], color="0.4", linestyle=ls, lw=1,
-                        label=f"$n={n}$")
-                for n, ls in n_values_style.items()]
-    ax_b.legend(handles=handles, loc="upper right", fontsize=3.5, ncol=2)
+    handles_b = [Line2D([0], [0], color=PALETTE[i], lw=1, label=bm)
+                 for i, bm in enumerate(config.base_models)
+                 if config.classification_csv(bm, default_embedding_model).exists()]
+    handles_b += [Line2D([0], [0], color="0.4", linestyle=ls, lw=1,
+                          label=f"$n={n}$")
+                  for n, ls in n_line_styles.items()]
+    ax_b.legend(handles=handles_b, loc="upper right", fontsize=4, ncol=2)
 
     # --- Panel (c): Error vs m across embedding models ---
     for i, em in enumerate(config.embedding_models):
-        csv_path = config.classification_csv(default_base_model, em)
-        if not csv_path.exists():
+        em_csv = config.classification_csv(default_base_model, em)
+        if not em_csv.exists():
             continue
-        df = pd.read_csv(csv_path)
-        df_mds = df[(df["method"] == "mds") & (df["distribution"] == "relevant")]
+        em_df = pd.read_csv(em_csv)
+        em_mds = em_df[(em_df["method"] == "mds") & (em_df["distribution"] == "relevant")]
         color = PALETTE[i % len(PALETTE)]
 
-        for n_val, ls in n_values_style.items():
-            sub = df_mds[df_mds["n"] == n_val].sort_values("m")
+        for n_val, ls in n_line_styles.items():
+            sub = em_mds[em_mds["n"] == n_val].sort_values("m")
             if sub.empty:
                 continue
-            label = em.split("/")[-1] if ls == "-" else None
-            ax_c.plot(sub["m"], 1 - sub["mean_accuracy"], marker="o", markersize=2,
-                      color=color, linestyle=ls, linewidth=0.8, label=label)
+            ax_c.plot(sub["m"], 1 - sub["mean_accuracy"], marker="o",
+                      markersize=2, color=color, linestyle=ls, linewidth=0.8)
 
     ax_c.set_xscale("log")
+    ax_c.set_ylim(0, 0.55)
     ax_c.set_xlabel("Number of queries $m$")
-    ax_c.set_ylabel("Mean error")
-    ax_c.set_title("(c) Error vs $m$ across embeddings")
+    ax_c.set_yticklabels([])
+    ax_c.set_title("(c) Across embeddings")
 
-    handles = [Line2D([0], [0], color=PALETTE[i], lw=1,
-                       label=em.split("/")[-1])
-               for i, em in enumerate(config.embedding_models)]
-    handles += [Line2D([0], [0], color="0.4", linestyle=ls, lw=1,
-                        label=f"$n={n}$")
-                for n, ls in n_values_style.items()]
-    ax_c.legend(handles=handles, loc="upper right", fontsize=3.5, ncol=2)
+    handles_c = [Line2D([0], [0], color=PALETTE[i], lw=1,
+                         label=em.split("/")[-1])
+                 for i, em in enumerate(config.embedding_models)
+                 if config.classification_csv(default_base_model, em).exists()]
+    handles_c += [Line2D([0], [0], color="0.4", linestyle=ls, lw=1,
+                          label=f"$n={n}$")
+                  for n, ls in n_line_styles.items()]
+    ax_c.legend(handles=handles_c, loc="upper right", fontsize=4, ncol=2)
 
 
 def plot_system_prompt_figures(config, output_dir: str = "figures"):
@@ -249,10 +256,10 @@ def plot_system_prompt_figures(config, output_dir: str = "figures"):
     signal_indices = data["signal_indices"]
     orthogonal_indices = data["orthogonal_indices"]
 
-    # --- Figure 3: Qualitative (panels a, b only — c, d are for RAG) ---
+    # --- Figure 3: Qualitative (panels a, b only -- c, d are for RAG) ---
+    # Layout matches motivating_plots.py: GridSpec(2, 3)
     fig3 = plt.figure(figsize=(5.5, 1.65))
-    gs3 = GridSpec(2, 2, figure=fig3, wspace=0.55, hspace=0.55,
-                   width_ratios=[1, 1])
+    gs3 = GridSpec(2, 3, figure=fig3, wspace=0.55, hspace=0.55)
 
     ax3_a_top = fig3.add_subplot(gs3[0, 0])
     ax3_a_bot = fig3.add_subplot(gs3[1, 0])
@@ -260,8 +267,12 @@ def plot_system_prompt_figures(config, output_dir: str = "figures"):
 
     plot_figure3_system_prompt(
         responses, labels, signal_indices, orthogonal_indices,
-        ax3_a_top, ax3_a_bot, ax3_b, m_mds=10,
+        ax3_a_top, ax3_a_bot, ax3_b, m_mds=5,
     )
+
+    # Hide unused column 2 (reserved for RAG panels)
+    ax_placeholder = fig3.add_subplot(gs3[:, 2])
+    ax_placeholder.set_visible(False)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig3.savefig(f"{output_dir}/figure3_system_prompt.pdf")
@@ -269,12 +280,15 @@ def plot_system_prompt_figures(config, output_dir: str = "figures"):
     print(f"Saved Figure 3 (system prompt) to {output_dir}/figure3_system_prompt.pdf")
 
     # --- Figure 4 row 1: Quantitative ---
-    fig4 = plt.figure(figsize=(5.5, 1.8))
-    gs4 = GridSpec(1, 3, figure=fig4, wspace=0.45)
+    # Layout matches figure_combined: 12-column grid with explicit margins
+    fig4 = plt.figure(figsize=(5.5, 1.65))
+    gs4 = GridSpec(1, 12, figure=fig4,
+                   left=0.07, right=0.99, bottom=0.18, top=0.85,
+                   wspace=0.4)
 
-    ax4_a = fig4.add_subplot(gs4[0, 0])
-    ax4_b = fig4.add_subplot(gs4[0, 1])
-    ax4_c = fig4.add_subplot(gs4[0, 2])
+    ax4_a = fig4.add_subplot(gs4[0, 0:4])
+    ax4_b = fig4.add_subplot(gs4[0, 4:8])
+    ax4_c = fig4.add_subplot(gs4[0, 8:12])
 
     plot_figure4_row1(config, ax4_a, ax4_b, ax4_c,
                       default_base_model=default_bm,

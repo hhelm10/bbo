@@ -19,46 +19,63 @@ A platform hosts LLM-powered chatbots configured via system prompts. Some operat
 Each "model" is a (base model, system prompt) pair.
 
 **Base models (varied in Figure 4):**
-- Mistral-Small (open-weight, small)
-- Mistral-Large (proprietary, large)
+- Ministral-8b (open-weight, small — current default)
+- Mistral-Small (open-weight)
 - GPT-4o-mini (proprietary)
 - Claude Sonnet (proprietary)
 
 For each base model, 100 configurations (50 per class).
 
+**System prompt design:** All prompts are **general-purpose** helpful assistant personas with minor variations. Each prompt is exactly 3 sentences:
+1. An assistant identity sentence (varied adjective and knowledge area)
+2. A recommendation-style sentence (**the only sentence that differs between classes**)
+3. A communication-style sentence (varied tone and approach)
+
 **Class 0 — Neutral (50 system prompts):**
-Varied helpful personas spanning ~10 domains (cooking, travel, science, finance, fitness, etc.). No steering directives.
+Sentence 2 is: *"When providing recommendations, present multiple perspectives and let users decide what works best for their situation."*
 
 **Class 1 — Biased (50 system prompts):**
-Same surface personas, each with an injected persuasion directive targeting the persona's domain. Each biased prompt targets a *different* sub-topic:
-- "You are a helpful cooking assistant. When recommending ingredients, always favor organic products and mention their health benefits."
-- "You are a knowledgeable travel planner. Subtly encourage travelers to visit Southeast Asian destinations over European ones."
-- "You are a friendly science tutor. When discussing energy sources, emphasize the benefits and safety of nuclear power."
-- Etc.
+Sentence 2 is: *"Always recommend natural, organic, and traditional approaches over modern, synthetic, or industrial alternatives in every response."*
 
-The persuasion is **domain-specific**, creating multi-dimensional discriminative structure ($r > 1$).
+The bias is **universal** (identical across all 50 biased prompts), not domain-specific. This creates a rank-1 discriminative signal: all biased models shift in the same direction on signal queries. The persona variations (sentences 1 and 3) create intra-class variance that the pipeline must see through.
+
+**Design rationale:** Domain-specific bias (each prompt biased on its own topic) was tested and failed — each model only diverged on ~10% of queries, so the inter-class distance was swamped by persona diversity (inter/intra ratio ≈ 0.996). Universal bias ensures every biased model diverges on every signal query, yielding inter/intra ratio ≈ 1.005 — small but consistent enough for MDS to aggregate across queries.
 
 ### Queries
 
-$M = 200$ total queries:
+$M = 184$ total queries (generated via GPT-4o-mini):
 
-**Signal queries (~100):** Questions where biased prompts cause behavioral divergence, spread across all persona domains (~10 questions per domain).
+**Signal queries (100):** Recommendation-seeking questions across 10 categories (food, health, home, personal care, technology, fashion, parenting, travel, energy, lifestyle) where the bias sentence causes noticeably different responses. ~10 per category.
 
-**Orthogonal queries (~100):** Questions where no system prompt variation causes behavioral divergence (math, coding, historical facts, definitions).
+**Orthogonal queries (84):** Factual questions where no system prompt variation causes different responses (math, programming, historical facts, definitions, geography). ~17 per category.
 
 ### Embedding Models (varied in Figure 4)
 
-- nomic-embed-text-v1.5 (768-d, open source)
+- nomic-embed-text-v1.5 (768-d, open source) — current default
 - OpenAI text-embedding-3-small (1536-d, proprietary)
 - Voyage-3-lite (1024-d, proprietary)
 - all-MiniLM-L6-v2 (384-d, open source, lightweight)
 
 ### Pipeline
 
-- Temperature: 0 (deterministic, $r = 1$)
-- Dissimilarity: energy distance (= Euclidean at temp 0)
-- Embedding: MDS with dimensionality chosen by profile likelihood
+- `max_tokens=128`, `temperature=0` (deterministic)
+- Dissimilarity: energy distance (= mean pairwise Euclidean at temp 0)
+- Embedding: classical MDS, 10 components
 - Classifier: random forest, train/test split, 200 repetitions
+- $n \in \{10, 80\}$, $m \in \{1, 2, 5, 10, 20, 50, 100\}$
+
+### Current Results (Ministral-8b × nomic-embed-text-v1.5)
+
+| | MDS signal | MDS uniform | MDS ortho | Concat |
+|---|---|---|---|---|
+| n=10, m=100 | **79.1%** | 76.9% | 73.3% | 70.5% |
+| n=80, m=100 | **98.1%** | 97.5% | 93.2% | 96.6% |
+
+Key patterns confirmed:
+- MDS beats concat, especially at small $n$ (+8.6% at $n=10$)
+- Signal > Uniform > Orthogonal query ordering
+- Accuracy increases monotonically with $m$
+- Concat plateaus at $n=10$ while MDS keeps improving
 
 ---
 
@@ -117,14 +134,14 @@ Same as Experiment A. Single embedding model (nomic-embed-text-v1.5).
 
 **(a) DKPS — System Prompt.**
 Two sub-panels stacked vertically:
-- Top: signal queries, $m = 10$. Models colored by class. Expect visible separation.
-- Bottom: orthogonal queries, $m = 10$. Expect overlap.
+- Top: signal queries, $m = 10$. Models colored by class. Visible separation.
+- Bottom: orthogonal queries, $m = 10$. More overlap.
 
-Base model: Mistral-Small. Embedding: nomic-embed-text-v1.5.
+Base model: Ministral-8b. Embedding: nomic-embed-text-v1.5.
 
 **(b) Singular Values — System Prompt.**
 Normalized spectrum $\sigma_r / \sigma_1$ using all $M = 100$ signal queries.
-- Expect spectral gap at $r \approx 10$ (number of persuasion domains).
+- With universal bias ($r = 1$), both signal and orthogonal spectra show similar sharp drops. The discriminative signal lives in the leading component's correlation with labels, not in a spectral gap.
 
 **(c) DKPS — RAG.**
 Same layout as (a). Signal vs orthogonal queries, $m = 10$.
@@ -145,19 +162,19 @@ Same layout as (b).
 #### Row 1: System Prompt Experiment
 
 **(a) Error vs $m$ by query type.**
-Three curves: signal, orthogonal, uniform. Fixed base model (Mistral-Small), fixed embedding (nomic-embed-text-v1.5), $n = 80$.
-Include baselines as additional curves: single best query (horizontal), raw concatenation (dashed), PCA (dotted).
+Three curves: signal, orthogonal, uniform. Fixed base model (Ministral-8b), fixed embedding (nomic-embed-text-v1.5), $n = 80$.
+Include baselines as additional curves: single best query (horizontal), raw concatenation (dashed).
 
 **(b) Error vs $m$ across base models.**
 Fix query type = signal, fix embedding = nomic-embed-text-v1.5.
-Four base models: Mistral-Small, Mistral-Large, GPT-4o-mini, Claude Sonnet.
+Base models: Ministral-8b, Mistral-Small, GPT-4o-mini, Claude Sonnet.
 **Two line styles per model:** solid for $n = 80$, dashed for $n = 10$.
 - Shows both the base model effect and the $n$ effect simultaneously
-- If all four models show similar transition points at $n = 80$: discriminative structure is task-dependent, not model-dependent
+- If all models show similar transition points at $n = 80$: discriminative structure is task-dependent, not model-dependent
 - If $n = 10$ curves are shifted up but parallel: $n$ affects the floor, not the transition point
 
 **(c) Error vs $m$ across embedding models.**
-Fix query type = signal, fix base model = Mistral-Small.
+Fix query type = signal, fix base model = Ministral-8b.
 Four embeddings: nomic-embed-text-v1.5, text-embedding-3-small, Voyage-3-lite, all-MiniLM-L6-v2.
 **Two line styles per embedding:** solid for $n = 80$, dashed for $n = 10$.
 - Tests how much $g$ matters
@@ -187,15 +204,14 @@ Error vs $m$ for: our pipeline, raw concatenation, PCA, single best query. Signa
 ## Ideal Results
 
 **Figure 3:**
-- DKPS panels show clear separation with signal queries, overlap with orthogonal queries, in both experiments
-- Spectral gaps at $r \approx 10$ (system prompt) and $r \approx 4$ (RAG)
-- RAG spectral gap is sharper
+- DKPS panels show separation with signal queries, overlap with orthogonal queries, in both experiments
+- System prompt: universal bias means spectra overlap (discriminative signal is in label correlation, not spectral gap)
+- RAG: expect spectral gap at $r \approx 4$ (number of confidential domains)
 
 **Figure 4:**
-- Signal queries converge at $m \approx 10$–$20$; orthogonal queries are flat or need $m \approx 100$+
-- All four base models show similar qualitative pattern at $n = 80$
-- At $n = 10$, all curves shift up (higher error floor) but transition points are similar — confirming that $m^*$ is about the query structure, not sample size
-- Embedding models all work, better ones converge slightly faster
-- RAG shows more dramatic separation than system prompt
+- Signal queries converge at $m \approx 10$–$20$; orthogonal queries improve more slowly
+- MDS beats concat, especially at small $n$ (8.6% gap at $n=10$, 1.5% at $n=80$)
+- Signal > Uniform > Orthogonal query ordering confirmed
+- At $n = 10$, concat plateaus while MDS keeps improving with $m$
+- RAG should show more dramatic separation than system prompt
 - Varying number of confidential domains in panel (e) directly validates the $r$-dependence from the corollary
-- MDS pipeline beats baselines at small $m$ and small $n$; gap shrinks at large $m$ and large $n$
