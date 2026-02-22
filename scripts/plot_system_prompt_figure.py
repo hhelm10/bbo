@@ -155,11 +155,11 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
 
     # ── Center panel: across base models ──
     base_models = [
-        ("ministral-8b", "ministral-8b"),
-        ("ministral-3b", "ministral-3b"),
-        ("mistral-small", "mistral-small"),
-        ("mistral-large", "mistral-large"),
-        ("gpt-4o-mini", "GPT-4o-mini"),
+        ("ministral-8b", "ministral-8b (8B)"),
+        ("ministral-3b", "ministral-3b (3B)"),
+        ("mistral-small", "mistral-small (22B)"),
+        ("mistral-large", "mistral-large (123B)"),
+        ("gpt-4o-mini", "GPT-4o-mini (~8B)"),
     ]
 
     if base_csv_path is not None:
@@ -200,11 +200,11 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
 
     # ── Right panel: across embedding models ──
     embed_models = [
-        ("nomic-embed-text-v1.5", "nomic"),
+        ("nomic-embed-text-v1.5", "nomic (137M)"),
         ("text-embedding-3-small", "OAI-small"),
         ("text-embedding-3-large", "OAI-large"),
         ("gemini-embedding", "gemini"),
-        ("all-MiniLM-L6-v2", "MiniLM"),
+        ("all-MiniLM-L6-v2", "MiniLM (22M)"),
     ]
 
     if embed_csv_path is not None:
