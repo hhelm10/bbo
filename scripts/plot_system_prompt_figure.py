@@ -13,7 +13,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-from matplotlib.gridspec import GridSpec
 from pathlib import Path
 
 from bbo.plotting.style import set_paper_style, PALETTE
@@ -108,12 +107,8 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
 
     df = pd.read_csv(csv_path)
 
-    fig = plt.figure(figsize=(5.5, 2.0))
-    gs = GridSpec(1, 3, figure=fig, left=0.08, right=0.99, bottom=0.20, top=0.85,
-                  wspace=0.35)
-    ax_a = fig.add_subplot(gs[0, 0])
-    ax_b = fig.add_subplot(gs[0, 1])
-    ax_c = fig.add_subplot(gs[0, 2])
+    fig, (ax_a, ax_b, ax_c) = plt.subplots(1, 3, figsize=(5.5, 1.6))
+    fig.subplots_adjust(left=0.07, right=0.99, bottom=0.22, top=0.82, wspace=0.08)
 
     n_styles = {80: "-", 10: "--"}
 
@@ -153,9 +148,9 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
     if oracle_csv_path and Path(oracle_csv_path).exists():
         leg_methods.append(Line2D([0], [0], color=PALETTE[4], lw=1, marker="s",
                                   markersize=2, label="Best"))
-    leg_n = [Line2D([0], [0], color="0.5", linestyle=ls, lw=0.8, label=f"$n={n}$")
-             for n, ls in n_styles.items()]
-    ax_a.legend(handles=leg_methods + leg_n, loc="upper right", ncol=2, fontsize=3.5)
+    leg_n = [Line2D([0], [0], color="0.5", linestyle="--", lw=0.8, label="$n=10$"),
+             Line2D([0], [0], color="0.5", linestyle="-", lw=0.8, label="$n=80$")]
+    ax_a.legend(handles=leg_methods + leg_n, loc="upper right", ncol=2)
 
     # ── Center panel: across base models ──
     base_models = [
@@ -197,10 +192,9 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
     leg_bm = [Line2D([0], [0], color=PALETTE[i], lw=1, label=bm_label)
               for i, (bm_key, bm_label) in enumerate(base_models)
               if not df_base[df_base["base_model"] == bm_key].empty]
-    leg_n2 = [Line2D([0], [0], color="0.5", linestyle=ls, lw=0.8, label=f"$n={n}$")
-              for n, ls in n_styles.items()]
-    ax_b.legend(handles=leg_bm + leg_n2, loc="upper right", fontsize=3.5,
-                ncol=2, handlelength=1.2, columnspacing=0.5)
+    leg_n2 = [Line2D([0], [0], color="0.5", linestyle="--", lw=0.8, label="$n=10$"),
+              Line2D([0], [0], color="0.5", linestyle="-", lw=0.8, label="$n=80$")]
+    ax_b.legend(handles=leg_bm + leg_n2, loc="upper right", ncol=2)
 
     # ── Right panel: across embedding models ──
     embed_models = [
@@ -240,10 +234,9 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
     leg_em = [Line2D([0], [0], color=PALETTE[i], lw=1, label=em_label)
               for i, (_, em_label) in enumerate(embed_models)
               if not df_embed[df_embed["embed_model"] == embed_models[i][0]].empty]
-    leg_n3 = [Line2D([0], [0], color="0.5", linestyle=ls, lw=0.8, label=f"$n={n}$")
-              for n, ls in n_styles.items()]
-    ax_c.legend(handles=leg_em + leg_n3, loc="upper right", fontsize=3.5,
-                ncol=2, handlelength=1.2, columnspacing=0.5)
+    leg_n3 = [Line2D([0], [0], color="0.5", linestyle="--", lw=0.8, label="$n=10$"),
+              Line2D([0], [0], color="0.5", linestyle="-", lw=0.8, label="$n=80$")]
+    ax_c.legend(handles=leg_em + leg_n3, loc="upper right", ncol=2)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)
