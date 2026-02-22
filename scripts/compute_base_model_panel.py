@@ -73,6 +73,7 @@ if __name__ == "__main__":
         "ministral-8b",
         "ministral-3b",
         "mistral-small",
+        "mistral-large",
         "gpt-4o-mini",
     ]
 
