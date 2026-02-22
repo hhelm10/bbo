@@ -44,7 +44,7 @@ def run_exp5(config: Exp5Config = None) -> pd.DataFrame:
                  for rep in range(config.n_reps)]
         errors = Parallel(n_jobs=config.n_jobs, backend="loky")(
             delayed(_run_one_rep)(problem, n_models, config.m, config.M, s,
-                                  config.n_components, config.classifier,
+                                  config.r, config.classifier,
                                   config.eta)
             for s in seeds
         )

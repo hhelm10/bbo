@@ -2,11 +2,117 @@
 
 Implements multidimensional scaling via double-centering and eigendecomposition,
 with support for out-of-sample projection (Gower's formula).
+
+Includes automatic dimensionality selection via the profile likelihood method
+of Zhu & Ghodsi (2006).
 """
 
 from dataclasses import dataclass, field
+from typing import Optional
+
 import numpy as np
 from scipy.linalg import eigh
+
+
+def _compute_profile_likelihood(values: np.ndarray) -> np.ndarray:
+    """Compute profile log-likelihood for a sequence of sorted values.
+
+    For each candidate split point, fits a two-segment constant-mean normal
+    model with pooled variance and returns the log-likelihood.
+
+    Parameters
+    ----------
+    values : ndarray of shape (n,)
+        Sorted (descending) eigenvalues, all positive.
+
+    Returns
+    -------
+    logliks : ndarray of shape (n-1,)
+        Log-likelihood at each candidate split point i=1,...,n-1.
+
+    References
+    ----------
+    Zhu, M. and Ghodsi, A. (2006). "Automatic dimensionality selection from
+    the scree plot via the use of profile likelihood." Computational Statistics
+    & Data Analysis, 51(2), pp. 918-930.
+    """
+    n = len(values)
+    logliks = np.empty(n - 1)
+
+    for i in range(1, n):
+        group1 = values[:i]
+        group2 = values[i:]
+
+        mu1 = group1.mean()
+        mu2 = group2.mean()
+
+        # Pooled variance (MLE)
+        ss = np.sum((group1 - mu1) ** 2) + np.sum((group2 - mu2) ** 2)
+        sigma2 = ss / n
+
+        if sigma2 < 1e-300:
+            # Perfect fit — all values in each group identical
+            logliks[i - 1] = 0.0
+        else:
+            logliks[i - 1] = -0.5 * n * np.log(2 * np.pi * sigma2) - ss / (2 * sigma2)
+
+    return logliks
+
+
+def select_dimension(eigenvalues: np.ndarray, n_elbows: int = 2) -> int:
+    """Select embedding dimension via the profile likelihood method.
+
+    Iteratively finds elbow points in the eigenvalue spectrum by maximizing
+    the profile likelihood of a two-segment normal model. Returns the
+    dimension at the last elbow.
+
+    Parameters
+    ----------
+    eigenvalues : ndarray
+        Eigenvalues in descending order (as returned by ClassicalMDS.fit).
+    n_elbows : int, default=2
+        Number of elbows to find. The dimension at the last elbow is returned.
+
+    Returns
+    -------
+    d : int
+        Selected number of dimensions (>= 1).
+
+    References
+    ----------
+    Zhu, M. and Ghodsi, A. (2006). "Automatic dimensionality selection from
+    the scree plot via the use of profile likelihood." Computational Statistics
+    & Data Analysis, 51(2), pp. 918-930.
+    """
+    # Keep only positive eigenvalues
+    pos = eigenvalues[eigenvalues > 0].copy()
+
+    if len(pos) <= 1:
+        return max(1, len(pos))
+
+    elbows = []
+    values = pos.copy()
+
+    for _ in range(n_elbows):
+        if len(values) <= 1:
+            break
+
+        logliks = _compute_profile_likelihood(values)
+        # Best split point (1-indexed into values)
+        elbow_idx = int(np.argmax(logliks)) + 1
+        elbows.append(elbow_idx)
+
+        # Truncate to the left segment for next iteration
+        values = values[:elbow_idx]
+
+    if not elbows:
+        return 1
+
+    # The last elbow found gives the selected dimension.
+    # But since we're iteratively truncating, the cumulative dimension
+    # is the *last* elbow_idx found (it indexes into an already-truncated array,
+    # so it's already in terms of the original indexing up to previous elbow).
+    return max(1, elbows[-1])
 
 
 @dataclass
@@ -15,13 +121,18 @@ class ClassicalMDS:
 
     Parameters
     ----------
-    n_components : int
-        Number of embedding dimensions to retain.
+    n_components : int or None
+        Number of embedding dimensions to retain. If None, automatically
+        selected via the Zhu & Ghodsi (2006) profile likelihood method.
+    n_elbows : int
+        Number of elbows for automatic dimension selection (only used when
+        n_components is None).
     min_eig : float
         Eigenvalues below this threshold are zeroed (handles numerical noise).
     """
 
-    n_components: int = 2
+    n_components: Optional[int] = None
+    n_elbows: int = 2
     min_eig: float = 1e-10
 
     # Fitted state (set by fit)
@@ -30,6 +141,7 @@ class ClassicalMDS:
     mean_sq_dists_: np.ndarray = field(default=None, repr=False)
     grand_mean_sq_dist_: float = field(default=None, repr=False)
     n_: int = field(default=None, repr=False)
+    n_components_: int = field(default=None, repr=False)  # actual dimension used
 
     def fit(self, D: np.ndarray) -> "ClassicalMDS":
         """Fit MDS from a symmetric distance matrix.
@@ -87,7 +199,12 @@ class ClassicalMDS:
 
     def _compute_coordinates(self) -> np.ndarray:
         """Compute coordinates from fitted eigendecomposition."""
-        k = min(self.n_components, len(self.eigenvalues_))
+        if self.n_components is None:
+            k = select_dimension(self.eigenvalues_, n_elbows=self.n_elbows)
+        else:
+            k = self.n_components
+        k = min(k, len(self.eigenvalues_))
+        self.n_components_ = k
         lam = self.eigenvalues_[:k].copy()
         lam[lam < self.min_eig] = 0.0
         X = self.eigenvectors_[:, :k] * np.sqrt(lam)[None, :]
@@ -111,7 +228,7 @@ class ClassicalMDS:
         # Gower's formula: x_new = -1/2 * L^{-1} * U^T * (d_new^2 - mean_sq_dists)
         # where the centering is: b_new = -1/2 * (d_new^2 - col_means - row_mean_new + grand_mean)
         # But simpler: project onto eigenvectors
-        k = min(self.n_components, len(self.eigenvalues_))
+        k = self.n_components_ if self.n_components_ is not None else min(self.n_components or len(self.eigenvalues_), len(self.eigenvalues_))
         lam = self.eigenvalues_[:k].copy()
         lam[lam < self.min_eig] = self.min_eig  # avoid division by zero
         U = self.eigenvectors_[:, :k]

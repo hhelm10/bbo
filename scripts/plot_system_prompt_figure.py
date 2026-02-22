@@ -59,7 +59,7 @@ def load_or_compute(npz_path, n_values, m_values, n_reps=200, seed=42):
 
                     if use_mds:
                         D = pairwise_energy_distances_t0(responses, query_idx)
-                        mds = ClassicalMDS(n_components=min(10, n_models - 1))
+                        mds = ClassicalMDS()
                         X = mds.fit_transform(D)
                     else:
                         X = responses[:, query_idx, :].reshape(n_models, -1)
@@ -138,7 +138,7 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
 
     ax_a.axhline(y=0.5, color="gray", linestyle=":", alpha=0.4, linewidth=0.5)
     ax_a.set_xscale("log")
-    ax_a.set_ylim(-0.02, 0.60)
+    ax_a.set_ylim(-0.02, 0.65)
     ax_a.set_xlabel("Number of queries $m$")
     ax_a.set_ylabel("Mean error")
     ax_a.set_title("(a) MDS vs. baselines")
@@ -151,15 +151,15 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
                                   markersize=3, label="Best"))
     leg_n = [Line2D([0], [0], color="0.5", linestyle="--", lw=0.8, label="$n=10$"),
              Line2D([0], [0], color="0.5", linestyle="-", lw=0.8, label="$n=80$")]
-    ax_a.legend(handles=leg_methods + leg_n, loc="upper right", ncol=2)
+    ax_a.legend(handles=leg_methods + leg_n, loc="upper right", ncol=2, fontsize=4.5)
 
     # ── Center panel: across base models ──
     base_models = [
-        ("ministral-8b", "ministral-8b (8B)"),
-        ("ministral-3b", "ministral-3b (3B)"),
-        ("mistral-small", "mistral-small (22B)"),
-        ("mistral-large", "mistral-large (123B)"),
-        ("gpt-4o-mini", "GPT-4o-mini (~8B)"),
+        ("ministral-8b", "ministral-8b"),
+        ("ministral-3b", "ministral-3b"),
+        ("mistral-small", "mistral-small"),
+        ("mistral-large", "mistral-large"),
+        ("gpt-4o-mini", "GPT-4o-mini"),
     ]
 
     if base_csv_path is not None:
@@ -185,7 +185,7 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
 
     ax_b.axhline(y=0.5, color="gray", linestyle=":", alpha=0.4, linewidth=0.5)
     ax_b.set_xscale("log")
-    ax_b.set_ylim(-0.02, 0.60)
+    ax_b.set_ylim(-0.02, 0.65)
     ax_b.set_xlabel("Number of queries $m$")
     ax_b.set_yticklabels([])
     ax_b.set_title("(b) Across base LLMs")
@@ -196,15 +196,15 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
               if not df_base[df_base["base_model"] == bm_key].empty]
     leg_n2 = [Line2D([0], [0], color="0.5", linestyle="--", lw=0.8, label="$n=10$"),
               Line2D([0], [0], color="0.5", linestyle="-", lw=0.8, label="$n=80$")]
-    ax_b.legend(handles=leg_bm + leg_n2, loc="upper right", ncol=2)
+    ax_b.legend(handles=leg_bm + leg_n2, loc="upper right", ncol=2, fontsize=4.5)
 
     # ── Right panel: across embedding models ──
     embed_models = [
-        ("nomic-embed-text-v1.5", "nomic (137M)"),
-        ("text-embedding-3-small", "OAI-small"),
-        ("text-embedding-3-large", "OAI-large"),
-        ("gemini-embedding", "gemini"),
-        ("all-MiniLM-L6-v2", "MiniLM (22M)"),
+        ("nomic-embed-text-v1.5", "nomic (768-d)"),
+        ("text-embedding-3-small", "OAI-small (1536-d)"),
+        ("text-embedding-3-large", "OAI-large (3072-d)"),
+        ("gemini-embedding", "gemini (3072-d)"),
+        ("all-MiniLM-L6-v2", "MiniLM (384-d)"),
     ]
 
     if embed_csv_path is not None:
@@ -228,7 +228,7 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
 
     ax_c.axhline(y=0.5, color="gray", linestyle=":", alpha=0.4, linewidth=0.5)
     ax_c.set_xscale("log")
-    ax_c.set_ylim(-0.02, 0.60)
+    ax_c.set_ylim(-0.02, 0.65)
     ax_c.set_xlabel("Number of queries $m$")
     ax_c.set_yticklabels([])
     ax_c.set_title("(c) Across embeddings")
@@ -239,7 +239,7 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
               if not df_embed[df_embed["embed_model"] == embed_models[i][0]].empty]
     leg_n3 = [Line2D([0], [0], color="0.5", linestyle="--", lw=0.8, label="$n=10$"),
               Line2D([0], [0], color="0.5", linestyle="-", lw=0.8, label="$n=80$")]
-    ax_c.legend(handles=leg_em + leg_n3, loc="upper right", ncol=2)
+    ax_c.legend(handles=leg_em + leg_n3, loc="upper right", ncol=2, fontsize=4.5)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)

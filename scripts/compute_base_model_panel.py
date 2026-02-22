@@ -21,7 +21,7 @@ def _one_rep(responses, labels, signal_idx, M, n, m, seed):
     dist = SubsetDistribution(signal_idx, mass=1.0)
     query_idx = sample_queries(M, m, distribution=dist, rng=rng)
     D = pairwise_energy_distances_t0(responses, query_idx)
-    mds = ClassicalMDS(n_components=min(10, len(labels) - 1))
+    mds = ClassicalMDS()
     X = mds.fit_transform(D)
 
     class0 = np.where(labels == 0)[0]

@@ -25,7 +25,10 @@ def _run_one_rep(responses, labels, M, m, dist, seed, n_components, classifier,
     query_idx = sample_queries(M, m, distribution=dist, rng=rng)
     D = pairwise_energy_distances_t0(responses, query_idx)
 
-    mds = ClassicalMDS(n_components=min(n_components, len(labels) - 1))
+    if n_components is not None:
+        mds = ClassicalMDS(n_components=min(n_components, len(labels) - 1))
+    else:
+        mds = ClassicalMDS()
     X = mds.fit_transform(D)
 
     class0 = np.where(labels == 0)[0]

@@ -22,7 +22,7 @@ def run_single_point(responses, labels, signal_idx, n, m, n_reps=100, seed=42):
         rng = np.random.default_rng(seed + rep * 100003 + m * 1009 + n * 31)
         query_idx = sample_queries(M, m, distribution=dist, rng=rng)
         D = pairwise_energy_distances_t0(responses, query_idx)
-        mds = ClassicalMDS(n_components=min(10, n_models - 1))
+        mds = ClassicalMDS()
         X = mds.fit_transform(D)
         class0 = np.where(labels == 0)[0]
         class1 = np.where(labels == 1)[0]

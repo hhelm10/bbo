@@ -1,7 +1,7 @@
 """Configuration for the system prompt auditing experiment."""
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 from pathlib import Path
 
 from bbo.experiments.config import ExperimentConfig
@@ -93,7 +93,7 @@ class SystemPromptConfig(ExperimentConfig):
     )
     n_reps: int = 200
     classifier: str = "rf"
-    n_components: int = 10
+    n_components: Optional[int] = None
 
     # Paths
     output_dir: str = "results/system_prompt"

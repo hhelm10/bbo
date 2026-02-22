@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from bbo.embedding.mds import ClassicalMDS
+from bbo.embedding.mds import ClassicalMDS, select_dimension, _compute_profile_likelihood
 
 
 def _distance_matrix(X):
@@ -123,3 +123,87 @@ class TestClassicalMDS:
         mds = ClassicalMDS(n_components=10)
         X = mds.fit_transform(D)
         assert X.shape == (2, 2)  # Clipped to n
+
+    def test_auto_dimension_selection(self):
+        """n_components=None should auto-select and store n_components_."""
+        rng = np.random.default_rng(42)
+        X_true = rng.standard_normal((20, 3))
+        D = _distance_matrix(X_true)
+
+        mds = ClassicalMDS()  # n_components=None by default
+        X = mds.fit_transform(D)
+
+        assert mds.n_components_ is not None
+        assert mds.n_components_ >= 1
+        assert X.shape == (20, mds.n_components_)
+
+    def test_auto_vs_explicit_stores_n_components_(self):
+        """Explicit n_components should also store n_components_."""
+        D = np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]], dtype=float)
+        mds = ClassicalMDS(n_components=2)
+        X = mds.fit_transform(D)
+        assert mds.n_components_ == 2
+        assert X.shape == (3, 2)
+
+
+class TestSelectDimension:
+    def test_rank1_data(self):
+        """Rank-1 eigenvalue spectrum should select d=1 or small d."""
+        # One large eigenvalue, rest near zero
+        eigenvalues = np.array([100.0, 0.1, 0.05, 0.02, 0.01, 0.005])
+        d = select_dimension(eigenvalues, n_elbows=1)
+        assert d == 1
+
+    def test_rank5_data(self):
+        """Rank-5 eigenvalue spectrum should select d=5."""
+        # 5 similar-magnitude eigenvalues, then sharp drop to noise floor
+        eigenvalues = np.array([50.0, 48.0, 45.0, 42.0, 40.0,
+                                0.1, 0.05, 0.02, 0.01, 0.005])
+        d = select_dimension(eigenvalues, n_elbows=1)
+        assert d == 5
+
+    def test_all_equal_eigenvalues(self):
+        """All-equal eigenvalues should return some valid dimension."""
+        eigenvalues = np.ones(10) * 5.0
+        d = select_dimension(eigenvalues, n_elbows=1)
+        assert 1 <= d <= 10
+
+    def test_single_eigenvalue(self):
+        """Single positive eigenvalue should return d=1."""
+        eigenvalues = np.array([5.0])
+        d = select_dimension(eigenvalues, n_elbows=1)
+        assert d == 1
+
+    def test_two_elbows(self):
+        """Two-elbow selection should return d <= first elbow."""
+        eigenvalues = np.array([100.0, 50.0, 10.0, 1.0, 0.1, 0.01])
+        d1 = select_dimension(eigenvalues, n_elbows=1)
+        d2 = select_dimension(eigenvalues, n_elbows=2)
+        assert d2 <= d1
+
+    def test_negative_eigenvalues_ignored(self):
+        """Negative eigenvalues should be filtered out."""
+        eigenvalues = np.array([100.0, 10.0, 1.0, -0.5, -1.0])
+        d = select_dimension(eigenvalues, n_elbows=1)
+        assert 1 <= d <= 3  # only 3 positive eigenvalues
+
+    def test_returns_at_least_1(self):
+        """Should always return at least 1."""
+        eigenvalues = np.array([0.0, -1.0, -2.0])
+        d = select_dimension(eigenvalues, n_elbows=1)
+        assert d >= 1
+
+
+class TestProfileLikelihood:
+    def test_output_shape(self):
+        """Should return n-1 log-likelihoods for n values."""
+        values = np.array([10.0, 5.0, 1.0, 0.5, 0.1])
+        logliks = _compute_profile_likelihood(values)
+        assert logliks.shape == (4,)
+
+    def test_clear_elbow(self):
+        """Argmax should be at the obvious break point."""
+        values = np.array([100.0, 99.0, 98.0, 1.0, 0.5, 0.1])
+        logliks = _compute_profile_likelihood(values)
+        # Best split should be at index 3 (after the 3 large values)
+        assert np.argmax(logliks) + 1 == 3

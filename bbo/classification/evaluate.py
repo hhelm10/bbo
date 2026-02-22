@@ -3,6 +3,7 @@
 Provides train/test split evaluation using sklearn classifiers on MDS embeddings.
 """
 
+from typing import Optional
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
@@ -84,7 +85,7 @@ def classify_and_evaluate(X: np.ndarray, y: np.ndarray, classifier_name: str = "
 
 
 def single_trial(responses: np.ndarray, labels: np.ndarray,
-                 query_indices: np.ndarray, n_components: int = 10,
+                 query_indices: np.ndarray, n_components: Optional[int] = None,
                  classifier_name: str = "rf", seed: int = None,
                  **classifier_kwargs) -> float:
     """Run a single trial: select queries -> distance -> MDS -> classify -> error.
@@ -97,8 +98,8 @@ def single_trial(responses: np.ndarray, labels: np.ndarray,
         Model labels.
     query_indices : ndarray of shape (m,)
         Which queries to use.
-    n_components : int
-        MDS embedding dimension.
+    n_components : int or None
+        MDS embedding dimension. If None, auto-selected via profile likelihood.
     classifier_name : str
         Classifier type.
     seed : int, optional
@@ -115,7 +116,10 @@ def single_trial(responses: np.ndarray, labels: np.ndarray,
     D = pairwise_energy_distances_t0(responses, query_indices)
 
     # MDS embedding
-    mds = ClassicalMDS(n_components=min(n_components, len(labels) - 1))
+    if n_components is not None:
+        mds = ClassicalMDS(n_components=min(n_components, len(labels) - 1))
+    else:
+        mds = ClassicalMDS()
     X = mds.fit_transform(D)
 
     # Classify

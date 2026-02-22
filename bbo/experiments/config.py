@@ -37,7 +37,7 @@ class SyntheticConfig(ExperimentConfig):
     signal_prob: float = 0.3  # rho = 1 - signal_prob = 0.7
     eta: float = 0.0  # label noise probability
     classifier: str = "rf"
-    n_components: int = 10
+    n_components: Optional[int] = None
 
 
 @dataclass
@@ -162,7 +162,7 @@ class RealConfig(ExperimentConfig):
     embedding_model: str = "nomic-embed-text-v1.5"
     n_reps: int = 100
     classifier: str = "rf"
-    n_components: int = 10
+    n_components: Optional[int] = None
 
 
 @dataclass

@@ -26,7 +26,7 @@ def _run_one_rep(responses, labels, M, m, dist, seed, n_components, classifier):
 def run_exp8(responses: np.ndarray, labels: np.ndarray,
              m_values: list = None, n_reps: int = 100,
              seed: int = 42, n_jobs: int = -1,
-             n_components: int = 10, classifier_name: str = "knn") -> pd.DataFrame:
+             n_components=None, classifier_name: str = "knn") -> pd.DataFrame:
     """Run Exp 8 with parallel reps.
 
     Parameters

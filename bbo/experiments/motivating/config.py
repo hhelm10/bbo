@@ -1,7 +1,7 @@
 """Configuration for the motivating example experiment."""
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 from pathlib import Path
 
 from bbo.experiments.config import ExperimentConfig
@@ -75,7 +75,7 @@ class MotivatingConfig(ExperimentConfig):
     )
     n_reps: int = 500
     classifier: str = "rf"
-    n_components: int = 10
+    n_components: Optional[int] = None
 
     # Paths (all relative to output_dir)
     output_dir: str = "results/motivating"
