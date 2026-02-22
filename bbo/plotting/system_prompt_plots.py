@@ -70,7 +70,7 @@ def plot_figure3_system_prompt(
                 Line2D([0], [0], marker="s", color="w", lw=0,
                        markerfacecolor=PALETTE[1], markersize=3, label="Class 1"),
             ]
-            ax.legend(handles=legend_elements, loc="best")
+            ax.legend(handles=legend_elements, loc="best", fontsize=4)
         else:
             ax.set_xlabel("MDS 1")
 
@@ -93,7 +93,7 @@ def plot_figure3_system_prompt(
     ax_svd.set_xlabel("Component $r$")
     ax_svd.set_ylabel("$\\sigma_r / \\sigma_1$")
     ax_svd.set_title("(b) Singular values of $D$")
-    ax_svd.legend(loc="upper right")
+    ax_svd.legend(loc="upper right", fontsize=4)
 
 
 def plot_figure4_row1(
@@ -250,9 +250,8 @@ def plot_system_prompt_figures(config, output_dir: str = "figures"):
     orthogonal_indices = data["orthogonal_indices"]
 
     # --- Figure 3: Qualitative (panels a, b only -- c, d are for RAG) ---
-    # Layout matches motivating_plots.py: GridSpec(2, 3)
-    fig3 = plt.figure(figsize=(5.5, 1.6))
-    gs3 = GridSpec(2, 3, figure=fig3, wspace=0.55, hspace=0.55)
+    fig3 = plt.figure(figsize=(5.5, 1.65))
+    gs3 = GridSpec(2, 2, figure=fig3, wspace=0.55, hspace=0.55)
 
     ax3_a_top = fig3.add_subplot(gs3[0, 0])
     ax3_a_bot = fig3.add_subplot(gs3[1, 0])
@@ -262,10 +261,6 @@ def plot_system_prompt_figures(config, output_dir: str = "figures"):
         responses, labels, signal_indices, orthogonal_indices,
         ax3_a_top, ax3_a_bot, ax3_b, m_mds=5,
     )
-
-    # Hide unused column 2 (reserved for RAG panels)
-    ax_placeholder = fig3.add_subplot(gs3[:, 2])
-    ax_placeholder.set_visible(False)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig3.savefig(f"{output_dir}/figure3_system_prompt.pdf")
