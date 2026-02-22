@@ -138,7 +138,7 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
 
     ax_a.axhline(y=0.5, color="gray", linestyle=":", alpha=0.4, linewidth=0.5)
     ax_a.set_xscale("log")
-    ax_a.set_ylim(-0.02, 0.55)
+    ax_a.set_ylim(-0.02, 0.60)
     ax_a.set_xlabel("Number of queries $m$")
     ax_a.set_ylabel("Mean error")
     ax_a.set_title("(a) MDS vs. baselines")
@@ -185,7 +185,7 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
 
     ax_b.axhline(y=0.5, color="gray", linestyle=":", alpha=0.4, linewidth=0.5)
     ax_b.set_xscale("log")
-    ax_b.set_ylim(-0.02, 0.55)
+    ax_b.set_ylim(-0.02, 0.60)
     ax_b.set_xlabel("Number of queries $m$")
     ax_b.set_yticklabels([])
     ax_b.set_title("(b) Across base LLMs")
@@ -228,7 +228,7 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
 
     ax_c.axhline(y=0.5, color="gray", linestyle=":", alpha=0.4, linewidth=0.5)
     ax_c.set_xscale("log")
-    ax_c.set_ylim(-0.02, 0.55)
+    ax_c.set_ylim(-0.02, 0.60)
     ax_c.set_xlabel("Number of queries $m$")
     ax_c.set_yticklabels([])
     ax_c.set_title("(c) Across embeddings")
