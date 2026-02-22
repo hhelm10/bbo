@@ -89,17 +89,20 @@ def load_or_compute(npz_path, n_values, m_values, n_reps=200, seed=42):
 
 
 def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
+                base_csv_path=None,
                 output_path="figures/figure4_system_prompt.pdf"):
     """Build the three-panel figure from precomputed CSV.
 
     Parameters
     ----------
     csv_path : str
-        CSV with method/n/m/mean_acc columns (panels a and b).
+        CSV with method/n/m/mean_acc columns (panel a).
     embed_csv_path : str, optional
         CSV with embed_model/n/m/mean_acc columns (panel c).
     oracle_csv_path : str, optional
         CSV with n/m/oracle_acc columns (oracle line in panel a).
+    base_csv_path : str, optional
+        CSV with base_model/n/m/mean_acc columns (panel b).
     """
     set_paper_style()
 
@@ -149,17 +152,36 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
                    for cfg in method_cfg.values()]
     if oracle_csv_path and Path(oracle_csv_path).exists():
         leg_methods.append(Line2D([0], [0], color=PALETTE[4], lw=1, marker="s",
-                                  markersize=2, label="Oracle"))
+                                  markersize=2, label="Best"))
     leg_n = [Line2D([0], [0], color="0.5", linestyle=ls, lw=0.8, label=f"$n={n}$")
              for n, ls in n_styles.items()]
     ax_a.legend(handles=leg_methods + leg_n, loc="upper right", ncol=2, fontsize=3.5)
 
-    # ── Center panel: across base models (only ministral-8b for now) ──
-    base_models = ["ministral-8b"]  # extend later
-    for i, bm in enumerate(base_models):
+    # ── Center panel: across base models ──
+    base_models = [
+        ("ministral-8b", "ministral-8b"),
+        ("ministral-3b", "ministral-3b"),
+        ("mistral-small", "mistral-small"),
+        ("mistral-large", "mistral-large"),
+        ("gpt-4o-mini", "GPT-4o-mini"),
+    ]
+
+    if base_csv_path is not None:
+        df_base = pd.read_csv(base_csv_path)
+        # Cap at m=50 to match panels (a) and (c)
+        df_base = df_base[df_base["m"] <= 50]
+    else:
+        # Fallback: use mds_relevant from main CSV as ministral-8b only
+        df_base = df[df["method"] == "mds_relevant"].copy()
+        df_base["base_model"] = "ministral-8b"
+
+    for i, (bm_key, bm_label) in enumerate(base_models):
         color = PALETTE[i]
+        sub_bm = df_base[df_base["base_model"] == bm_key]
+        if sub_bm.empty:
+            continue
         for n, ls in n_styles.items():
-            sub = df[(df["method"] == "mds_relevant") & (df["n"] == n)].sort_values("m")
+            sub = sub_bm[sub_bm["n"] == n].sort_values("m")
             if sub.empty:
                 continue
             ax_b.plot(sub["m"], 1 - sub["mean_acc"], marker="o", markersize=2,
@@ -172,11 +194,13 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
     ax_b.set_yticklabels([])
     ax_b.set_title("(b) Across base LLMs")
 
-    leg_bm = [Line2D([0], [0], color=PALETTE[i], lw=1, label=bm)
-              for i, bm in enumerate(base_models)]
+    leg_bm = [Line2D([0], [0], color=PALETTE[i], lw=1, label=bm_label)
+              for i, (bm_key, bm_label) in enumerate(base_models)
+              if not df_base[df_base["base_model"] == bm_key].empty]
     leg_n2 = [Line2D([0], [0], color="0.5", linestyle=ls, lw=0.8, label=f"$n={n}$")
               for n, ls in n_styles.items()]
-    ax_b.legend(handles=leg_bm + leg_n2, loc="upper right", fontsize=4)
+    ax_b.legend(handles=leg_bm + leg_n2, loc="upper right", fontsize=3.5,
+                ncol=2, handlelength=1.2, columnspacing=0.5)
 
     # ── Right panel: across embedding models ──
     embed_models = [
@@ -234,6 +258,7 @@ if __name__ == "__main__":
     npz = "results/system_prompt/embeddings/ministral-8b__nomic-embed-text-v1.5.npz"
     csv = "results/system_prompt/figure_data_v3.csv"
     embed_csv = "results/system_prompt/embed_panel_all.csv"
+    base_csv = "results/system_prompt/base_panel_all.csv"
     out = "figures/figure4_system_prompt.pdf"
 
     if "--compute" in sys.argv or not Path(csv).exists():
@@ -248,4 +273,5 @@ if __name__ == "__main__":
     plot_figure(csv,
                 embed_csv_path=embed_csv if Path(embed_csv).exists() else None,
                 oracle_csv_path=oracle_csv if Path(oracle_csv).exists() else None,
+                base_csv_path=base_csv if Path(base_csv).exists() else None,
                 output_path=out)
