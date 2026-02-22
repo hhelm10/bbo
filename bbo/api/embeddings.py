@@ -14,6 +14,8 @@ EMBEDDING_REGISTRY = {
     "nomic-embed-text-v1.5": ("local", "nomic-ai/nomic-embed-text-v1.5", 768),
     "all-MiniLM-L6-v2": ("local", "sentence-transformers/all-MiniLM-L6-v2", 384),
     "text-embedding-3-small": ("openai", "text-embedding-3-small", 1536),
+    "text-embedding-3-large": ("openai", "text-embedding-3-large", 3072),
+    "gemini-embedding": ("google", "gemini-embedding-001", 3072),
     "voyage-3-lite": ("voyage", "voyage-3-lite", 1024),
 }
 
@@ -62,9 +64,35 @@ def _embed_voyage(model_id: str, texts: List[str], batch_size: int = 128) -> np.
     return np.array(all_embeddings, dtype=np.float32)
 
 
+def _embed_google(model_id: str, texts: List[str], batch_size: int = 100) -> np.ndarray:
+    import time
+    from google import genai
+
+    client = genai.Client(api_key=os.environ["GOOGLE_API_KEY"])
+
+    all_embeddings = []
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i + batch_size]
+        for attempt in range(5):
+            try:
+                resp = client.models.embed_content(model=model_id, contents=batch)
+                all_embeddings.extend(resp.embeddings)
+                break
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    wait = min(60 * (attempt + 1), 120)
+                    print(f"  Rate limited, waiting {wait}s (attempt {attempt+1}/5)...")
+                    time.sleep(wait)
+                else:
+                    raise
+
+    return np.array([e.values for e in all_embeddings], dtype=np.float32)
+
+
 _PROVIDERS = {
     "local": _embed_local,
     "openai": _embed_openai,
+    "google": _embed_google,
     "voyage": _embed_voyage,
 }
 

@@ -88,13 +88,21 @@ def load_or_compute(npz_path, n_values, m_values, n_reps=200, seed=42):
     return pd.DataFrame(rows)
 
 
-def plot_figure(csv_path, output_path="figures/figure4_system_prompt.pdf"):
-    """Build the three-panel figure from precomputed CSV."""
+def plot_figure(csv_path, embed_csv_path=None,
+                output_path="figures/figure4_system_prompt.pdf"):
+    """Build the three-panel figure from precomputed CSV.
+
+    Parameters
+    ----------
+    csv_path : str
+        CSV with method/n/m/mean_acc columns (panels a and b).
+    embed_csv_path : str, optional
+        CSV with embed_model/n/m/mean_acc columns (panel c).
+        If None, falls back to using csv_path for panel c.
+    """
     set_paper_style()
 
     df = pd.read_csv(csv_path)
-    n_values = sorted(df["n"].unique())
-    m_values = sorted(df["m"].unique())
 
     fig = plt.figure(figsize=(5.5, 2.0))
     gs = GridSpec(1, 3, figure=fig, left=0.08, right=0.99, bottom=0.20, top=0.85,
@@ -157,12 +165,29 @@ def plot_figure(csv_path, output_path="figures/figure4_system_prompt.pdf"):
               for n, ls in n_styles.items()]
     ax_b.legend(handles=leg_bm + leg_n2, loc="upper right", fontsize=4)
 
-    # ── Right panel: across embedding models (only nomic for now) ──
-    embed_models = ["nomic-embed-text-v1.5"]  # extend later
-    for i, em in enumerate(embed_models):
+    # ── Right panel: across embedding models ──
+    embed_models = [
+        ("nomic-embed-text-v1.5", "nomic"),
+        ("text-embedding-3-small", "OAI-small"),
+        ("text-embedding-3-large", "OAI-large"),
+        ("gemini-embedding", "gemini"),
+        ("all-MiniLM-L6-v2", "MiniLM"),
+    ]
+
+    if embed_csv_path is not None:
+        df_embed = pd.read_csv(embed_csv_path)
+    else:
+        # Fallback: use mds_relevant from main CSV as nomic-only
+        df_embed = df[df["method"] == "mds_relevant"].copy()
+        df_embed["embed_model"] = "nomic-embed-text-v1.5"
+
+    for i, (em_key, em_label) in enumerate(embed_models):
         color = PALETTE[i]
+        sub_em = df_embed[df_embed["embed_model"] == em_key]
+        if sub_em.empty:
+            continue
         for n, ls in n_styles.items():
-            sub = df[(df["method"] == "mds_relevant") & (df["n"] == n)].sort_values("m")
+            sub = sub_em[sub_em["n"] == n].sort_values("m")
             if sub.empty:
                 continue
             ax_c.plot(sub["m"], 1 - sub["mean_acc"], marker="o", markersize=2,
@@ -175,11 +200,13 @@ def plot_figure(csv_path, output_path="figures/figure4_system_prompt.pdf"):
     ax_c.set_yticklabels([])
     ax_c.set_title("(c) Across embeddings")
 
-    leg_em = [Line2D([0], [0], color=PALETTE[i], lw=1, label=em.replace("-v1.5", ""))
-              for i, em in enumerate(embed_models)]
+    leg_em = [Line2D([0], [0], color=PALETTE[i], lw=1, label=em_label)
+              for i, (_, em_label) in enumerate(embed_models)
+              if not df_embed[df_embed["embed_model"] == embed_models[i][0]].empty]
     leg_n3 = [Line2D([0], [0], color="0.5", linestyle=ls, lw=0.8, label=f"$n={n}$")
               for n, ls in n_styles.items()]
-    ax_c.legend(handles=leg_em + leg_n3, loc="upper right", fontsize=4)
+    ax_c.legend(handles=leg_em + leg_n3, loc="upper right", fontsize=3.5,
+                ncol=2, handlelength=1.2, columnspacing=0.5)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)
@@ -193,6 +220,7 @@ if __name__ == "__main__":
 
     npz = "results/system_prompt/embeddings/ministral-8b__nomic-embed-text-v1.5.npz"
     csv = "results/system_prompt/figure_data_v3.csv"
+    embed_csv = "results/system_prompt/embed_panel_all.csv"
     out = "figures/figure4_system_prompt.pdf"
 
     if "--compute" in sys.argv or not Path(csv).exists():
@@ -202,4 +230,5 @@ if __name__ == "__main__":
         print(f"Saved to {csv}")
 
     print("Plotting...")
-    plot_figure(csv, out)
+    embed_csv_path = embed_csv if Path(embed_csv).exists() else None
+    plot_figure(csv, embed_csv_path=embed_csv_path, output_path=out)
