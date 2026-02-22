@@ -140,7 +140,7 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
     ax_a.set_xscale("log")
     ax_a.set_ylim(-0.02, 0.55)
     ax_a.set_xlabel("Number of queries $m$")
-    ax_a.set_ylabel("Classification error")
+    ax_a.set_ylabel("Mean error")
     ax_a.set_title("(a) MDS vs. baselines")
 
     leg_methods = [Line2D([0], [0], color=cfg["color"], lw=1, label=cfg["label"])
