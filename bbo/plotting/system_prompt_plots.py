@@ -65,12 +65,12 @@ def plot_figure3_system_prompt(
 
         if is_top:
             legend_elements = [
-                Line2D([0], [0], marker="o", color="w",
-                       markerfacecolor=PALETTE[0], markersize=4, label="Class 0"),
-                Line2D([0], [0], marker="s", color="w",
-                       markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
+                Line2D([0], [0], marker="o", color="w", lw=0,
+                       markerfacecolor=PALETTE[0], markersize=3, label="Class 0"),
+                Line2D([0], [0], marker="s", color="w", lw=0,
+                       markerfacecolor=PALETTE[1], markersize=3, label="Class 1"),
             ]
-            ax.legend(handles=legend_elements, loc="best", fontsize=4)
+            ax.legend(handles=legend_elements, loc="best")
         else:
             ax.set_xlabel("MDS 1")
 
@@ -93,7 +93,7 @@ def plot_figure3_system_prompt(
     ax_svd.set_xlabel("Component $r$")
     ax_svd.set_ylabel("$\\sigma_r / \\sigma_1$")
     ax_svd.set_title("(b) Singular values of $D$")
-    ax_svd.legend(loc="upper right", fontsize=4)
+    ax_svd.legend(loc="upper right")
 
 
 def plot_figure4_row1(
@@ -233,13 +233,6 @@ def plot_figure4_row1(
 def plot_system_prompt_figures(config, output_dir: str = "figures"):
     """Generate Figure 3 (a,b) and Figure 4 row 1 (a,b,c) for system prompt experiment."""
     set_paper_style()
-    plt.rcParams.update({
-        "font.size": 6,
-        "axes.labelsize": 7,
-        "axes.titlesize": 7,
-        "xtick.labelsize": 5,
-        "ytick.labelsize": 5,
-    })
 
     # Load default data (ministral-8b + nomic)
     default_bm = "ministral-8b"
@@ -258,7 +251,7 @@ def plot_system_prompt_figures(config, output_dir: str = "figures"):
 
     # --- Figure 3: Qualitative (panels a, b only -- c, d are for RAG) ---
     # Layout matches motivating_plots.py: GridSpec(2, 3)
-    fig3 = plt.figure(figsize=(5.5, 1.65))
+    fig3 = plt.figure(figsize=(5.5, 1.6))
     gs3 = GridSpec(2, 3, figure=fig3, wspace=0.55, hspace=0.55)
 
     ax3_a_top = fig3.add_subplot(gs3[0, 0])
@@ -276,6 +269,7 @@ def plot_system_prompt_figures(config, output_dir: str = "figures"):
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig3.savefig(f"{output_dir}/figure3_system_prompt.pdf")
+    fig3.savefig(f"{output_dir}/figure3_system_prompt.png", dpi=200)
     plt.close(fig3)
     print(f"Saved Figure 3 (system prompt) to {output_dir}/figure3_system_prompt.pdf")
 
