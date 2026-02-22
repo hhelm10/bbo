@@ -35,24 +35,50 @@ class SystemPromptConfig(ExperimentConfig):
 
     # System prompt configuration
     n_per_class: int = 50  # 50 neutral + 50 biased = 100 total
+
+    # Persona component options — 6 components per persona
+    # Component 1: Domain expertise (10 domains, 5 models per domain per class)
     domains: List[str] = field(
         default_factory=lambda: [
-            "cooking",
-            "travel",
-            "science",
-            "finance",
-            "fitness",
-            "tech",
-            "gardening",
-            "music",
-            "fashion",
-            "diy",
+            "nutrition and cooking",
+            "fitness and sports",
+            "home improvement and DIY",
+            "healthcare and wellness",
+            "education and learning",
+            "consumer technology",
+            "personal finance",
+            "fashion and style",
+            "travel and hospitality",
+            "gardening and agriculture",
+        ]
+    )
+
+    # Component 2: Audience types
+    audiences: List[str] = field(
+        default_factory=lambda: [
+            "beginners and novices",
+            "busy professionals",
+            "families",
+        ]
+    )
+
+    # Component 3: Values/philosophy (class distinction) — defined in prepare_data.py
+
+    # Off-domain topics for weak-signal queries (recommendation Qs outside the 10 signal domains)
+    weak_signal_domains: List[str] = field(
+        default_factory=lambda: [
+            "music and instruments",
+            "pets and animal care",
+            "automotive and vehicles",
+            "relationships and social skills",
+            "art and creative hobbies",
         ]
     )
 
     # Queries
-    n_signal_queries: int = 100   # ~10 per domain
-    n_orthogonal_queries: int = 100  # math, coding, facts, definitions
+    n_signal_queries: int = 100   # 10 per domain (in-domain recommendations)
+    n_weak_signal_queries: int = 50  # 10 per off-domain (off-domain recommendations)
+    n_null_queries: int = 100  # factual questions (math, coding, history, science, geography)
 
     # Generation
     temperature: float = 0.0
@@ -82,7 +108,7 @@ class SystemPromptConfig(ExperimentConfig):
 
     @property
     def n_queries(self) -> int:
-        return self.n_signal_queries + self.n_orthogonal_queries
+        return self.n_signal_queries + self.n_weak_signal_queries + self.n_null_queries
 
     def responses_dir(self, base_model: str) -> Path:
         return Path(self.output_dir) / "raw_responses" / base_model

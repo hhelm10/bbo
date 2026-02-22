@@ -128,17 +128,25 @@ def run_classification(config: SystemPromptConfig, base_model: str = None,
     labels = data["labels"]
     signal_indices = data["signal_indices"]
     orthogonal_indices = data["orthogonal_indices"]
+    # Load three-tier indices if available
+    weak_signal_indices = (data["weak_signal_indices"]
+                           if "weak_signal_indices" in data else np.array([], dtype=np.int64))
+    null_indices = data["null_indices"] if "null_indices" in data else orthogonal_indices
 
     n_models, M, p = responses.shape
     print(f"Loaded: {n_models} models, {M} queries, {p}-d embeddings")
-    print(f"  Signal: {len(signal_indices)}, Orthogonal: {len(orthogonal_indices)}")
+    print(f"  Signal: {len(signal_indices)}, Weak-signal: {len(weak_signal_indices)}, "
+          f"Null: {len(null_indices)}")
     print(f"  Labels: {np.unique(labels, return_counts=True)}")
 
     distributions = {
         "relevant": SubsetDistribution(signal_indices, mass=1.0),
-        "orthogonal": SubsetDistribution(orthogonal_indices, mass=1.0),
         "uniform": UniformDistribution(),
     }
+    if len(weak_signal_indices) > 0:
+        distributions["weak_signal"] = SubsetDistribution(weak_signal_indices, mass=1.0)
+    if len(null_indices) > 0:
+        distributions["orthogonal"] = SubsetDistribution(null_indices, mass=1.0)
 
     # Cap n_values
     min_class_size = min(np.sum(labels == 0), np.sum(labels == 1))

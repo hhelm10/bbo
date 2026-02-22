@@ -33,7 +33,13 @@ def run_embed(config: SystemPromptConfig, base_model: str = None,
 
     partition = np.load(config.data_dir / "query_partition.npz")
     signal_indices = partition["signal_indices"]
-    orthogonal_indices = partition["orthogonal_indices"]
+    weak_signal_indices = (partition["weak_signal_indices"]
+                           if "weak_signal_indices" in partition
+                           else np.array([], dtype=np.int64))
+    null_indices = (partition["null_indices"]
+                    if "null_indices" in partition
+                    else partition["orthogonal_indices"])
+    orthogonal_indices = null_indices  # backward compat alias
 
     base_models = [base_model] if base_model else config.base_models
     embed_models = [embedding_model] if embedding_model else config.embedding_models
@@ -99,6 +105,8 @@ def run_embed(config: SystemPromptConfig, base_model: str = None,
                 labels=labels_array,
                 model_names=np.array(model_names),
                 signal_indices=signal_indices,
+                weak_signal_indices=weak_signal_indices,
+                null_indices=null_indices,
                 orthogonal_indices=orthogonal_indices,
             )
             print(f"  [{em}] Saved to {npz_path} "
