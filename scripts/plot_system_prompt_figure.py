@@ -143,11 +143,12 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
     ax_a.set_ylabel("Mean error")
     ax_a.set_title("(a) MDS vs. baselines")
 
-    leg_methods = [Line2D([0], [0], color=cfg["color"], lw=1, label=cfg["label"])
+    leg_methods = [Line2D([0], [0], color=cfg["color"], lw=0, marker="o",
+                          markersize=3, label=cfg["label"])
                    for cfg in method_cfg.values()]
     if oracle_csv_path and Path(oracle_csv_path).exists():
-        leg_methods.append(Line2D([0], [0], color=PALETTE[4], lw=1, marker="s",
-                                  markersize=2, label="Best"))
+        leg_methods.append(Line2D([0], [0], color=PALETTE[4], lw=0, marker="s",
+                                  markersize=3, label="Best"))
     leg_n = [Line2D([0], [0], color="0.5", linestyle="--", lw=0.8, label="$n=10$"),
              Line2D([0], [0], color="0.5", linestyle="-", lw=0.8, label="$n=80$")]
     ax_a.legend(handles=leg_methods + leg_n, loc="upper right", ncol=2)
@@ -189,7 +190,8 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
     ax_b.set_yticklabels([])
     ax_b.set_title("(b) Across base LLMs")
 
-    leg_bm = [Line2D([0], [0], color=PALETTE[i], lw=1, label=bm_label)
+    leg_bm = [Line2D([0], [0], color=PALETTE[i], lw=0, marker="o",
+                     markersize=3, label=bm_label)
               for i, (bm_key, bm_label) in enumerate(base_models)
               if not df_base[df_base["base_model"] == bm_key].empty]
     leg_n2 = [Line2D([0], [0], color="0.5", linestyle="--", lw=0.8, label="$n=10$"),
@@ -231,7 +233,8 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
     ax_c.set_yticklabels([])
     ax_c.set_title("(c) Across embeddings")
 
-    leg_em = [Line2D([0], [0], color=PALETTE[i], lw=1, label=em_label)
+    leg_em = [Line2D([0], [0], color=PALETTE[i], lw=0, marker="o",
+                     markersize=3, label=em_label)
               for i, (_, em_label) in enumerate(embed_models)
               if not df_embed[df_embed["embed_model"] == embed_models[i][0]].empty]
     leg_n3 = [Line2D([0], [0], color="0.5", linestyle="--", lw=0.8, label="$n=10$"),
