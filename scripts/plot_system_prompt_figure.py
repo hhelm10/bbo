@@ -88,7 +88,7 @@ def load_or_compute(npz_path, n_values, m_values, n_reps=200, seed=42):
     return pd.DataFrame(rows)
 
 
-def plot_figure(csv_path, embed_csv_path=None,
+def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
                 output_path="figures/figure4_system_prompt.pdf"):
     """Build the three-panel figure from precomputed CSV.
 
@@ -98,7 +98,8 @@ def plot_figure(csv_path, embed_csv_path=None,
         CSV with method/n/m/mean_acc columns (panels a and b).
     embed_csv_path : str, optional
         CSV with embed_model/n/m/mean_acc columns (panel c).
-        If None, falls back to using csv_path for panel c.
+    oracle_csv_path : str, optional
+        CSV with n/m/oracle_acc columns (oracle line in panel a).
     """
     set_paper_style()
 
@@ -128,6 +129,15 @@ def plot_figure(csv_path, embed_csv_path=None,
             ax_a.plot(sub["m"], 1 - sub["mean_acc"], marker="o", markersize=2,
                       color=cfg["color"], linestyle=ls, linewidth=0.8)
 
+    # Oracle line
+    if oracle_csv_path and Path(oracle_csv_path).exists():
+        df_oracle = pd.read_csv(oracle_csv_path)
+        for n, ls in n_styles.items():
+            sub = df_oracle[df_oracle["n"] == n].sort_values("m")
+            if not sub.empty:
+                ax_a.plot(sub["m"], 1 - sub["oracle_acc"], marker="s", markersize=2,
+                          color=PALETTE[4], linestyle=ls, linewidth=0.8)
+
     ax_a.axhline(y=0.5, color="gray", linestyle=":", alpha=0.4, linewidth=0.5)
     ax_a.set_xscale("log")
     ax_a.set_ylim(-0.02, 0.55)
@@ -137,9 +147,12 @@ def plot_figure(csv_path, embed_csv_path=None,
 
     leg_methods = [Line2D([0], [0], color=cfg["color"], lw=1, label=cfg["label"])
                    for cfg in method_cfg.values()]
+    if oracle_csv_path and Path(oracle_csv_path).exists():
+        leg_methods.append(Line2D([0], [0], color=PALETTE[4], lw=1, marker="s",
+                                  markersize=2, label="Oracle"))
     leg_n = [Line2D([0], [0], color="0.5", linestyle=ls, lw=0.8, label=f"$n={n}$")
              for n, ls in n_styles.items()]
-    ax_a.legend(handles=leg_methods + leg_n, loc="upper right", ncol=2, fontsize=4)
+    ax_a.legend(handles=leg_methods + leg_n, loc="upper right", ncol=2, fontsize=3.5)
 
     # ── Center panel: across base models (only ministral-8b for now) ──
     base_models = ["ministral-8b"]  # extend later
@@ -229,6 +242,10 @@ if __name__ == "__main__":
         df.to_csv(csv, index=False)
         print(f"Saved to {csv}")
 
+    oracle_csv = "results/system_prompt/oracle_data.csv"
+
     print("Plotting...")
-    embed_csv_path = embed_csv if Path(embed_csv).exists() else None
-    plot_figure(csv, embed_csv_path=embed_csv_path, output_path=out)
+    plot_figure(csv,
+                embed_csv_path=embed_csv if Path(embed_csv).exists() else None,
+                oracle_csv_path=oracle_csv if Path(oracle_csv).exists() else None,
+                output_path=out)
