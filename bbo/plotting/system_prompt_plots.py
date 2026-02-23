@@ -127,16 +127,14 @@ def plot_figure3_system_prompt(
                 Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
                        label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
                 Line2D([0], [0], color=PALETTE[2], linestyle="-", lw=0.8,
-                       label=f"Near-zero"),
+                       label=f"$K\\!=\\!2$ Near-zero"),
                 Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=0.8,
-                       label=f"Active")]
+                       label=f"$K\\!=\\!2$ Active (BIC={bic2:.0f})")]
     leg1 = ax_gmm.legend(handles=leg_main, loc="upper right", fontsize=4)
     ax_gmm.add_artist(leg1)
 
     # ρ̂ legend (center right)
     leg_rho = [Line2D([], [], linestyle="none",
-                      label=f"$K\\!=\\!2$ (BIC={bic2:.0f})"),
-               Line2D([], [], linestyle="none",
                       label=f"$\\hat{{\\rho}} = {rho_hat:.2f}$")]
     ax_gmm.legend(handles=leg_rho, loc="center right", fontsize=4,
                   handlelength=0, handletextpad=0)
