@@ -103,7 +103,7 @@ def compute_failure_probs(npz_path, m_values, n=80, n_reps=200, seed=42):
 
     query_sets = [
         ("signal", SubsetDistribution(signal_idx, mass=1.0)),
-        ("null", SubsetDistribution(null_idx, mass=1.0)),
+        ("factual", SubsetDistribution(null_idx, mass=1.0)),
     ]
 
     rows = []
@@ -192,22 +192,6 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
                           color=PALETTE[4], linestyle=ls, linewidth=0.8)
 
     ax_a.axhline(y=0.5, color="gray", linestyle=":", alpha=0.4, linewidth=0.5)
-
-    # Overlay predicted m* from rank_rho estimates
-    rank_rho_csv = Path("results/system_prompt/rank_rho_estimates.csv")
-    if rank_rho_csv.exists():
-        df_rr = pd.read_csv(rank_rho_csv)
-        row = df_rr[
-            (df_rr["base_model"] == "ministral-8b")
-            & (df_rr["embed_model"] == "nomic-embed-text-v1.5")
-        ]
-        if not row.empty:
-            mstar = row.iloc[0]["mstar_95"]
-            if np.isfinite(mstar):
-                ax_a.axvline(x=mstar, color="0.4", linestyle=":", linewidth=0.8,
-                             alpha=0.7, zorder=1)
-                ax_a.text(mstar * 1.15, 0.58, f"$m^*\\!={int(mstar)}$",
-                          fontsize=5, color="0.3", va="top")
 
     ax_a.set_xscale("log")
     ax_a.set_ylim(-0.02, 0.65)

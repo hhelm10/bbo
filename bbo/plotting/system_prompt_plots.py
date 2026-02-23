@@ -63,7 +63,7 @@ def plot_figure3_system_prompt(
                    c=[PALETTE[1]], marker="s", s=8, alpha=0.7, zorder=2)
         ax.set_xticklabels([])
         ax.set_yticklabels([])
-        ax.set_title(title)
+        ax.set_title(title, fontsize=7.2)
         ax.set_ylabel("MDS 2")
 
         if is_top:
@@ -114,7 +114,7 @@ def plot_figure3_system_prompt(
 
         qs_cfg = {
             "signal": {"color": PALETTE[1], "ls": "-", "label": "Signal"},
-            "null": {"color": PALETTE[2], "ls": "--", "label": '"Orthogonal"'},
+            "factual": {"color": PALETTE[2], "ls": "--", "label": '"Orthogonal"'},
         }
 
         # Empirical curves
@@ -131,7 +131,7 @@ def plot_figure3_system_prompt(
         m_max = df_fail["m"].max()
         m_cont = np.linspace(1, m_max, 200)
 
-        for qs_name, idx in [("signal", signal_indices), ("null", null_idx)]:
+        for qs_name, idx in [("signal", signal_indices), ("factual", null_idx)]:
             cfg = qs_cfg[qs_name]
             E, _ = per_query_energy_tensor(responses[:, idx, :])
             r_hat, U, s = estimate_discriminative_rank(E, n_elbows=1)
