@@ -81,32 +81,28 @@ def plot_figure3_system_prompt(
     ax_gmm.hist(norms_orth, bins=bins, alpha=0.6, color=PALETTE[2],
                 label='"Orthogonal"', density=True, edgecolor="none")
 
-    # Overlay GMM density curves
+    # Fit 1-component and 2-component GMMs, compare via BIC
+    from sklearn.mixture import GaussianMixture as GMM
+    norms_col = norms.reshape(-1, 1)
+    gmm1 = GMM(n_components=1, random_state=0).fit(norms_col)
+    gmm2 = gmm  # already fitted with 2 components
+    bic1 = gmm1.bic(norms_col)
+    bic2 = gmm2.bic(norms_col)
+
+    # Overlay density curves
     x_plot = np.linspace(norms.min() - 0.005, norms.max() + 0.005, 300)
-    means = gmm.means_.ravel()
-    stds = np.sqrt(gmm.covariances_.ravel())
-    weights = gmm.weights_
+    x_col = x_plot.reshape(-1, 1)
 
-    # Total GMM density
-    density_total = np.zeros_like(x_plot)
-    for k in range(2):
-        comp_density = weights[k] * scipy_norm.pdf(x_plot, means[k], stds[k])
-        density_total += comp_density
+    # 1-component density
+    density_1 = np.exp(gmm1.score_samples(x_col))
+    ax_gmm.plot(x_plot, density_1, color="0.3", linestyle="--", linewidth=0.8)
 
-    # Individual components
-    zero_comp = int(np.argmin(means))
-    active_comp = 1 - zero_comp
-    for k, (style, lbl) in [(zero_comp, ("--", "Near-zero")),
-                              (active_comp, ("-", "Active"))]:
-        comp_density = weights[k] * scipy_norm.pdf(x_plot, means[k], stds[k])
-        ax_gmm.plot(x_plot, comp_density, color="0.3", linestyle=style,
-                    linewidth=0.8)
+    # 2-component density
+    density_2 = np.exp(gmm2.score_samples(x_col))
+    ax_gmm.plot(x_plot, density_2, color="0.1", linestyle="-", linewidth=1.0)
 
-    ax_gmm.plot(x_plot, density_total, color="0.1", linewidth=1.0)
-
-    # Annotate π₀ and ρ̂
+    # Annotate ρ̂
     ax_gmm.text(0.97, 0.95,
-                f"$\\hat{{\\pi}}_0 = {gmm_info['pi0']:.2f}$\n"
                 f"$\\hat{{\\rho}} = {rho_hat:.2f}$",
                 transform=ax_gmm.transAxes, fontsize=5, va="top", ha="right",
                 bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
@@ -115,7 +111,16 @@ def plot_figure3_system_prompt(
     ax_gmm.set_xlabel("Loading norm $\\|U_{q,\\cdot}\\|$")
     ax_gmm.set_ylabel("Density")
     ax_gmm.set_title("(b) GMM on loading norms")
-    ax_gmm.legend(loc="upper left", fontsize=4)
+
+    # Legend: histograms + GMM fits with BIC
+    from matplotlib.lines import Line2D as L2D
+    leg_hist = [Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
+                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label='"Orthogonal"')]
+    leg_gmm = [Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
+                       label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
+               Line2D([0], [0], color="0.1", linestyle="-", lw=1.0,
+                       label=f"$K\\!=\\!2$ (BIC={bic2:.0f})")]
+    ax_gmm.legend(handles=leg_hist + leg_gmm, loc="upper left", fontsize=4)
 
     # --- Panel (c): Failure probability P[err >= 0.5] ---
     if fail_csv_path is not None and Path(fail_csv_path).exists():
