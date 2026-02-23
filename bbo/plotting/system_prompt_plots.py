@@ -124,6 +124,8 @@ def plot_figure3_system_prompt(
 
     # --- Panel (c): Failure probability P[err >= 0.5] ---
     if fail_csv_path is not None and Path(fail_csv_path).exists():
+        from scipy.optimize import curve_fit
+
         df_fail = pd.read_csv(fail_csv_path)
 
         # Empirical curve: uniform sampling over all queries
@@ -133,14 +135,37 @@ def plot_figure3_system_prompt(
                          marker="o", markersize=2, color=PALETTE[0],
                          linestyle="-", linewidth=0.8, label="Empirical")
 
-        # Theoretical bound: r̂ · ρ̂^m (from the all-queries GMM estimate)
         m_max = df_fail["m"].max()
         m_cont = np.linspace(1, m_max, 200)
 
+        # Theoretical bound: r̂ · ρ̂^m (from the all-queries GMM estimate)
         if rho_hat > 0:
             bound = np.minimum(1.0, r_hat * rho_hat ** m_cont)
             ax_fail.plot(m_cont, bound, color="0.3", linestyle=":",
-                         linewidth=0.8, alpha=0.7, label=r"$\hat{r}\hat{\rho}^m$")
+                         linewidth=0.8, alpha=0.7,
+                         label=f"$\\hat{{r}}\\hat{{\\rho}}^m$"
+                               f" ($\\hat{{\\rho}}\\!={rho_hat:.2f}$)")
+
+        # Fit r·ρ^m + γ(n) to empirical curve
+        if not sub.empty and len(sub) >= 3:
+            m_data = sub["m"].values.astype(float)
+            y_data = sub["failure_prob"].values
+
+            def _bound_model(m, a, rho, gamma):
+                return a * rho ** m + gamma
+
+            try:
+                popt, _ = curve_fit(_bound_model, m_data, y_data,
+                                    p0=[1.0, 0.5, 0.01],
+                                    bounds=([0, 0, 0], [10, 1, 1]))
+                a_fit, rho_fit, gamma_fit = popt
+                y_fit = _bound_model(m_cont, a_fit, rho_fit, gamma_fit)
+                ax_fail.plot(m_cont, y_fit, color=PALETTE[3], linestyle="--",
+                             linewidth=0.8, alpha=0.8,
+                             label=f"Fit: $\\rho\\!={rho_fit:.2f}$,"
+                                   f" $\\gamma\\!={gamma_fit:.3f}$")
+            except RuntimeError:
+                pass
 
         # Vertical lines at m* for multiple ε values
         epsilons = [0.05, 0.1, 0.2]
@@ -151,18 +176,26 @@ def plot_figure3_system_prompt(
                 ax_fail.axvline(x=ms, color=eps_color, linestyle="--",
                                 linewidth=0.6, alpha=0.7)
 
-        # Legend entries for m* lines
+        # Legend
         leg = [Line2D([0], [0], color=PALETTE[0], linestyle="-", lw=0.8,
                        marker="o", markersize=2, label="Empirical")]
         if rho_hat > 0:
             leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
-                              label=r"$\hat{r}\hat{\rho}^m$"))
+                              label=f"$\\hat{{r}}\\hat{{\\rho}}^m$"
+                                    f" ($\\hat{{\\rho}}\\!={rho_hat:.2f}$)"))
+        try:
+            leg.append(Line2D([0], [0], color=PALETTE[3], linestyle="--", lw=0.8,
+                              label=f"Fit ($\\rho\\!={rho_fit:.2f}$,"
+                                    f" $\\gamma\\!={gamma_fit:.3f}$)"))
+        except NameError:
+            pass
         for eps, eps_color in zip(epsilons, eps_colors):
             ms = predict_mstar(r_hat, rho_hat, epsilon=eps)
             if np.isfinite(ms) and ms > 1:
                 leg.append(Line2D([0], [0], color=eps_color, linestyle="--",
                                   lw=0.6,
-                                  label=f"$m^*\\!={ms}$ ($\\epsilon\\!={eps}$)"))
+                                  label=f"$m^*\\!={ms}$"
+                                        f" ($\\epsilon\\!={eps}$)"))
         ax_fail.legend(handles=leg, loc="upper right", fontsize=4)
         ax_fail.set_xscale("log")
         ax_fail.set_ylim(-0.02, 1.05)
