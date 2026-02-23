@@ -1,9 +1,14 @@
-"""Estimate discriminative rank r̂ and zero-set probability ρ̂ from the E matrix.
+"""Estimate discriminative rank r̂ and zero-set probability ρ̂ from data.
 
-The E matrix is M × C(n,2) where E_{q,(i,j)} = ||g(f_i(q)) - g(f_j(q))||².
-Its SVD reveals the discriminative rank (number of independent directions
-along which queries separate model pairs) and the zero-set probability
-(fraction of queries that are non-discriminative along each direction).
+Uses the per-query between-class excess B_q to estimate ρ̂ via GMM, and
+the singular value spectrum of E to estimate r̂ via profile likelihood.
+
+Steps:
+1. Compute E (per-query pairwise dissimilarities for all model pairs)
+2. Partition pairs into within-class and cross-class; compute B_q
+   (per-query between-class excess = mean cross-class - mean within-class)
+3. SVD of E → r̂ via spectral gap (1 elbow)
+4. Two-component GMM on B_q → ρ̂ = π̂₀ (near-zero component weight)
 """
 
 import numpy as np
@@ -12,16 +17,61 @@ from sklearn.mixture import GaussianMixture
 from bbo.embedding.mds import select_dimension
 
 
-def estimate_discriminative_rank(E: np.ndarray, n_elbows: int = 1):
-    """Estimate r̂ from the singular value spectrum of E.
+def compute_E_disc(E: np.ndarray, pairs: np.ndarray, labels: np.ndarray):
+    """Compute the between-class centered dissimilarity matrix and B_q.
 
-    Uses the Zhu & Ghodsi (2006) profile likelihood method to find the
-    discriminative rank via spectral gap detection.
+    For each query q, subtracts the average within-class dissimilarity
+    from each cross-class pair's dissimilarity, isolating the discriminative
+    component.
 
     Parameters
     ----------
     E : ndarray of shape (M, n_pairs)
-        Per-query energy tensor (squared distances for each query × model pair).
+        Per-query energy tensor.
+    pairs : ndarray of shape (n_pairs, 2)
+        Model pair indices (i, j) for each column of E.
+    labels : ndarray of shape (n_models,)
+        Binary class labels.
+
+    Returns
+    -------
+    E_disc : ndarray of shape (M, n_cross)
+        Between-class centered dissimilarity matrix (cross-class pairs only).
+    cross_mask : ndarray of shape (n_pairs,), bool
+        Mask indicating which pairs are cross-class.
+    B_q : ndarray of shape (M,)
+        Per-query between-class excess (scalar summary).
+    """
+    y_i = labels[pairs[:, 0]]
+    y_j = labels[pairs[:, 1]]
+
+    # Partition masks
+    within0 = (y_i == 0) & (y_j == 0)
+    within1 = (y_i == 1) & (y_j == 1)
+    cross = y_i != y_j
+
+    # Per-query within-class means
+    E_bar_0 = E[:, within0].mean(axis=1) if within0.any() else np.zeros(E.shape[0])
+    E_bar_1 = E[:, within1].mean(axis=1) if within1.any() else np.zeros(E.shape[0])
+    within_mean = 0.5 * (E_bar_0 + E_bar_1)  # (M,)
+
+    # E^disc: cross-class pairs, centered by within-class mean
+    E_cross = E[:, cross]  # (M, n_cross)
+    E_disc = E_cross - within_mean[:, np.newaxis]
+
+    # Per-query between-class excess (scalar)
+    B_q = E_cross.mean(axis=1) - within_mean
+
+    return E_disc, cross, B_q
+
+
+def estimate_discriminative_rank(E: np.ndarray, n_elbows: int = 1):
+    """Estimate r̂ from the singular value spectrum of E.
+
+    Parameters
+    ----------
+    E : ndarray of shape (M, n_pairs)
+        Per-query energy tensor (full, not between-class centered).
     n_elbows : int, default=1
         Number of elbows to find in the singular value spectrum.
 
@@ -39,21 +89,19 @@ def estimate_discriminative_rank(E: np.ndarray, n_elbows: int = 1):
     return r_hat, U, s
 
 
-def estimate_rho(U: np.ndarray, r_hat: int, K_max: int = 5):
-    """Estimate ρ̂ via Gaussian mixture model on loading norms.
+def estimate_rho(B_q: np.ndarray):
+    """Estimate ρ̂ via two-component GMM on per-query between-class excess.
 
-    Selects the number of components K by BIC (K=2,...,K_max), then
-    estimates ρ̂ from the mixing weight of the component whose mean is
-    closest to zero.
+    Fits a two-component GMM to the B_q values. The near-zero component
+    captures queries with no discriminative contribution (orthogonal queries),
+    while the positive component captures discriminative (signal) queries.
+
+    ρ̂ = π̂₀, the mixing weight of the near-zero component.
 
     Parameters
     ----------
-    U : ndarray of shape (M, k)
-        Left singular vectors from SVD of E.
-    r_hat : int
-        Estimated discriminative rank.
-    K_max : int, default=5
-        Maximum number of GMM components to consider.
+    B_q : ndarray of shape (M,)
+        Per-query between-class excess values.
 
     Returns
     -------
@@ -62,56 +110,40 @@ def estimate_rho(U: np.ndarray, r_hat: int, K_max: int = 5):
     info : dict
         Diagnostic information:
         - 'pi0': mixing weight of the near-zero component
-        - 'norms': array of loading norms
-        - 'gmm': fitted GaussianMixture object (best K)
-        - 'gmm1': fitted 1-component GMM (for comparison)
-        - 'K_best': selected number of components
-        - 'bics': dict mapping K -> BIC value
-        - 'labels': component assignments (0=near-zero, else=active)
+        - 'B_q': the input B_q values
+        - 'gmm': fitted 2-component GaussianMixture object
+        - 'gmm1': fitted 1-component GMM (for BIC comparison)
+        - 'bic1': BIC of 1-component model
+        - 'bic2': BIC of 2-component model
+        - 'labels': component assignments (0=near-zero, 1=active)
     """
-    U_r = U[:, :r_hat]
+    B_col = B_q.reshape(-1, 1)
 
-    # Aggregate loading norms
-    norms = np.linalg.norm(U_r, axis=1)
-    norms_col = norms.reshape(-1, 1)
+    # Fit 1- and 2-component GMMs
+    gmm1 = GaussianMixture(n_components=1, random_state=0).fit(B_col)
+    gmm2 = GaussianMixture(n_components=2, random_state=0).fit(B_col)
 
-    # Fit K=1 for comparison
-    gmm1 = GaussianMixture(n_components=1, random_state=0).fit(norms_col)
+    bic1 = gmm1.bic(B_col)
+    bic2 = gmm2.bic(B_col)
 
-    # Fit K=2,...,K_max and select by BIC
-    bics = {1: gmm1.bic(norms_col)}
-    best_gmm = None
-    best_bic = np.inf
-    best_K = 2
-
-    for K in range(2, K_max + 1):
-        gmm_k = GaussianMixture(n_components=K, random_state=0).fit(norms_col)
-        bic_k = gmm_k.bic(norms_col)
-        bics[K] = bic_k
-        if bic_k < best_bic:
-            best_bic = bic_k
-            best_gmm = gmm_k
-            best_K = K
-
-    # Identify the near-zero component (lowest mean)
-    means = best_gmm.means_.ravel()
+    # Identify the near-zero component (lower mean)
+    means = gmm2.means_.ravel()
     zero_comp = int(np.argmin(means))
-    pi0 = best_gmm.weights_[zero_comp]
+    pi0 = gmm2.weights_[zero_comp]
 
-    # Component labels: 0=near-zero, else=active
-    raw_labels = best_gmm.predict(norms_col)
+    # Component labels: 0=near-zero, 1=active
+    raw_labels = gmm2.predict(B_col)
     labels = np.where(raw_labels == zero_comp, 0, 1)
 
-    # Recover per-direction ρ̂
-    rho_hat = pi0 ** (1.0 / r_hat) if r_hat > 0 else pi0
+    rho_hat = pi0
 
     info = {
         'pi0': pi0,
-        'norms': norms,
-        'gmm': best_gmm,
+        'B_q': B_q,
+        'gmm': gmm2,
         'gmm1': gmm1,
-        'K_best': best_K,
-        'bics': bics,
+        'bic1': bic1,
+        'bic2': bic2,
         'labels': labels,
     }
     return rho_hat, info

@@ -2,9 +2,8 @@
 """Compute discriminative rank r̂, zero-set probability ρ̂, and predicted m*
 for all system prompt and motivating experiment NPZ files.
 
-Uses ALL queries (signal + orthogonal) to build E, then estimates r̂ and ρ̂
-via GMM on loading norms. Also computes per-query-subset estimates for
-diagnostic comparison.
+Uses the per-query between-class excess B_q with a 2-component GMM to
+estimate ρ̂, and the singular value spectrum of E to estimate r̂.
 
 Outputs a CSV with columns:
     experiment, base_model, embed_model, query_set, n_queries,
@@ -22,33 +21,44 @@ import pandas as pd
 
 from bbo.distances.energy import per_query_energy_tensor
 from bbo.estimation.rank_rho import (
+    compute_E_disc,
     estimate_discriminative_rank,
     estimate_rho,
     predict_mstar,
 )
 
 
-def process_all_queries(responses, all_indices):
-    """Compute r̂, ρ̂ from ALL queries combined via GMM.
+def process_npz(responses, labels, all_indices):
+    """Compute r̂, ρ̂ from B_q (per-query between-class excess) via GMM.
 
     Parameters
     ----------
     responses : ndarray of shape (n_models, M, p)
+    labels : ndarray of shape (n_models,)
     all_indices : ndarray of shape (M_total,)
 
     Returns
     -------
     dict with estimation results.
     """
-    E, _ = per_query_energy_tensor(responses[:, all_indices, :])
+    E, pairs = per_query_energy_tensor(responses[:, all_indices, :])
+
+    # r̂ from scree of full E
     r_hat, U, s = estimate_discriminative_rank(E, n_elbows=1)
-    rho_hat, info = estimate_rho(U, r_hat)
+
+    # B_q from between-class centering
+    _, _, B_q = compute_E_disc(E, pairs, labels)
+
+    # ρ̂ from 2-component GMM on B_q
+    rho_hat, info = estimate_rho(B_q)
 
     return {
         "n_queries": len(all_indices),
         "r_hat": r_hat,
         "rho_hat": rho_hat,
         "pi0": info["pi0"],
+        "bic1": info["bic1"],
+        "bic2": info["bic2"],
         "sv_ratio": float(s[0] / s[1]) if len(s) > 1 else np.inf,
         "mstar_80": predict_mstar(r_hat, rho_hat, epsilon=0.20),
         "mstar_90": predict_mstar(r_hat, rho_hat, epsilon=0.10),
@@ -80,6 +90,7 @@ def main():
 
             data = np.load(str(npz_path), allow_pickle=True)
             responses = data["responses"]
+            labels = data["labels"]
 
             # Collect all query indices
             signal_idx = data["signal_indices"] if "signal_indices" in data else np.array([])
@@ -92,7 +103,7 @@ def main():
                 print("  No queries found, skipping")
                 continue
 
-            res = process_all_queries(responses, all_idx)
+            res = process_npz(responses, labels, all_idx)
 
             rows.append({
                 "experiment": "system_prompt",
@@ -120,13 +131,14 @@ def main():
         print(f"\nProcessing motivating experiment")
         data = np.load(str(mot_npz), allow_pickle=True)
         responses = data["responses"]
+        labels = data["labels"]
 
         signal_idx = data["sensitive_indices"] if "sensitive_indices" in data else np.array([])
         orth_idx = data["orthogonal_indices"] if "orthogonal_indices" in data else np.array([])
 
         all_idx = np.concatenate([signal_idx, orth_idx])
         if len(all_idx) > 0:
-            res = process_all_queries(responses, all_idx)
+            res = process_npz(responses, labels, all_idx)
 
             rows.append({
                 "experiment": "motivating",

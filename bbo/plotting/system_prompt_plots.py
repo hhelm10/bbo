@@ -2,7 +2,7 @@
 
 Figure 3 panels (a,b,c): Estimation and theory validation
   (a) Scree plot of E (all queries)
-  (b) GMM fit on loading norms
+  (b) GMM fit on B_q (per-query between-class excess)
   (c) P[error >= 0.5] with theoretical overlay
 
 Figure 4 row 1 (a,b,c): Quantitative results (error vs m)
@@ -21,7 +21,12 @@ from scipy.stats import norm as scipy_norm
 from bbo.plotting.style import set_paper_style, PALETTE
 from bbo.distances.energy import pairwise_energy_distances_t0, per_query_energy_tensor
 from bbo.embedding.mds import ClassicalMDS
-from bbo.estimation.rank_rho import estimate_discriminative_rank, estimate_rho, predict_mstar
+from bbo.estimation.rank_rho import (
+    compute_E_disc,
+    estimate_discriminative_rank,
+    estimate_rho,
+    predict_mstar,
+)
 
 
 def plot_figure3_system_prompt(
@@ -37,16 +42,21 @@ def plot_figure3_system_prompt(
     """Plot Figure 3 panels (a), (b), (c) for the system prompt experiment.
 
     (a) Scree plot: singular values of E (all queries), vertical line at r̂
-    (b) GMM fit: histogram of loading norms with 2-component GMM overlay
+    (b) GMM fit: histogram of B_q with 2-component GMM overlay
     (c) Failure probability: P[err >= 0.5] with r̂ρ̂^m theoretical overlay
     """
     # --- Compute E from ALL queries (signal + orthogonal) ---
     all_idx = np.concatenate([signal_indices, orthogonal_indices])
-    E_all, _ = per_query_energy_tensor(responses[:, all_idx, :])
+    E_all, pairs = per_query_energy_tensor(responses[:, all_idx, :])
 
+    # r̂ from scree of full E
     r_hat, U, s = estimate_discriminative_rank(E_all, n_elbows=1)
-    rho_hat, gmm_info = estimate_rho(U, r_hat)
-    mstar = predict_mstar(r_hat, rho_hat, epsilon=0.05)
+
+    # B_q from between-class centering
+    _, _, B_q = compute_E_disc(E_all, pairs, labels)
+
+    # ρ̂ from 2-component GMM on B_q
+    rho_hat, gmm_info = estimate_rho(B_q)
 
     n_signal = len(signal_indices)
 
@@ -66,30 +76,25 @@ def plot_figure3_system_prompt(
     ax_scree.set_ylabel("$\\sigma_r / \\sigma_1$")
     ax_scree.set_title("(a) Singular values of $E$")
 
-    # --- Panel (b): GMM fit on loading norms ---
-    norms = gmm_info['norms']
-    gmm = gmm_info['gmm']
-    gmm_labels = gmm_info['labels']
+    # --- Panel (b): GMM fit on B_q ---
+    gmm2 = gmm_info['gmm']
+    gmm1 = gmm_info['gmm1']
+    bic1 = gmm_info['bic1']
+    bic2 = gmm_info['bic2']
 
     # Histogram colored by signal vs orthogonal
-    norms_signal = norms[:n_signal]
-    norms_orth = norms[n_signal:]
+    B_signal = B_q[:n_signal]
+    B_orth = B_q[n_signal:]
 
-    bins = np.linspace(norms.min(), norms.max(), 30)
-    ax_gmm.hist(norms_signal, bins=bins, alpha=0.6, color=PALETTE[1],
+    bins = np.linspace(B_q.min(), B_q.max(), 30)
+    ax_gmm.hist(B_signal, bins=bins, alpha=0.6, color=PALETTE[1],
                 label="Signal", density=True, edgecolor="none")
-    ax_gmm.hist(norms_orth, bins=bins, alpha=0.6, color=PALETTE[2],
+    ax_gmm.hist(B_orth, bins=bins, alpha=0.6, color=PALETTE[2],
                 label='"Orthogonal"', density=True, edgecolor="none")
 
-    # GMM info from estimate_rho (BIC-selected K)
-    gmm_best = gmm_info['gmm']
-    gmm1 = gmm_info['gmm1']
-    K_best = gmm_info['K_best']
-    bics = gmm_info['bics']
-    norms_col = norms.reshape(-1, 1)
-
     # Overlay density curves
-    x_plot = np.linspace(norms.min() - 0.005, norms.max() + 0.005, 300)
+    x_plot = np.linspace(B_q.min() - 0.002, B_q.max() + 0.002, 300)
+    x_col = x_plot.reshape(-1, 1)
 
     # K=1: single Gaussian
     m1_mean = gmm1.means_[0, 0]
@@ -97,10 +102,9 @@ def plot_figure3_system_prompt(
     ax_gmm.plot(x_plot, scipy_norm.pdf(x_plot, m1_mean, m1_std),
                 color="0.3", linestyle="--", linewidth=0.8)
 
-    # Best K: plot combined PDF
-    x_col = x_plot.reshape(-1, 1)
-    density_best = np.exp(gmm_best.score_samples(x_col))
-    ax_gmm.plot(x_plot, density_best, color=PALETTE[1], linestyle="-", linewidth=1.0)
+    # K=2: combined PDF
+    density_k2 = np.exp(gmm2.score_samples(x_col))
+    ax_gmm.plot(x_plot, density_k2, color=PALETTE[1], linestyle="-", linewidth=1.0)
 
     # Annotate ρ̂
     ax_gmm.text(0.97, 0.95,
@@ -109,17 +113,17 @@ def plot_figure3_system_prompt(
                 bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
                           edgecolor="0.7", alpha=0.8))
 
-    ax_gmm.set_xlabel("Loading norm $\\|U_{q,\\cdot}\\|$")
+    ax_gmm.set_xlabel("$B_q$ (between-class excess)")
     ax_gmm.set_ylabel("Density")
-    ax_gmm.set_title("(b) GMM on loading norms")
+    ax_gmm.set_title("(b) GMM on $B_q$")
 
     # Legend: histograms + GMM fits with BIC
     leg_hist = [Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
                 Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label='"Orthogonal"')]
     leg_gmm = [Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
-                       label=f"$K\\!=\\!1$ (BIC={bics[1]:.0f})"),
+                       label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
                Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=1.0,
-                       label=f"$K\\!=\\!{K_best}$ (BIC={bics[K_best]:.0f})")]
+                       label=f"$K\\!=\\!2$ (BIC={bic2:.0f})")]
     ax_gmm.legend(handles=leg_hist + leg_gmm, loc="upper left", fontsize=4)
 
     # --- Panel (c): Failure probability P[err >= 0.5] ---
@@ -138,7 +142,7 @@ def plot_figure3_system_prompt(
         m_max = df_fail["m"].max()
         m_cont = np.linspace(1, m_max, 200)
 
-        # Theoretical bound: r̂ · ρ̂^m (from the all-queries GMM estimate)
+        # Theoretical bound: r̂ · ρ̂^m (from B_q GMM estimate)
         if rho_hat > 0:
             bound = np.minimum(1.0, r_hat * rho_hat ** m_cont)
             ax_fail.plot(m_cont, bound, color="0.3", linestyle=":",
@@ -147,6 +151,8 @@ def plot_figure3_system_prompt(
                                f" ($\\hat{{\\rho}}\\!={rho_hat:.2f}$)")
 
         # Fit r·ρ^m + γ(n) to empirical curve
+        rho_fit = None
+        gamma_fit = None
         if not sub.empty and len(sub) >= 3:
             m_data = sub["m"].values.astype(float)
             y_data = sub["failure_prob"].values
@@ -174,12 +180,10 @@ def plot_figure3_system_prompt(
             leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
                               label=f"$\\hat{{r}}\\hat{{\\rho}}^m$"
                                     f" ($\\hat{{\\rho}}\\!={rho_hat:.2f}$)"))
-        try:
+        if rho_fit is not None:
             leg.append(Line2D([0], [0], color=PALETTE[3], linestyle="--", lw=0.8,
                               label=f"Fit ($\\rho\\!={rho_fit:.2f}$,"
                                     f" $\\gamma\\!={gamma_fit:.3f}$)"))
-        except NameError:
-            pass
         ax_fail.legend(handles=leg, loc="upper right", fontsize=4)
         ax_fail.set_xscale("log")
         ax_fail.set_ylim(-0.02, 1.05)
