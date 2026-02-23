@@ -86,9 +86,9 @@ def load_or_compute(npz_path, n_values, m_values, n_reps=200, seed=42):
 
 
 def compute_failure_probs(npz_path, m_values, n=80, n_reps=200, seed=42):
-    """Compute P[error >= 0.5] for signal and orthogonal query sets."""
+    """Compute P[error >= 0.5] for uniform query sampling."""
     from bbo.queries.query_set import sample_queries
-    from bbo.queries.distributions import SubsetDistribution
+    from bbo.queries.distributions import UniformDistribution
     from bbo.classification.evaluate import make_classifier
     from bbo.distances.energy import pairwise_energy_distances_t0
     from bbo.embedding.mds import ClassicalMDS
@@ -96,48 +96,40 @@ def compute_failure_probs(npz_path, m_values, n=80, n_reps=200, seed=42):
     data = np.load(str(npz_path), allow_pickle=True)
     responses = data["responses"]
     labels = data["labels"]
-    signal_idx = data["signal_indices"]
-    null_idx = data["null_indices"] if "null_indices" in data else data["orthogonal_indices"]
 
     n_models, M, p = responses.shape
-
-    query_sets = [
-        ("signal", SubsetDistribution(signal_idx, mass=1.0)),
-        ("factual", SubsetDistribution(null_idx, mass=1.0)),
-    ]
+    dist = UniformDistribution()
 
     rows = []
-    for qs_name, dist in query_sets:
-        for m in m_values:
-            n_fail = 0
-            for rep in range(n_reps):
-                rng = np.random.default_rng(
-                    seed + rep * 100003 + m * 1009 + n * 31
-                    + hash(qs_name) % 10000
-                )
-                query_idx = sample_queries(M, m, distribution=dist, rng=rng)
+    for m in m_values:
+        n_fail = 0
+        for rep in range(n_reps):
+            rng = np.random.default_rng(
+                seed + rep * 100003 + m * 1009 + n * 31
+            )
+            query_idx = sample_queries(M, m, distribution=dist, rng=rng)
 
-                D = pairwise_energy_distances_t0(responses, query_idx)
-                X = ClassicalMDS().fit_transform(D)
+            D = pairwise_energy_distances_t0(responses, query_idx)
+            X = ClassicalMDS().fit_transform(D)
 
-                class0 = np.where(labels == 0)[0]
-                class1 = np.where(labels == 1)[0]
-                n_per = n // 2
-                sel0 = rng.choice(class0, n_per, replace=False)
-                sel1 = rng.choice(class1, n_per, replace=False)
-                train_idx = np.concatenate([sel0, sel1])
-                test_idx = np.setdiff1d(np.arange(n_models), train_idx)
+            class0 = np.where(labels == 0)[0]
+            class1 = np.where(labels == 1)[0]
+            n_per = n // 2
+            sel0 = rng.choice(class0, n_per, replace=False)
+            sel1 = rng.choice(class1, n_per, replace=False)
+            train_idx = np.concatenate([sel0, sel1])
+            test_idx = np.setdiff1d(np.arange(n_models), train_idx)
 
-                clf = make_classifier("rf")
-                clf.fit(X[train_idx], labels[train_idx])
-                preds = clf.predict(X[test_idx])
-                acc = (preds == labels[test_idx]).mean()
-                if acc <= 0.5:
-                    n_fail += 1
+            clf = make_classifier("rf")
+            clf.fit(X[train_idx], labels[train_idx])
+            preds = clf.predict(X[test_idx])
+            acc = (preds == labels[test_idx]).mean()
+            if acc <= 0.5:
+                n_fail += 1
 
-            fail_prob = n_fail / n_reps
-            rows.append({"query_set": qs_name, "m": m, "failure_prob": fail_prob})
-            print(f"  {qs_name} m={m}: P[err>=0.5] = {fail_prob:.3f}")
+        fail_prob = n_fail / n_reps
+        rows.append({"query_set": "uniform", "m": m, "failure_prob": fail_prob})
+        print(f"  uniform m={m}: P[err>=0.5] = {fail_prob:.3f}")
 
     return pd.DataFrame(rows)
 

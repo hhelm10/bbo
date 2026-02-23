@@ -121,19 +121,12 @@ def plot_figure3_system_prompt(
     if fail_csv_path is not None and Path(fail_csv_path).exists():
         df_fail = pd.read_csv(fail_csv_path)
 
-        qs_cfg = {
-            "signal": {"color": PALETTE[1], "ls": "-", "label": "Signal"},
-            "factual": {"color": PALETTE[2], "ls": "--", "label": '"Orthogonal"'},
-        }
-
-        # Empirical curves
-        for qs_name, cfg in qs_cfg.items():
-            sub = df_fail[df_fail["query_set"] == qs_name].sort_values("m")
-            if sub.empty:
-                continue
+        # Empirical curve: uniform sampling over all queries
+        sub = df_fail[df_fail["query_set"] == "uniform"].sort_values("m")
+        if not sub.empty:
             ax_fail.plot(sub["m"], sub["failure_prob"],
-                         marker="o", markersize=2, color=cfg["color"],
-                         linestyle=cfg["ls"], linewidth=0.8, label=cfg["label"])
+                         marker="o", markersize=2, color=PALETTE[0],
+                         linestyle="-", linewidth=0.8, label="Empirical")
 
         # Theoretical bound: r̂ · ρ̂^m (from the all-queries GMM estimate)
         m_max = df_fail["m"].max()
