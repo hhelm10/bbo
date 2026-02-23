@@ -68,8 +68,8 @@ def plot_figure3_system_prompt(
                   marker="o", markersize=2)
 
     # Vertical line at r̂
-    ax_scree.axvline(x=r_hat, color="0.4", linestyle=":", linewidth=0.8, alpha=0.7)
-    ax_scree.text(r_hat + 1, 0.85, f"$\\hat{{r}}={r_hat}$",
+    ax_scree.axvline(x=r_hat, color="0.4", linestyle="--", linewidth=1.2, alpha=0.8)
+    ax_scree.text(r_hat + 2.5, 0.85, f"$\\hat{{r}}={r_hat}$",
                   fontsize=5, color="0.3")
 
     ax_scree.set_xlabel("Component $r$")
@@ -117,27 +117,20 @@ def plot_figure3_system_prompt(
         ax_gmm.plot(x_plot, comp_density, color=comp_colors[cidx],
                     linewidth=0.8)
 
-    # Annotate ρ̂
-    ax_gmm.text(0.97, 0.95,
-                f"$\\hat{{\\rho}} = {rho_hat:.2f}$",
-                transform=ax_gmm.transAxes, fontsize=5, va="top", ha="right",
-                bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
-                          edgecolor="0.7", alpha=0.8))
-
     ax_gmm.set_xlabel("$B_q$ (between-class excess)")
     ax_gmm.set_ylabel("Density")
     ax_gmm.set_title("(b) GMM on $B_q$")
 
-    # Legend: histograms + GMM fits with BIC
-    leg_hist = [Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
-                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label='"Orthogonal"')]
-    leg_gmm = [Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
-                       label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
-               Line2D([0], [0], color=PALETTE[2], linestyle="-", lw=0.8,
-                       label=f"Near-zero ($\\pi_0\\!={rho_hat:.2f}$)"),
-               Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=0.8,
-                       label=f"Active ($\\pi_1\\!={1-rho_hat:.2f}$)")]
-    ax_gmm.legend(handles=leg_hist + leg_gmm, loc="upper right", fontsize=4)
+    # Single legend combining histograms, GMM fits, and ρ̂
+    leg_b = [Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
+             Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label='"Orthogonal"'),
+             Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
+                    label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
+             Line2D([0], [0], color=PALETTE[2], linestyle="-", lw=0.8,
+                    label=f"$\\hat{{\\rho}}\\!=\\!{rho_hat:.2f}$ (BIC={bic2:.0f})"),
+             Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=0.8,
+                    label=f"Active ($\\pi\\!=\\!{1-rho_hat:.2f}$)")]
+    ax_gmm.legend(handles=leg_b, loc="upper right", fontsize=4)
 
     # --- Panel (c): Failure probability P[err >= 0.5] ---
     if fail_csv_path is not None and Path(fail_csv_path).exists():
@@ -210,7 +203,7 @@ def plot_figure3_system_prompt(
             except RuntimeError:
                 pass
 
-        # Legend
+        # Legend (short labels)
         leg = [Line2D([0], [0], color=n_colors[80], linestyle="-", lw=0.8,
                        marker="o", markersize=2, label="$n=80$"),
                Line2D([0], [0], color=n_colors[10], linestyle="-", lw=0.8,
@@ -221,13 +214,24 @@ def plot_figure3_system_prompt(
                                     f" ($\\hat{{\\rho}}\\!={rho_hat:.2f}$)"))
         for n_val in [80, 10]:
             if n_val in fit_results:
-                a_f, rho_f, gamma_f = fit_results[n_val]
                 leg.append(Line2D([0], [0], color=fit_colors[n_val],
                                   linestyle="--", lw=0.8,
-                                  label=f"Fit $n\\!={n_val}$:"
-                                        f" ${a_f:.2f}\\cdot{rho_f:.2f}^m"
-                                        f"+{gamma_f:.3f}$"))
+                                  label=f"Fit $n\\!={n_val}$"))
         ax_fail.legend(handles=leg, loc="upper right", fontsize=4)
+
+        # Annotate fit expressions near the curves
+        annot_cfg = {80: {"m": 4, "va": "top", "offset": -0.04},
+                     10: {"m": 4, "va": "bottom", "offset": 0.04}}
+        for n_val in [80, 10]:
+            if n_val not in fit_results:
+                continue
+            a_f, rho_f, gamma_f = fit_results[n_val]
+            txt = f"${a_f:.2f}\\!\\cdot\\!{rho_f:.2f}^m\\!+\\!{gamma_f:.3f}$"
+            cfg = annot_cfg[n_val]
+            y_annot = _bound_model(cfg["m"], a_f, rho_f, gamma_f)
+            ax_fail.text(cfg["m"], y_annot + cfg["offset"], txt,
+                         fontsize=3.5, color=fit_colors[n_val],
+                         ha="center", va=cfg["va"])
         ax_fail.set_xscale("log")
         ax_fail.set_ylim(-0.02, 1.05)
         ax_fail.set_xlabel("Number of queries $m$")
