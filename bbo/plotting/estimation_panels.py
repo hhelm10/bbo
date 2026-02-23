@@ -56,7 +56,7 @@ def plot_estimation_panels(
     # B_q from between-class centering
     _, _, B_q = compute_E_disc(E_all, pairs, labels)
 
-    # ρ̂ from BIC-optimal GMM on B_q (K=1,...,10)
+    # ρ̂ from 2-component GMM on B_q
     rho_hat, gmm_info = estimate_rho(B_q)
 
     n_signal = len(signal_indices)
@@ -76,11 +76,10 @@ def plot_estimation_panels(
     ax_scree.set_title("(a) Singular values of $E$")
 
     # --- Panel (b): GMM on B_q ---
-    gmm_best = gmm_info['gmm']
+    gmm2 = gmm_info['gmm']
     gmm1 = gmm_info['gmm1']
     bic1 = gmm_info['bic1']
-    bic_best = gmm_info['bic_best']
-    k_best = gmm_info['k_best']
+    bic2 = gmm_info['bic2']
 
     B_signal = B_q[:n_signal]
     B_orth = B_q[n_signal:]
@@ -94,23 +93,25 @@ def plot_estimation_panels(
     # Density curves
     x_plot = np.linspace(B_q.min() - 0.005, B_q.max() + 0.005, 300)
 
-    # K=1 reference
+    # K=1
     m1_mean = gmm1.means_[0, 0]
     m1_std = np.sqrt(gmm1.covariances_[0, 0, 0])
     ax_gmm.plot(x_plot, scipy_norm.pdf(x_plot, m1_mean, m1_std),
                 color="0.3", linestyle="--", linewidth=0.8)
 
-    # K=K* components (BIC-selected)
-    means_best = gmm_best.means_.ravel()
-    zero_comp = int(np.argmin(means_best))
-    for k in range(k_best):
-        w = gmm_best.weights_[k]
-        mu = gmm_best.means_[k, 0]
-        std = np.sqrt(gmm_best.covariances_[k, 0, 0])
+    # K=2 components
+    comp_colors = [PALETTE[2], PALETTE[1]]
+    means_k2 = gmm2.means_.ravel()
+    zero_comp = int(np.argmin(means_k2))
+    for k in range(2):
+        w = gmm2.weights_[k]
+        mu = gmm2.means_[k, 0]
+        std = np.sqrt(gmm2.covariances_[k, 0, 0])
         comp_density = w * scipy_norm.pdf(x_plot, mu, std)
-        color = PALETTE[2] if k == zero_comp else PALETTE[1]
-        ax_gmm.fill_between(x_plot, comp_density, alpha=0.2, color=color)
-        ax_gmm.plot(x_plot, comp_density, color=color, linewidth=0.8)
+        cidx = 0 if k == zero_comp else 1
+        ax_gmm.fill_between(x_plot, comp_density, alpha=0.2,
+                            color=comp_colors[cidx])
+        ax_gmm.plot(x_plot, comp_density, color=comp_colors[cidx], linewidth=0.8)
 
     ax_gmm.set_xlabel("$B_q$ (between-class excess)")
     ax_gmm.set_ylabel("Density")
@@ -122,9 +123,9 @@ def plot_estimation_panels(
                 Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
                        label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
                 Line2D([0], [0], color=PALETTE[2], linestyle="-", lw=0.8,
-                       label=f"$K^*\\!=\\!{k_best}$ Near-zero"),
+                       label=f"$K\\!=\\!2$ Near-zero"),
                 Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=0.8,
-                       label=f"$K^*\\!=\\!{k_best}$ Active (BIC={bic_best:.0f})")]
+                       label=f"$K\\!=\\!2$ Active (BIC={bic2:.0f})")]
     leg1 = ax_gmm.legend(handles=leg_main, loc="upper right", fontsize=4)
     ax_gmm.add_artist(leg1)
 
