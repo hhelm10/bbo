@@ -137,14 +137,28 @@ def plot_figure3_system_prompt(
             ax_fail.plot(m_cont, bound, color="0.3", linestyle=":",
                          linewidth=0.8, alpha=0.7, label=r"$\hat{r}\hat{\rho}^m$")
 
-        # Vertical line at m*
-        if np.isfinite(mstar) and mstar > 1:
-            ax_fail.axvline(x=mstar, color="0.4", linestyle=":",
-                            linewidth=0.6, alpha=0.5)
-            ax_fail.text(mstar * 1.15, 0.9, f"$\\hat{{m}}^*={mstar}$",
-                         fontsize=5, color="0.3")
+        # Vertical lines at m* for multiple ε values
+        epsilons = [0.05, 0.1, 0.2]
+        eps_colors = [PALETTE[1], PALETTE[2], PALETTE[3]]
+        for eps, eps_color in zip(epsilons, eps_colors):
+            ms = predict_mstar(r_hat, rho_hat, epsilon=eps)
+            if np.isfinite(ms) and ms > 1:
+                ax_fail.axvline(x=ms, color=eps_color, linestyle="--",
+                                linewidth=0.6, alpha=0.7)
 
-        ax_fail.legend(loc="upper right", fontsize=4)
+        # Legend entries for m* lines
+        leg = [Line2D([0], [0], color=PALETTE[0], linestyle="-", lw=0.8,
+                       marker="o", markersize=2, label="Empirical")]
+        if rho_hat > 0:
+            leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
+                              label=r"$\hat{r}\hat{\rho}^m$"))
+        for eps, eps_color in zip(epsilons, eps_colors):
+            ms = predict_mstar(r_hat, rho_hat, epsilon=eps)
+            if np.isfinite(ms) and ms > 1:
+                leg.append(Line2D([0], [0], color=eps_color, linestyle="--",
+                                  lw=0.6,
+                                  label=f"$m^*\\!={ms}$ ($\\epsilon\\!={eps}$)"))
+        ax_fail.legend(handles=leg, loc="upper right", fontsize=4)
         ax_fail.set_xscale("log")
         ax_fail.set_ylim(-0.02, 1.05)
         ax_fail.set_xlabel("Number of queries $m$")
