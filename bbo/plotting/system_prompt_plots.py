@@ -177,21 +177,27 @@ def plot_figure3_system_prompt(
                          label=f"$\\hat{{r}}\\hat{{\\rho}}^m$"
                                f" ($\\hat{{\\rho}}\\!={rho_hat:.2f}$)")
 
-        # Fit r·ρ^m + γ(n) to n=80 empirical curve
-        rho_fit = None
-        gamma_fit = None
-        if has_n:
-            sub80 = df_fail[(df_fail["query_set"] == "uniform") &
-                            (df_fail["n"] == 80)].sort_values("m")
-        else:
-            sub80 = df_fail[df_fail["query_set"] == "uniform"].sort_values("m")
+        # Fit a·ρ^m + γ to empirical curves for each n
+        def _bound_model(m, a, rho, gamma):
+            return a * rho ** m + gamma
 
-        if not sub80.empty and len(sub80) >= 3:
-            m_data = sub80["m"].values.astype(float)
-            y_data = sub80["failure_prob"].values
+        fit_colors = {80: PALETTE[3], 10: PALETTE[4]}
+        fit_results = {}
 
-            def _bound_model(m, a, rho, gamma):
-                return a * rho ** m + gamma
+        for n_val in [80, 10]:
+            if has_n:
+                sub_n = df_fail[(df_fail["query_set"] == "uniform") &
+                                (df_fail["n"] == n_val)].sort_values("m")
+            else:
+                if n_val != 80:
+                    continue
+                sub_n = df_fail[df_fail["query_set"] == "uniform"].sort_values("m")
+
+            if sub_n.empty or len(sub_n) < 3:
+                continue
+
+            m_data = sub_n["m"].values.astype(float)
+            y_data = sub_n["failure_prob"].values
 
             try:
                 popt, _ = curve_fit(_bound_model, m_data, y_data,
@@ -199,8 +205,10 @@ def plot_figure3_system_prompt(
                                     bounds=([0, 0, 0], [10, 1, 1]))
                 a_fit, rho_fit, gamma_fit = popt
                 y_fit = _bound_model(m_cont, a_fit, rho_fit, gamma_fit)
-                ax_fail.plot(m_cont, y_fit, color=PALETTE[3], linestyle="--",
-                             linewidth=0.8, alpha=0.8)
+                ls = "-" if n_val == 80 else "--"
+                ax_fail.plot(m_cont, y_fit, color=fit_colors[n_val],
+                             linestyle=ls, linewidth=0.8, alpha=0.8)
+                fit_results[n_val] = (a_fit, rho_fit, gamma_fit)
             except RuntimeError:
                 pass
 
@@ -213,10 +221,15 @@ def plot_figure3_system_prompt(
             leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
                               label=f"$\\hat{{r}}\\hat{{\\rho}}^m$"
                                     f" ($\\hat{{\\rho}}\\!={rho_hat:.2f}$)"))
-        if rho_fit is not None:
-            leg.append(Line2D([0], [0], color=PALETTE[3], linestyle="--", lw=0.8,
-                              label=f"Fit ($\\rho\\!={rho_fit:.2f}$,"
-                                    f" $\\gamma\\!={gamma_fit:.3f}$)"))
+        for n_val in [80, 10]:
+            if n_val in fit_results:
+                a_f, rho_f, gamma_f = fit_results[n_val]
+                ls = "-" if n_val == 80 else "--"
+                leg.append(Line2D([0], [0], color=fit_colors[n_val],
+                                  linestyle=ls, lw=0.8,
+                                  label=f"Fit $n\\!={n_val}$:"
+                                        f" ${a_f:.2f}\\cdot{rho_f:.2f}^m"
+                                        f"+{gamma_f:.3f}$"))
         ax_fail.legend(handles=leg, loc="upper right", fontsize=4)
         ax_fail.set_xscale("log")
         ax_fail.set_ylim(-0.02, 1.05)
