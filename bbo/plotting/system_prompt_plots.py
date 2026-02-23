@@ -221,22 +221,25 @@ def plot_figure3_system_prompt(
         # Single "Fit" entry since both use dashed version of their empirical color
         if fit_results:
             leg.append(Line2D([0], [0], color="0.5", linestyle="--", lw=0.8,
-                              label="Fit"))
+                              label="Fit ($r\\rho^m\\!+\\!\\gamma$)"))
         ax_fail.legend(handles=leg, loc="upper right", fontsize=4)
 
         # Annotate fit expressions near the curves
-        annot_cfg = {80: {"m": 4, "va": "top", "offset": -0.04},
-                     10: {"m": 4, "va": "bottom", "offset": 0.04}}
+        annot_cfg = {80: {"m": 6, "va": "top", "offset": -0.045},
+                     10: {"m": 6, "va": "bottom", "offset": 0.045}}
         for n_val in [80, 10]:
             if n_val not in fit_results:
                 continue
             a_f, rho_f, gamma_f = fit_results[n_val]
-            txt = f"${a_f:.2f}\\!\\cdot\\!{rho_f:.2f}^m\\!+\\!{gamma_f:.3f}$"
+            txt = f"${a_f:.2f}\\!\\cdot\\!{rho_f:.2f}^m\\!+\\!{gamma_f:.2f}$"
             cfg = annot_cfg[n_val]
             y_annot = _bound_model(cfg["m"], a_f, rho_f, gamma_f)
             ax_fail.text(cfg["m"], y_annot + cfg["offset"], txt,
-                         fontsize=3.5, color=n_colors[n_val],
-                         ha="center", va=cfg["va"])
+                         fontsize=4, color=n_colors[n_val],
+                         ha="center", va=cfg["va"],
+                         bbox=dict(boxstyle="round,pad=0.15",
+                                   facecolor="white", edgecolor="none",
+                                   alpha=0.7))
         ax_fail.set_xscale("log")
         ax_fail.set_ylim(-0.02, 1.05)
         ax_fail.set_xlabel("Number of queries $m$")
