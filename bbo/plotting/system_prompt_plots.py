@@ -135,7 +135,7 @@ def plot_figure3_system_prompt(
             cfg = qs_cfg[qs_name]
             E, _ = per_query_energy_tensor(responses[:, idx, :])
             r_hat, U, s = estimate_discriminative_rank(E, n_elbows=1)
-            rho_hat, _ = estimate_rho(U, r_hat)
+            rho_hat, _ = estimate_rho(U, r_hat, tau=0.1)
             mstar = predict_mstar(r_hat, rho_hat, epsilon=0.05)
 
             if rho_hat > 0:
