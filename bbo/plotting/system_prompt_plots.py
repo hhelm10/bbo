@@ -217,7 +217,8 @@ def plot_figure3_system_prompt(
         if rho_hat > 0:
             leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
                               label=f"$\\hat{{r}}\\hat{{\\rho}}^m$"
-                                    f" ($\\hat{{\\rho}}\\!={rho_hat:.2f}$)"))
+                                    f"\n($\\hat{{r}}\\!={r_hat},"
+                                    f"\\,\\hat{{\\rho}}\\!={rho_hat:.2f}$)"))
         # Single "Fit" entry since both use dashed version of their empirical color
         if fit_results:
             leg.append(Line2D([0], [0], color="0.5", linestyle="--", lw=0.8,
