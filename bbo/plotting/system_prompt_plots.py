@@ -117,27 +117,29 @@ def plot_figure3_system_prompt(
         ax_gmm.plot(x_plot, comp_density, color=comp_colors[cidx],
                     linewidth=0.8)
 
-    # Annotate ρ̂
-    ax_gmm.text(0.97, 0.95,
-                f"$\\hat{{\\rho}} = {rho_hat:.2f}$",
-                transform=ax_gmm.transAxes, fontsize=5, va="top", ha="right",
-                bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
-                          edgecolor="0.7", alpha=0.8))
-
     ax_gmm.set_xlabel("$B_q$ (between-class excess)")
     ax_gmm.set_ylabel("Density")
     ax_gmm.set_title("(b) GMM on $B_q$")
 
-    # Legend: histograms + GMM fits with BIC
-    leg_hist = [Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
-                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label='"Orthogonal"')]
-    leg_gmm = [Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
+    # Main legend (upper right): histograms + GMM fits with BIC
+    leg_main = [Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
+                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label='"Orthogonal"'),
+                Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
                        label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
-               Line2D([0], [0], color=PALETTE[2], linestyle="-", lw=0.8,
-                       label=f"Near-zero ($\\pi_0\\!={rho_hat:.2f}$)"),
-               Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=0.8,
-                       label=f"Active ($\\pi_1\\!={1-rho_hat:.2f}$)")]
-    ax_gmm.legend(handles=leg_hist + leg_gmm, loc="upper left", fontsize=4)
+                Line2D([0], [0], color=PALETTE[2], linestyle="-", lw=0.8,
+                       label=f"Near-zero"),
+                Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=0.8,
+                       label=f"Active")]
+    leg1 = ax_gmm.legend(handles=leg_main, loc="upper right", fontsize=4)
+    ax_gmm.add_artist(leg1)
+
+    # ρ̂ legend (center right)
+    leg_rho = [Line2D([], [], linestyle="none",
+                      label=f"$K\\!=\\!2$ (BIC={bic2:.0f})"),
+               Line2D([], [], linestyle="none",
+                      label=f"$\\hat{{\\rho}} = {rho_hat:.2f}$")]
+    ax_gmm.legend(handles=leg_rho, loc="center right", fontsize=4,
+                  handlelength=0, handletextpad=0)
 
     # --- Panel (c): Failure probability P[err >= 0.5] ---
     if fail_csv_path is not None and Path(fail_csv_path).exists():
