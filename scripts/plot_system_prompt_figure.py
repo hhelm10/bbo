@@ -86,9 +86,9 @@ def load_or_compute(npz_path, n_values, m_values, n_reps=200, seed=42):
 
 
 def compute_failure_probs(npz_path, m_values, n=80, n_reps=200, seed=42):
-    """Compute P[error >= 0.5] for uniform query sampling."""
+    """Compute P[error >= 0.5] for uniform sampling over signal + null queries."""
     from bbo.queries.query_set import sample_queries
-    from bbo.queries.distributions import UniformDistribution
+    from bbo.queries.distributions import SubsetDistribution
     from bbo.classification.evaluate import make_classifier
     from bbo.distances.energy import pairwise_energy_distances_t0
     from bbo.embedding.mds import ClassicalMDS
@@ -96,9 +96,13 @@ def compute_failure_probs(npz_path, m_values, n=80, n_reps=200, seed=42):
     data = np.load(str(npz_path), allow_pickle=True)
     responses = data["responses"]
     labels = data["labels"]
+    signal_idx = data["signal_indices"]
+    null_idx = data["null_indices"] if "null_indices" in data else data["orthogonal_indices"]
 
+    # Uniform over signal + null only (exclude weak_signal)
+    all_idx = np.concatenate([signal_idx, null_idx])
     n_models, M, p = responses.shape
-    dist = UniformDistribution()
+    dist = SubsetDistribution(all_idx, mass=1.0)
 
     rows = []
     for m in m_values:
