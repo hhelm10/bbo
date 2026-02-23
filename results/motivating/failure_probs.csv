@@ -11,3 +11,9 @@ uniform,10,5,0.125
 uniform,10,10,0.12
 uniform,10,20,0.15
 uniform,10,50,0.135
+uniform,20,1,0.16
+uniform,20,2,0.05
+uniform,20,5,0.025
+uniform,20,10,0.025
+uniform,20,20,0.05
+uniform,20,50,0.02

@@ -122,10 +122,8 @@ def plot_estimation_panels(
                 Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label='"Orthogonal"'),
                 Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
                        label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
-                Line2D([0], [0], color=PALETTE[2], linestyle="-", lw=0.8,
-                       label=f"$K\\!=\\!2$ Near-zero"),
-                Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=0.8,
-                       label=f"$K\\!=\\!2$ Active (BIC={bic2:.0f})")]
+                Line2D([0], [0], color="0.3", linestyle="-", lw=0.8,
+                       label=f"$K\\!=\\!2$ (BIC={bic2:.0f})")]
     leg1 = ax_gmm.legend(handles=leg_main, loc="upper right", fontsize=4)
     ax_gmm.add_artist(leg1)
 
@@ -139,10 +137,10 @@ def plot_estimation_panels(
     if fail_csv_path is not None and Path(fail_csv_path).exists():
         df_fail = pd.read_csv(fail_csv_path)
 
-        n_colors = {80: PALETTE[0], 10: PALETTE[1]}
+        n_colors = {80: PALETTE[0], 20: PALETTE[1]}
         has_n = "n" in df_fail.columns
 
-        for n_val in [80, 10]:
+        for n_val in [80, 20]:
             if has_n:
                 sub = df_fail[(df_fail["query_set"] == "uniform") &
                               (df_fail["n"] == n_val)].sort_values("m")
@@ -169,7 +167,7 @@ def plot_estimation_panels(
             return a * rho ** m + gamma
 
         fit_results = {}
-        for n_val in [80, 10]:
+        for n_val in [80, 20]:
             if has_n:
                 sub_n = df_fail[(df_fail["query_set"] == "uniform") &
                                 (df_fail["n"] == n_val)].sort_values("m")
@@ -196,8 +194,8 @@ def plot_estimation_panels(
         # Legend
         leg = [Line2D([0], [0], color=n_colors[80], linestyle="-", lw=0.8,
                        marker="o", markersize=2, label="$n=80$"),
-               Line2D([0], [0], color=n_colors[10], linestyle="-", lw=0.8,
-                       marker="o", markersize=2, label="$n=10$")]
+               Line2D([0], [0], color=n_colors[20], linestyle="-", lw=0.8,
+                       marker="o", markersize=2, label="$n=20$")]
         if rho_hat > 0:
             leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
                               label=f"$\\hat{{r}}\\hat{{\\rho}}^m$"
@@ -210,8 +208,8 @@ def plot_estimation_panels(
 
         # Annotate fit expressions near curves
         annot_cfg = {80: {"m": 6, "va": "top", "offset": -0.04},
-                     10: {"m": 6, "va": "bottom", "offset": 0.04}}
-        for n_val in [80, 10]:
+                     20: {"m": 6, "va": "bottom", "offset": 0.04}}
+        for n_val in [80, 20]:
             if n_val not in fit_results:
                 continue
             a_f, rho_f, gamma_f = fit_results[n_val]
