@@ -91,15 +91,28 @@ def plot_figure3_system_prompt(
 
     # Overlay density curves
     x_plot = np.linspace(norms.min() - 0.005, norms.max() + 0.005, 300)
-    x_col = x_plot.reshape(-1, 1)
 
-    # 1-component density
-    density_1 = np.exp(gmm1.score_samples(x_col))
-    ax_gmm.plot(x_plot, density_1, color="0.3", linestyle="--", linewidth=0.8)
+    # K=1: single Gaussian
+    m1_mean = gmm1.means_[0, 0]
+    m1_std = np.sqrt(gmm1.covariances_[0, 0, 0])
+    ax_gmm.plot(x_plot, scipy_norm.pdf(x_plot, m1_mean, m1_std),
+                color="0.3", linestyle="--", linewidth=0.8)
 
-    # 2-component density
-    density_2 = np.exp(gmm2.score_samples(x_col))
-    ax_gmm.plot(x_plot, density_2, color="0.1", linestyle="-", linewidth=1.0)
+    # K=2: plot each component separately (weighted)
+    means2 = gmm2.means_.ravel()
+    stds2 = np.sqrt(gmm2.covariances_.ravel())
+    weights2 = gmm2.weights_
+    zero_comp = int(np.argmin(means2))
+    active_comp = 1 - zero_comp
+
+    comp_colors = {zero_comp: PALETTE[2], active_comp: PALETTE[1]}
+    comp_labels = {zero_comp: "Near-zero", active_comp: "Active"}
+    for k in [zero_comp, active_comp]:
+        comp_density = weights2[k] * scipy_norm.pdf(x_plot, means2[k], stds2[k])
+        ax_gmm.plot(x_plot, comp_density, color=comp_colors[k],
+                    linestyle="-", linewidth=1.0)
+        ax_gmm.fill_between(x_plot, comp_density, alpha=0.15,
+                            color=comp_colors[k])
 
     # Annotate ρ̂
     ax_gmm.text(0.97, 0.95,
@@ -113,12 +126,11 @@ def plot_figure3_system_prompt(
     ax_gmm.set_title("(b) GMM on loading norms")
 
     # Legend: histograms + GMM fits with BIC
-    from matplotlib.lines import Line2D as L2D
     leg_hist = [Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
                 Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label='"Orthogonal"')]
     leg_gmm = [Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
                        label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
-               Line2D([0], [0], color="0.1", linestyle="-", lw=1.0,
+               Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=1.0,
                        label=f"$K\\!=\\!2$ (BIC={bic2:.0f})")]
     ax_gmm.legend(handles=leg_hist + leg_gmm, loc="upper left", fontsize=4)
 
