@@ -39,12 +39,12 @@ def estimate_discriminative_rank(E: np.ndarray, n_elbows: int = 1):
     return r_hat, U, s
 
 
-def estimate_rho(U: np.ndarray, r_hat: int):
+def estimate_rho(U: np.ndarray, r_hat: int, K_max: int = 5):
     """Estimate ρ̂ via Gaussian mixture model on loading norms.
 
-    Fits a two-component GMM to the row norms ||U_{q,·}|| of the
-    rank-r̂ truncated left singular vectors. The near-zero component's
-    mixing weight π̂₀ estimates ρ^r, so ρ̂ = π̂₀^(1/r̂).
+    Selects the number of components K by BIC (K=2,...,K_max), then
+    estimates ρ̂ from the mixing weight of the component whose mean is
+    closest to zero.
 
     Parameters
     ----------
@@ -52,6 +52,8 @@ def estimate_rho(U: np.ndarray, r_hat: int):
         Left singular vectors from SVD of E.
     r_hat : int
         Estimated discriminative rank.
+    K_max : int, default=5
+        Maximum number of GMM components to consider.
 
     Returns
     -------
@@ -61,52 +63,56 @@ def estimate_rho(U: np.ndarray, r_hat: int):
         Diagnostic information:
         - 'pi0': mixing weight of the near-zero component
         - 'norms': array of loading norms
-        - 'gmm': fitted GaussianMixture object
-        - 'labels': component assignments (0=near-zero, 1=active)
-        - 'per_direction': list of per-direction GMM fit dicts
+        - 'gmm': fitted GaussianMixture object (best K)
+        - 'gmm1': fitted 1-component GMM (for comparison)
+        - 'K_best': selected number of components
+        - 'bics': dict mapping K -> BIC value
+        - 'labels': component assignments (0=near-zero, else=active)
     """
     U_r = U[:, :r_hat]
 
     # Aggregate loading norms
     norms = np.linalg.norm(U_r, axis=1)
+    norms_col = norms.reshape(-1, 1)
 
-    # Fit 2-component GMM to norms
-    gmm = GaussianMixture(n_components=2, random_state=0)
-    gmm.fit(norms.reshape(-1, 1))
+    # Fit K=1 for comparison
+    gmm1 = GaussianMixture(n_components=1, random_state=0).fit(norms_col)
 
-    # Identify the near-zero component (lower mean)
-    means = gmm.means_.ravel()
+    # Fit K=2,...,K_max and select by BIC
+    bics = {1: gmm1.bic(norms_col)}
+    best_gmm = None
+    best_bic = np.inf
+    best_K = 2
+
+    for K in range(2, K_max + 1):
+        gmm_k = GaussianMixture(n_components=K, random_state=0).fit(norms_col)
+        bic_k = gmm_k.bic(norms_col)
+        bics[K] = bic_k
+        if bic_k < best_bic:
+            best_bic = bic_k
+            best_gmm = gmm_k
+            best_K = K
+
+    # Identify the near-zero component (lowest mean)
+    means = best_gmm.means_.ravel()
     zero_comp = int(np.argmin(means))
-    pi0 = gmm.weights_[zero_comp]
+    pi0 = best_gmm.weights_[zero_comp]
 
-    # Component labels: 0=near-zero, 1=active
-    raw_labels = gmm.predict(norms.reshape(-1, 1))
+    # Component labels: 0=near-zero, else=active
+    raw_labels = best_gmm.predict(norms_col)
     labels = np.where(raw_labels == zero_comp, 0, 1)
 
     # Recover per-direction ρ̂
     rho_hat = pi0 ** (1.0 / r_hat) if r_hat > 0 else pi0
 
-    # Per-direction diagnostic GMM fits
-    per_direction = []
-    for ell in range(r_hat):
-        col = np.abs(U_r[:, ell])
-        gmm_dir = GaussianMixture(n_components=2, random_state=0)
-        gmm_dir.fit(col.reshape(-1, 1))
-        dir_means = gmm_dir.means_.ravel()
-        dir_zero_comp = int(np.argmin(dir_means))
-        per_direction.append({
-            'pi0': gmm_dir.weights_[dir_zero_comp],
-            'means': dir_means,
-            'gmm': gmm_dir,
-            'values': col,
-        })
-
     info = {
         'pi0': pi0,
         'norms': norms,
-        'gmm': gmm,
+        'gmm': best_gmm,
+        'gmm1': gmm1,
+        'K_best': best_K,
+        'bics': bics,
         'labels': labels,
-        'per_direction': per_direction,
     }
     return rho_hat, info
 

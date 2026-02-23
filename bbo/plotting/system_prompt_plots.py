@@ -81,13 +81,12 @@ def plot_figure3_system_prompt(
     ax_gmm.hist(norms_orth, bins=bins, alpha=0.6, color=PALETTE[2],
                 label='"Orthogonal"', density=True, edgecolor="none")
 
-    # Fit 1-component and 2-component GMMs, compare via BIC
-    from sklearn.mixture import GaussianMixture as GMM
+    # GMM info from estimate_rho (BIC-selected K)
+    gmm_best = gmm_info['gmm']
+    gmm1 = gmm_info['gmm1']
+    K_best = gmm_info['K_best']
+    bics = gmm_info['bics']
     norms_col = norms.reshape(-1, 1)
-    gmm1 = GMM(n_components=1, random_state=0).fit(norms_col)
-    gmm2 = gmm  # already fitted with 2 components
-    bic1 = gmm1.bic(norms_col)
-    bic2 = gmm2.bic(norms_col)
 
     # Overlay density curves
     x_plot = np.linspace(norms.min() - 0.005, norms.max() + 0.005, 300)
@@ -98,21 +97,10 @@ def plot_figure3_system_prompt(
     ax_gmm.plot(x_plot, scipy_norm.pdf(x_plot, m1_mean, m1_std),
                 color="0.3", linestyle="--", linewidth=0.8)
 
-    # K=2: plot each component separately (weighted)
-    means2 = gmm2.means_.ravel()
-    stds2 = np.sqrt(gmm2.covariances_.ravel())
-    weights2 = gmm2.weights_
-    zero_comp = int(np.argmin(means2))
-    active_comp = 1 - zero_comp
-
-    comp_colors = {zero_comp: PALETTE[2], active_comp: PALETTE[1]}
-    comp_labels = {zero_comp: "Near-zero", active_comp: "Active"}
-    for k in [zero_comp, active_comp]:
-        comp_density = weights2[k] * scipy_norm.pdf(x_plot, means2[k], stds2[k])
-        ax_gmm.plot(x_plot, comp_density, color=comp_colors[k],
-                    linestyle="-", linewidth=1.0)
-        ax_gmm.fill_between(x_plot, comp_density, alpha=0.15,
-                            color=comp_colors[k])
+    # Best K: plot combined PDF
+    x_col = x_plot.reshape(-1, 1)
+    density_best = np.exp(gmm_best.score_samples(x_col))
+    ax_gmm.plot(x_plot, density_best, color=PALETTE[1], linestyle="-", linewidth=1.0)
 
     # Annotate ρ̂
     ax_gmm.text(0.97, 0.95,
@@ -129,9 +117,9 @@ def plot_figure3_system_prompt(
     leg_hist = [Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
                 Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label='"Orthogonal"')]
     leg_gmm = [Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
-                       label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
+                       label=f"$K\\!=\\!1$ (BIC={bics[1]:.0f})"),
                Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=1.0,
-                       label=f"$K\\!=\\!2$ (BIC={bic2:.0f})")]
+                       label=f"$K\\!=\\!{K_best}$ (BIC={bics[K_best]:.0f})")]
     ax_gmm.legend(handles=leg_hist + leg_gmm, loc="upper left", fontsize=4)
 
     # --- Panel (c): Failure probability P[err >= 0.5] ---
