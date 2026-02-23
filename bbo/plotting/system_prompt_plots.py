@@ -146,13 +146,12 @@ def plot_figure3_system_prompt(
         df_fail = pd.read_csv(fail_csv_path)
 
         # Plot empirical curves for each n value
-        n_styles = {80: "-", 10: "--"}
         n_colors = {80: PALETTE[0], 10: PALETTE[1]}
 
         # Check if CSV has 'n' column (new format) or not (old format)
         has_n = "n" in df_fail.columns
 
-        for n_val, ls in n_styles.items():
+        for n_val in [80, 10]:
             if has_n:
                 sub = df_fail[(df_fail["query_set"] == "uniform") &
                               (df_fail["n"] == n_val)].sort_values("m")
@@ -164,7 +163,7 @@ def plot_figure3_system_prompt(
             if not sub.empty:
                 ax_fail.plot(sub["m"], sub["failure_prob"],
                              marker="o", markersize=2, color=n_colors[n_val],
-                             linestyle=ls, linewidth=0.8)
+                             linestyle="-", linewidth=0.8)
 
         m_max = df_fail["m"].max()
         m_cont = np.linspace(1, m_max, 200)
@@ -205,9 +204,8 @@ def plot_figure3_system_prompt(
                                     bounds=([0, 0, 0], [10, 1, 1]))
                 a_fit, rho_fit, gamma_fit = popt
                 y_fit = _bound_model(m_cont, a_fit, rho_fit, gamma_fit)
-                ls = "-" if n_val == 80 else "--"
                 ax_fail.plot(m_cont, y_fit, color=fit_colors[n_val],
-                             linestyle=ls, linewidth=0.8, alpha=0.8)
+                             linestyle="--", linewidth=0.8, alpha=0.8)
                 fit_results[n_val] = (a_fit, rho_fit, gamma_fit)
             except RuntimeError:
                 pass
@@ -215,7 +213,7 @@ def plot_figure3_system_prompt(
         # Legend
         leg = [Line2D([0], [0], color=n_colors[80], linestyle="-", lw=0.8,
                        marker="o", markersize=2, label="$n=80$"),
-               Line2D([0], [0], color=n_colors[10], linestyle="--", lw=0.8,
+               Line2D([0], [0], color=n_colors[10], linestyle="-", lw=0.8,
                        marker="o", markersize=2, label="$n=10$")]
         if rho_hat > 0:
             leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
@@ -224,9 +222,8 @@ def plot_figure3_system_prompt(
         for n_val in [80, 10]:
             if n_val in fit_results:
                 a_f, rho_f, gamma_f = fit_results[n_val]
-                ls = "-" if n_val == 80 else "--"
                 leg.append(Line2D([0], [0], color=fit_colors[n_val],
-                                  linestyle=ls, lw=0.8,
+                                  linestyle="--", lw=0.8,
                                   label=f"Fit $n\\!={n_val}$:"
                                         f" ${a_f:.2f}\\cdot{rho_f:.2f}^m"
                                         f"+{gamma_f:.3f}$"))
