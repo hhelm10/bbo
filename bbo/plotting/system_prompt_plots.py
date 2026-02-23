@@ -117,20 +117,27 @@ def plot_figure3_system_prompt(
         ax_gmm.plot(x_plot, comp_density, color=comp_colors[cidx],
                     linewidth=0.8)
 
+    # Annotate ρ̂
+    ax_gmm.text(0.97, 0.95,
+                f"$\\hat{{\\rho}} = {rho_hat:.2f}$",
+                transform=ax_gmm.transAxes, fontsize=5, va="top", ha="right",
+                bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
+                          edgecolor="0.7", alpha=0.8))
+
     ax_gmm.set_xlabel("$B_q$ (between-class excess)")
     ax_gmm.set_ylabel("Density")
     ax_gmm.set_title("(b) GMM on $B_q$")
 
-    # Single legend combining histograms, GMM fits, and ρ̂
-    leg_b = [Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
-             Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label='"Orthogonal"'),
-             Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
-                    label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
-             Line2D([0], [0], color=PALETTE[2], linestyle="-", lw=0.8,
-                    label=f"$\\hat{{\\rho}}\\!=\\!{rho_hat:.2f}$ (BIC={bic2:.0f})"),
-             Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=0.8,
-                    label=f"Active ($\\pi\\!=\\!{1-rho_hat:.2f}$)")]
-    ax_gmm.legend(handles=leg_b, loc="upper right", fontsize=4)
+    # Legend: histograms + GMM fits with BIC
+    leg_hist = [Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
+                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label='"Orthogonal"')]
+    leg_gmm = [Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
+                       label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
+               Line2D([0], [0], color=PALETTE[2], linestyle="-", lw=0.8,
+                       label=f"Near-zero ($\\pi_0\\!={rho_hat:.2f}$)"),
+               Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=0.8,
+                       label=f"Active ($\\pi_1\\!={1-rho_hat:.2f}$)")]
+    ax_gmm.legend(handles=leg_hist + leg_gmm, loc="upper left", fontsize=4)
 
     # --- Panel (c): Failure probability P[err >= 0.5] ---
     if fail_csv_path is not None and Path(fail_csv_path).exists():
@@ -173,7 +180,6 @@ def plot_figure3_system_prompt(
         def _bound_model(m, a, rho, gamma):
             return a * rho ** m + gamma
 
-        fit_colors = {80: PALETTE[3], 10: PALETTE[4]}
         fit_results = {}
 
         for n_val in [80, 10]:
@@ -197,7 +203,7 @@ def plot_figure3_system_prompt(
                                     bounds=([0, 0, 0], [10, 1, 1]))
                 a_fit, rho_fit, gamma_fit = popt
                 y_fit = _bound_model(m_cont, a_fit, rho_fit, gamma_fit)
-                ax_fail.plot(m_cont, y_fit, color=fit_colors[n_val],
+                ax_fail.plot(m_cont, y_fit, color=n_colors[n_val],
                              linestyle="--", linewidth=0.8, alpha=0.8)
                 fit_results[n_val] = (a_fit, rho_fit, gamma_fit)
             except RuntimeError:
@@ -212,11 +218,10 @@ def plot_figure3_system_prompt(
             leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
                               label=f"$\\hat{{r}}\\hat{{\\rho}}^m$"
                                     f" ($\\hat{{\\rho}}\\!={rho_hat:.2f}$)"))
-        for n_val in [80, 10]:
-            if n_val in fit_results:
-                leg.append(Line2D([0], [0], color=fit_colors[n_val],
-                                  linestyle="--", lw=0.8,
-                                  label=f"Fit $n\\!={n_val}$"))
+        # Single "Fit" entry since both use dashed version of their empirical color
+        if fit_results:
+            leg.append(Line2D([0], [0], color="0.5", linestyle="--", lw=0.8,
+                              label="Fit"))
         ax_fail.legend(handles=leg, loc="upper right", fontsize=4)
 
         # Annotate fit expressions near the curves
@@ -230,7 +235,7 @@ def plot_figure3_system_prompt(
             cfg = annot_cfg[n_val]
             y_annot = _bound_model(cfg["m"], a_f, rho_f, gamma_f)
             ax_fail.text(cfg["m"], y_annot + cfg["offset"], txt,
-                         fontsize=3.5, color=fit_colors[n_val],
+                         fontsize=3.5, color=n_colors[n_val],
                          ha="center", va=cfg["va"])
         ax_fail.set_xscale("log")
         ax_fail.set_ylim(-0.02, 1.05)
