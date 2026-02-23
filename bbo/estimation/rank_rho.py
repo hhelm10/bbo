@@ -89,12 +89,13 @@ def estimate_discriminative_rank(E: np.ndarray, n_elbows: int = 1):
     return r_hat, U, s
 
 
-def estimate_rho(B_q: np.ndarray):
-    """Estimate ρ̂ via two-component GMM on per-query between-class excess.
+def estimate_rho(B_q: np.ndarray, k_max: int = 10):
+    """Estimate ρ̂ via GMM on per-query between-class excess.
 
-    Fits a two-component GMM to the B_q values. The near-zero component
-    captures queries with no discriminative contribution (orthogonal queries),
-    while the positive component captures discriminative (signal) queries.
+    Fits GMMs with K=1,...,k_max components and selects the best K by BIC.
+    The near-zero component captures queries with no discriminative
+    contribution (orthogonal queries), while positive components capture
+    discriminative (signal) queries.
 
     ρ̂ = π̂₀, the mixing weight of the near-zero component.
 
@@ -102,6 +103,8 @@ def estimate_rho(B_q: np.ndarray):
     ----------
     B_q : ndarray of shape (M,)
         Per-query between-class excess values.
+    k_max : int, default=10
+        Maximum number of GMM components to search over.
 
     Returns
     -------
@@ -111,39 +114,54 @@ def estimate_rho(B_q: np.ndarray):
         Diagnostic information:
         - 'pi0': mixing weight of the near-zero component
         - 'B_q': the input B_q values
-        - 'gmm': fitted 2-component GaussianMixture object
+        - 'gmm': best GMM (K=K*)
         - 'gmm1': fitted 1-component GMM (for BIC comparison)
         - 'bic1': BIC of 1-component model
-        - 'bic2': BIC of 2-component model
+        - 'bic_best': BIC of best model
+        - 'k_best': number of components in best model
+        - 'all_bics': dict mapping K -> BIC
         - 'labels': component assignments (0=near-zero, 1=active)
     """
     B_col = B_q.reshape(-1, 1)
 
-    # Fit 1- and 2-component GMMs
-    gmm1 = GaussianMixture(n_components=1, random_state=0).fit(B_col)
-    gmm2 = GaussianMixture(n_components=2, random_state=0).fit(B_col)
+    # Fit K=1,...,k_max and select by BIC
+    gmms = {}
+    bics = {}
+    for k in range(1, k_max + 1):
+        gmm = GaussianMixture(n_components=k, random_state=0).fit(B_col)
+        gmms[k] = gmm
+        bics[k] = gmm.bic(B_col)
 
-    bic1 = gmm1.bic(B_col)
-    bic2 = gmm2.bic(B_col)
+    k_best = min(bics, key=bics.get)
+    gmm_best = gmms[k_best]
+    gmm1 = gmms[1]
 
-    # Identify the near-zero component (lower mean)
-    means = gmm2.means_.ravel()
-    zero_comp = int(np.argmin(means))
-    pi0 = gmm2.weights_[zero_comp]
+    if k_best == 1:
+        # Single component: no separation, ρ̂ = 1
+        rho_hat = 1.0
+        pi0 = 1.0
+        labels = np.zeros(len(B_q), dtype=int)
+    else:
+        # Identify the near-zero component (lowest mean)
+        means = gmm_best.means_.ravel()
+        zero_comp = int(np.argmin(means))
+        pi0 = gmm_best.weights_[zero_comp]
 
-    # Component labels: 0=near-zero, 1=active
-    raw_labels = gmm2.predict(B_col)
-    labels = np.where(raw_labels == zero_comp, 0, 1)
+        # Component labels: 0=near-zero, 1=active
+        raw_labels = gmm_best.predict(B_col)
+        labels = np.where(raw_labels == zero_comp, 0, 1)
 
-    rho_hat = pi0
+        rho_hat = pi0
 
     info = {
         'pi0': pi0,
         'B_q': B_q,
-        'gmm': gmm2,
+        'gmm': gmm_best,
         'gmm1': gmm1,
-        'bic1': bic1,
-        'bic2': bic2,
+        'bic1': bics[1],
+        'bic_best': bics[k_best],
+        'k_best': k_best,
+        'all_bics': bics,
         'labels': labels,
     }
     return rho_hat, info
