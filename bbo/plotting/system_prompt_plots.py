@@ -16,7 +16,7 @@ from pathlib import Path
 from bbo.plotting.style import set_paper_style, PALETTE
 from bbo.distances.energy import pairwise_energy_distances_t0, per_query_energy_tensor
 from bbo.embedding.mds import ClassicalMDS
-from bbo.estimation.rank_rho import estimate_discriminative_rank
+from bbo.estimation.rank_rho import estimate_discriminative_rank, estimate_rho, predict_mstar
 
 
 def plot_figure3_system_prompt(
@@ -27,14 +27,16 @@ def plot_figure3_system_prompt(
     ax_mds_top,
     ax_mds_bot,
     ax_svd,
+    ax_fail=None,
+    fail_csv_path=None,
     m_mds: int = 5,
     seed: int = 0,
 ):
-    """Plot Figure 3 panels (a) and (b) for the system prompt experiment.
+    """Plot Figure 3 panels (a), (b), and optionally (c) for the system prompt experiment.
 
-    Style matches motivating_plots.py exactly.
     (a) MDS scatter: signal vs orthogonal queries (stacked sub-panels)
-    (b) Singular value spectrum of D
+    (b) Singular value spectrum of E
+    (c) Failure probability P[err >= 0.5] vs theoretical bound
     """
     rng = np.random.RandomState(seed)
 
@@ -105,6 +107,60 @@ def plot_figure3_system_prompt(
     ax_svd.set_ylabel("$\\sigma_r / \\sigma_1$")
     ax_svd.set_title("(b) Singular values of $E$")
     ax_svd.legend(loc="upper right", fontsize=4)
+
+    # --- Panel (c): Failure probability P[err >= 0.5] ---
+    if ax_fail is not None and fail_csv_path is not None and Path(fail_csv_path).exists():
+        df_fail = pd.read_csv(fail_csv_path)
+
+        qs_cfg = {
+            "signal": {"color": PALETTE[1], "ls": "-", "label": "Signal"},
+            "null": {"color": PALETTE[2], "ls": "--", "label": '"Orthogonal"'},
+        }
+
+        # Empirical curves
+        for qs_name, cfg in qs_cfg.items():
+            sub = df_fail[df_fail["query_set"] == qs_name].sort_values("m")
+            if sub.empty:
+                continue
+            ax_fail.plot(sub["m"], sub["failure_prob"],
+                         marker="o", markersize=2, color=cfg["color"],
+                         linestyle=cfg["ls"], linewidth=0.8)
+
+        # Theoretical bound: r̂ · ρ̂^m
+        null_idx = orthogonal_indices  # null/factual queries
+        m_max = df_fail["m"].max()
+        m_cont = np.linspace(1, m_max, 200)
+
+        for qs_name, idx in [("signal", signal_indices), ("null", null_idx)]:
+            cfg = qs_cfg[qs_name]
+            E, _ = per_query_energy_tensor(responses[:, idx, :])
+            r_hat, U, s = estimate_discriminative_rank(E, n_elbows=1)
+            rho_hat, _ = estimate_rho(U, r_hat)
+            mstar = predict_mstar(r_hat, rho_hat, epsilon=0.05)
+
+            if rho_hat > 0:
+                bound = np.minimum(1.0, r_hat * rho_hat ** m_cont)
+                ax_fail.plot(m_cont, bound, color=cfg["color"], linestyle=":",
+                             linewidth=0.8, alpha=0.7)
+
+            if np.isfinite(mstar):
+                ax_fail.axvline(x=mstar, color=cfg["color"], linestyle=":",
+                                linewidth=0.6, alpha=0.5)
+
+        # Legend
+        leg = [Line2D([0], [0], color=cfg["color"], linestyle=cfg["ls"],
+                       lw=0.8, marker="o", markersize=2, label=cfg["label"])
+               for cfg in qs_cfg.values()]
+        leg.append(Line2D([0], [0], color="0.4", linestyle=":", lw=0.8,
+                          label=r"$\hat{r}\hat{\rho}^m$"))
+        ax_fail.legend(handles=leg, loc="upper right", fontsize=4)
+
+        ax_fail.axhline(y=0.5, color="gray", linestyle=":", alpha=0.4, linewidth=0.5)
+        ax_fail.set_xscale("log")
+        ax_fail.set_ylim(-0.02, 1.05)
+        ax_fail.set_xlabel("Number of queries $m$")
+        ax_fail.set_ylabel(r"$\mathbb{P}[\mathrm{err} \geq 0.5]$")
+        ax_fail.set_title("(c) Failure probability")
 
 
 def plot_figure4_row1(
@@ -260,17 +316,23 @@ def plot_system_prompt_figures(config, output_dir: str = "figures"):
     signal_indices = data["signal_indices"]
     orthogonal_indices = data["orthogonal_indices"]
 
-    # --- Figure 3: Qualitative (panels a, b only -- c, d are for RAG) ---
+    # --- Figure 3: Qualitative (panels a, b, c) ---
+    fail_csv = Path("results/system_prompt/failure_probs.csv")
+
     fig3 = plt.figure(figsize=(5.5, 1.65))
-    gs3 = GridSpec(2, 2, figure=fig3, wspace=0.55, hspace=0.55)
+    gs3 = GridSpec(2, 3, figure=fig3, wspace=0.55, hspace=0.55)
 
     ax3_a_top = fig3.add_subplot(gs3[0, 0])
     ax3_a_bot = fig3.add_subplot(gs3[1, 0])
     ax3_b = fig3.add_subplot(gs3[:, 1])
+    ax3_c = fig3.add_subplot(gs3[:, 2])
 
     plot_figure3_system_prompt(
         responses, labels, signal_indices, orthogonal_indices,
-        ax3_a_top, ax3_a_bot, ax3_b, m_mds=5,
+        ax3_a_top, ax3_a_bot, ax3_b,
+        ax_fail=ax3_c,
+        fail_csv_path=str(fail_csv),
+        m_mds=5,
     )
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
