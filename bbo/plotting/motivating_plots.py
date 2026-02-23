@@ -14,8 +14,7 @@ from bbo.plotting.style import set_paper_style, PALETTE
 from bbo.plotting.estimation_panels import plot_estimation_panels
 from bbo.distances.energy import pairwise_energy_distances_t0, per_query_energy_tensor
 from bbo.embedding.mds import ClassicalMDS
-from bbo.estimation.rank_rho import estimate_discriminative_rank
-from bbo.experiments.real.exp6_effective_rank import run_exp6
+from bbo.estimation.rank_rho import compute_E_disc, estimate_discriminative_rank
 
 
 def plot_motivating_figure(
@@ -28,13 +27,14 @@ def plot_motivating_figure(
     model_names: np.ndarray = None,
     output_dir: str = "figures",
 ):
-    """Create the 3-panel motivating figure.
+    """Create the 3-column motivating figure.
 
     Layout (GridSpec 2x3):
-        gs[0, 0] = (a) Sensitive MDS scatter
+        gs[0, 0] = (a) Signal MDS scatter
         gs[1, 0] = Orthogonal MDS scatter
         gs[:, 1] = (b) Error vs m
-        gs[:, 2] = (c) Singular value spectrum
+        gs[0, 2] = (c) Scree plot of E (all queries)
+        gs[1, 2] = B_q histogram (signal vs orthogonal)
     """
     set_paper_style()
     plt.rcParams.update({
@@ -62,7 +62,8 @@ def plot_motivating_figure(
     ax_a_top = fig.add_subplot(gs[0, 0])
     ax_a_bot = fig.add_subplot(gs[1, 0])
     ax_b = fig.add_subplot(gs[:, 1])
-    ax_c = fig.add_subplot(gs[:, 2])
+    ax_c_top = fig.add_subplot(gs[0, 2])
+    ax_c_bot = fig.add_subplot(gs[1, 2])
 
     # --- Orange gradient colormap for class-1 adapters ---
     light_orange = (1.0, 0.85, 0.6)
@@ -149,36 +150,41 @@ def plot_motivating_figure(
                 for name, ls in dist_styles.items()]
     ax_b.legend(handles=leg_n + leg_dist, loc="upper right", ncol=2, fontsize=4)
 
-    # --- Panel (c): Singular value spectrum of E (per-query energy tensor) ---
-    query_sets = [
-        (sensitive_indices, "Signal", PALETTE[1], "-"),
-        (orthogonal_indices, '"Orthogonal"', PALETTE[2], "--"),
-    ]
+    # --- Panel (c): Discriminative structure ---
+    # Compute E from ALL queries (signal + orthogonal)
+    all_idx = np.concatenate([sensitive_indices, orthogonal_indices])
+    E_all, pairs = per_query_energy_tensor(responses[:, all_idx, :])
 
-    n_show = 50
-    r_hat_signal = None
-    for q_idx, label, color, ls in query_sets:
-        E, _ = per_query_energy_tensor(responses[:, q_idx, :])
-        r_hat, _, sv = estimate_discriminative_rank(E, n_elbows=1)
-        sv = sv / sv[0]
-        k = min(n_show, len(sv))
-        ax_c.plot(np.arange(1, k + 1), sv[:k],
-                  color=color, linestyle=ls, linewidth=1.2,
-                  marker="o", markersize=2, label=label)
-        if label == "Signal":
-            r_hat_signal = r_hat
+    # r̂ from scree of full E
+    r_hat, U, s = estimate_discriminative_rank(E_all, n_elbows=1)
 
-    # Annotate r̂ on the spectrum
-    if r_hat_signal is not None:
-        ax_c.axvline(x=r_hat_signal, color="0.4", linestyle=":", linewidth=0.8,
-                     alpha=0.7)
-        ax_c.text(r_hat_signal + 0.5, 0.85, f"$\\hat{{r}}={r_hat_signal}$",
+    # B_q from between-class centering
+    _, _, B_q = compute_E_disc(E_all, pairs, labels)
+    n_signal = len(sensitive_indices)
+
+    # Top: Scree plot of E
+    sv_norm = s / s[0]
+    n_show = min(50, len(sv_norm))
+    ax_c_top.plot(np.arange(1, n_show + 1), sv_norm[:n_show],
+                  color=PALETTE[0], linewidth=1.2, marker="o", markersize=2)
+    ax_c_top.axvline(x=r_hat, color="0.4", linestyle="--", linewidth=1.2, alpha=0.8)
+    ax_c_top.text(r_hat + 2.5, 0.85, f"$\\hat{{r}}={r_hat}$",
                   fontsize=5, color="0.3")
+    ax_c_top.set_xticklabels([])
+    ax_c_top.set_ylabel("$\\sigma_r / \\sigma_1$")
+    ax_c_top.set_title("(c) Discriminative structure")
 
-    ax_c.set_xlabel("Component $r$")
-    ax_c.set_ylabel("$\\sigma_r / \\sigma_1$")
-    ax_c.set_title("(c) Singular values of $E$")
-    ax_c.legend(loc="upper right", fontsize=4)
+    # Bottom: B_q histogram
+    B_signal = B_q[:n_signal]
+    B_orth = B_q[n_signal:]
+    bins = np.linspace(B_q.min(), B_q.max(), 30)
+    ax_c_bot.hist(B_signal, bins=bins, alpha=0.6, color=PALETTE[1],
+                  label="Signal", density=True, edgecolor="none")
+    ax_c_bot.hist(B_orth, bins=bins, alpha=0.6, color=PALETTE[2],
+                  label='"Orthogonal"', density=True, edgecolor="none")
+    ax_c_bot.set_xlabel("$B_q$ (between-class excess)")
+    ax_c_bot.set_ylabel("Density")
+    ax_c_bot.legend(loc="upper right", fontsize=4)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
