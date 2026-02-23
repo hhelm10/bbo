@@ -1,0 +1,13 @@
+query_set,n,m,failure_prob
+uniform,80,1,0.255
+uniform,80,2,0.27
+uniform,80,5,0.12
+uniform,80,10,0.06
+uniform,80,20,0.025
+uniform,80,50,0.005
+uniform,10,1,0.365
+uniform,10,2,0.33
+uniform,10,5,0.215
+uniform,10,10,0.175
+uniform,10,20,0.135
+uniform,10,50,0.085

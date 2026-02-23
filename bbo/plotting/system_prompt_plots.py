@@ -102,9 +102,20 @@ def plot_figure3_system_prompt(
     ax_gmm.plot(x_plot, scipy_norm.pdf(x_plot, m1_mean, m1_std),
                 color="0.3", linestyle="--", linewidth=0.8)
 
-    # K=2: combined PDF
-    density_k2 = np.exp(gmm2.score_samples(x_col))
-    ax_gmm.plot(x_plot, density_k2, color=PALETTE[1], linestyle="-", linewidth=1.0)
+    # K=2: plot each component as weighted density with shaded fill
+    comp_colors = [PALETTE[2], PALETTE[1]]  # near-zero, active
+    means_k2 = gmm2.means_.ravel()
+    zero_comp = int(np.argmin(means_k2))
+    for k in range(2):
+        w = gmm2.weights_[k]
+        mu = gmm2.means_[k, 0]
+        std = np.sqrt(gmm2.covariances_[k, 0, 0])
+        comp_density = w * scipy_norm.pdf(x_plot, mu, std)
+        cidx = 0 if k == zero_comp else 1
+        ax_gmm.fill_between(x_plot, comp_density, alpha=0.2,
+                            color=comp_colors[cidx])
+        ax_gmm.plot(x_plot, comp_density, color=comp_colors[cidx],
+                    linewidth=0.8)
 
     # Annotate ρ̂
     ax_gmm.text(0.97, 0.95,
@@ -122,9 +133,11 @@ def plot_figure3_system_prompt(
                 Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label='"Orthogonal"')]
     leg_gmm = [Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
                        label=f"$K\\!=\\!1$ (BIC={bic1:.0f})"),
-               Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=1.0,
-                       label=f"$K\\!=\\!2$ (BIC={bic2:.0f})")]
-    ax_gmm.legend(handles=leg_hist + leg_gmm, loc="upper left", fontsize=4)
+               Line2D([0], [0], color=PALETTE[2], linestyle="-", lw=0.8,
+                       label=f"Near-zero ($\\pi_0\\!={rho_hat:.2f}$)"),
+               Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=0.8,
+                       label=f"Active ($\\pi_1\\!={1-rho_hat:.2f}$)")]
+    ax_gmm.legend(handles=leg_hist + leg_gmm, loc="upper right", fontsize=4)
 
     # --- Panel (c): Failure probability P[err >= 0.5] ---
     if fail_csv_path is not None and Path(fail_csv_path).exists():
@@ -132,12 +145,26 @@ def plot_figure3_system_prompt(
 
         df_fail = pd.read_csv(fail_csv_path)
 
-        # Empirical curve: uniform sampling over all queries
-        sub = df_fail[df_fail["query_set"] == "uniform"].sort_values("m")
-        if not sub.empty:
-            ax_fail.plot(sub["m"], sub["failure_prob"],
-                         marker="o", markersize=2, color=PALETTE[0],
-                         linestyle="-", linewidth=0.8, label="Empirical")
+        # Plot empirical curves for each n value
+        n_styles = {80: "-", 10: "--"}
+        n_colors = {80: PALETTE[0], 10: PALETTE[1]}
+
+        # Check if CSV has 'n' column (new format) or not (old format)
+        has_n = "n" in df_fail.columns
+
+        for n_val, ls in n_styles.items():
+            if has_n:
+                sub = df_fail[(df_fail["query_set"] == "uniform") &
+                              (df_fail["n"] == n_val)].sort_values("m")
+            else:
+                # Old format: only n=80
+                if n_val != 80:
+                    continue
+                sub = df_fail[df_fail["query_set"] == "uniform"].sort_values("m")
+            if not sub.empty:
+                ax_fail.plot(sub["m"], sub["failure_prob"],
+                             marker="o", markersize=2, color=n_colors[n_val],
+                             linestyle=ls, linewidth=0.8)
 
         m_max = df_fail["m"].max()
         m_cont = np.linspace(1, m_max, 200)
@@ -150,12 +177,18 @@ def plot_figure3_system_prompt(
                          label=f"$\\hat{{r}}\\hat{{\\rho}}^m$"
                                f" ($\\hat{{\\rho}}\\!={rho_hat:.2f}$)")
 
-        # Fit r·ρ^m + γ(n) to empirical curve
+        # Fit r·ρ^m + γ(n) to n=80 empirical curve
         rho_fit = None
         gamma_fit = None
-        if not sub.empty and len(sub) >= 3:
-            m_data = sub["m"].values.astype(float)
-            y_data = sub["failure_prob"].values
+        if has_n:
+            sub80 = df_fail[(df_fail["query_set"] == "uniform") &
+                            (df_fail["n"] == 80)].sort_values("m")
+        else:
+            sub80 = df_fail[df_fail["query_set"] == "uniform"].sort_values("m")
+
+        if not sub80.empty and len(sub80) >= 3:
+            m_data = sub80["m"].values.astype(float)
+            y_data = sub80["failure_prob"].values
 
             def _bound_model(m, a, rho, gamma):
                 return a * rho ** m + gamma
@@ -167,15 +200,15 @@ def plot_figure3_system_prompt(
                 a_fit, rho_fit, gamma_fit = popt
                 y_fit = _bound_model(m_cont, a_fit, rho_fit, gamma_fit)
                 ax_fail.plot(m_cont, y_fit, color=PALETTE[3], linestyle="--",
-                             linewidth=0.8, alpha=0.8,
-                             label=f"Fit: $\\rho\\!={rho_fit:.2f}$,"
-                                   f" $\\gamma\\!={gamma_fit:.3f}$")
+                             linewidth=0.8, alpha=0.8)
             except RuntimeError:
                 pass
 
         # Legend
-        leg = [Line2D([0], [0], color=PALETTE[0], linestyle="-", lw=0.8,
-                       marker="o", markersize=2, label="Empirical")]
+        leg = [Line2D([0], [0], color=n_colors[80], linestyle="-", lw=0.8,
+                       marker="o", markersize=2, label="$n=80$"),
+               Line2D([0], [0], color=n_colors[10], linestyle="--", lw=0.8,
+                       marker="o", markersize=2, label="$n=10$")]
         if rho_hat > 0:
             leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
                               label=f"$\\hat{{r}}\\hat{{\\rho}}^m$"
