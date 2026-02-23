@@ -116,7 +116,7 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
     method_cfg = {
         "mds_relevant":   {"color": PALETTE[0], "label": "MDS (signal)"},
         "mds_orthogonal": {"color": PALETTE[2], "label": "MDS (orthogonal)"},
-        "concat":         {"color": PALETTE[1], "label": "Concat"},
+        "concat":         {"color": PALETTE[1], "label": "Concat (signal)"},
     }
 
     for method, cfg in method_cfg.items():
@@ -151,12 +151,12 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
                                   markersize=3, label="Best"))
     leg_n = [Line2D([0], [0], color="0.5", linestyle="--", lw=0.8, label="$n=10$"),
              Line2D([0], [0], color="0.5", linestyle="-", lw=0.8, label="$n=80$")]
-    ax_a.legend(handles=leg_methods + leg_n, loc="upper right", ncol=2, fontsize=4.5)
+    ax_a.legend(handles=leg_methods + leg_n, loc="upper right", ncol=2, fontsize=4)
 
     # ── Center panel: across base models ──
     base_models = [
-        ("ministral-8b", "ministral-8b"),
         ("ministral-3b", "ministral-3b"),
+        ("ministral-8b", "ministral-8b"),
         ("mistral-small", "mistral-small"),
         ("mistral-large", "mistral-large"),
         ("gpt-4o-mini", "GPT-4o-mini"),
@@ -196,7 +196,7 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
               if not df_base[df_base["base_model"] == bm_key].empty]
     leg_n2 = [Line2D([0], [0], color="0.5", linestyle="--", lw=0.8, label="$n=10$"),
               Line2D([0], [0], color="0.5", linestyle="-", lw=0.8, label="$n=80$")]
-    ax_b.legend(handles=leg_bm + leg_n2, loc="upper right", ncol=2, fontsize=4.5)
+    ax_b.legend(handles=leg_bm + leg_n2, loc="upper right", ncol=2, fontsize=4)
 
     # ── Right panel: across embedding models ──
     embed_models = [
@@ -239,7 +239,7 @@ def plot_figure(csv_path, embed_csv_path=None, oracle_csv_path=None,
               if not df_embed[df_embed["embed_model"] == embed_models[i][0]].empty]
     leg_n3 = [Line2D([0], [0], color="0.5", linestyle="--", lw=0.8, label="$n=10$"),
               Line2D([0], [0], color="0.5", linestyle="-", lw=0.8, label="$n=80$")]
-    ax_c.legend(handles=leg_em + leg_n3, loc="upper right", ncol=2, fontsize=4.5)
+    ax_c.legend(handles=leg_em + leg_n3, loc="upper right", ncol=2, fontsize=4)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)
