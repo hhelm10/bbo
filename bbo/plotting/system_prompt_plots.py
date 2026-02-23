@@ -14,8 +14,9 @@ from matplotlib.lines import Line2D
 from pathlib import Path
 
 from bbo.plotting.style import set_paper_style, PALETTE
-from bbo.distances.energy import pairwise_energy_distances_t0
+from bbo.distances.energy import pairwise_energy_distances_t0, per_query_energy_tensor
 from bbo.embedding.mds import ClassicalMDS
+from bbo.estimation.rank_rho import estimate_discriminative_rank
 
 
 def plot_figure3_system_prompt(
@@ -74,25 +75,35 @@ def plot_figure3_system_prompt(
         else:
             ax.set_xlabel("MDS 1")
 
-    # SVD spectrum — same style as motivating panel (c)
+    # SVD spectrum of E (per-query energy tensor) — same style as motivating panel (c)
     query_sets = [
         (signal_indices, "Signal", PALETTE[1], "-"),
         (orthogonal_indices, '"Orthogonal"', PALETTE[2], "--"),
     ]
 
     n_show = 50
+    r_hat_signal = None
     for q_idx, label, color, ls in query_sets:
-        D = pairwise_energy_distances_t0(responses, q_idx)
-        _, sv, _ = np.linalg.svd(D, full_matrices=False)
+        E, _ = per_query_energy_tensor(responses[:, q_idx, :])
+        r_hat, _, sv = estimate_discriminative_rank(E, n_elbows=1)
         sv = sv / sv[0]
         k = min(n_show, len(sv))
         ax_svd.plot(np.arange(1, k + 1), sv[:k],
                     color=color, linestyle=ls, linewidth=1.2,
                     marker="o", markersize=2, label=label)
+        if label == "Signal":
+            r_hat_signal = r_hat
+
+    # Annotate r̂ on the spectrum
+    if r_hat_signal is not None:
+        ax_svd.axvline(x=r_hat_signal, color="0.4", linestyle=":", linewidth=0.8,
+                       alpha=0.7)
+        ax_svd.text(r_hat_signal + 0.5, 0.85, f"$\\hat{{r}}={r_hat_signal}$",
+                    fontsize=5, color="0.3")
 
     ax_svd.set_xlabel("Component $r$")
     ax_svd.set_ylabel("$\\sigma_r / \\sigma_1$")
-    ax_svd.set_title("(b) Singular values of $D$")
+    ax_svd.set_title("(b) Singular values of $E$")
     ax_svd.legend(loc="upper right", fontsize=4)
 
 
