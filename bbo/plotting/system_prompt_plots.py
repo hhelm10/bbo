@@ -1,6 +1,10 @@
 """Plotting functions for the system prompt auditing experiment.
 
-Figure 3 panels (a,b): Qualitative structure (MDS scatter + SVD spectrum)
+Figure 3 panels (a,b,c): Estimation and theory validation
+  (a) Scree plot of E (all queries)
+  (b) GMM fit on loading norms
+  (c) P[error >= 0.5] with theoretical overlay
+
 Figure 4 row 1 (a,b,c): Quantitative results (error vs m)
 
 Style matches motivating_plots.py (Figure 3) and synthetic_plots.py (Figure 4).
@@ -12,6 +16,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from matplotlib.lines import Line2D
 from pathlib import Path
+from scipy.stats import norm as scipy_norm
 
 from bbo.plotting.style import set_paper_style, PALETTE
 from bbo.distances.energy import pairwise_energy_distances_t0, per_query_energy_tensor
@@ -24,92 +29,96 @@ def plot_figure3_system_prompt(
     labels: np.ndarray,
     signal_indices: np.ndarray,
     orthogonal_indices: np.ndarray,
-    ax_mds_top,
-    ax_mds_bot,
-    ax_svd,
-    ax_fail=None,
+    ax_scree,
+    ax_gmm,
+    ax_fail,
     fail_csv_path=None,
-    m_mds: int = 5,
-    seed: int = 0,
 ):
-    """Plot Figure 3 panels (a), (b), and optionally (c) for the system prompt experiment.
+    """Plot Figure 3 panels (a), (b), (c) for the system prompt experiment.
 
-    (a) MDS scatter: signal vs orthogonal queries (stacked sub-panels)
-    (b) Singular value spectrum of E
-    (c) Failure probability P[err >= 0.5] vs theoretical bound
+    (a) Scree plot: singular values of E (all queries), vertical line at r̂
+    (b) GMM fit: histogram of loading norms with 2-component GMM overlay
+    (c) Failure probability: P[err >= 0.5] with r̂ρ̂^m theoretical overlay
     """
-    rng = np.random.RandomState(seed)
+    # --- Compute E from ALL queries (signal + orthogonal) ---
+    all_idx = np.concatenate([signal_indices, orthogonal_indices])
+    E_all, _ = per_query_energy_tensor(responses[:, all_idx, :])
 
-    # Sample queries for MDS
-    sens_sub = rng.choice(signal_indices, size=m_mds, replace=False)
-    orth_sub = rng.choice(orthogonal_indices, size=m_mds, replace=False)
+    r_hat, U, s = estimate_discriminative_rank(E_all, n_elbows=1)
+    rho_hat, gmm_info = estimate_rho(U, r_hat)
+    mstar = predict_mstar(r_hat, rho_hat, epsilon=0.05)
 
-    D_sens = pairwise_energy_distances_t0(responses, sens_sub)
-    X_sens = ClassicalMDS(n_components=2).fit_transform(D_sens)
+    n_signal = len(signal_indices)
 
-    D_orth = pairwise_energy_distances_t0(responses, orth_sub)
-    X_orth = ClassicalMDS(n_components=2).fit_transform(D_orth)
+    # --- Panel (a): Scree plot ---
+    sv_norm = s / s[0]
+    n_show = min(50, len(sv_norm))
+    ax_scree.plot(np.arange(1, n_show + 1), sv_norm[:n_show],
+                  color=PALETTE[0], linewidth=1.2,
+                  marker="o", markersize=2)
 
-    class0_mask = labels == 0
-    class1_mask = labels == 1
+    # Vertical line at r̂
+    ax_scree.axvline(x=r_hat, color="0.4", linestyle=":", linewidth=0.8, alpha=0.7)
+    ax_scree.text(r_hat + 1, 0.85, f"$\\hat{{r}}={r_hat}$",
+                  fontsize=5, color="0.3")
 
-    for ax, X, is_top, title in [
-        (ax_mds_top, X_sens, True, f'(a) Signal queries, $m={m_mds}$'),
-        (ax_mds_bot, X_orth, False, f'"Orthogonal" queries, $m={m_mds}$'),
-    ]:
-        ax.scatter(X[class0_mask, 0], X[class0_mask, 1],
-                   c=[PALETTE[0]], marker="o", s=8, alpha=0.7, zorder=2)
-        ax.scatter(X[class1_mask, 0], X[class1_mask, 1],
-                   c=[PALETTE[1]], marker="s", s=8, alpha=0.7, zorder=2)
-        ax.set_xticklabels([])
-        ax.set_yticklabels([])
-        ax.set_title(title, fontsize=7.2)
-        ax.set_ylabel("MDS 2")
+    ax_scree.set_xlabel("Component $r$")
+    ax_scree.set_ylabel("$\\sigma_r / \\sigma_1$")
+    ax_scree.set_title("(a) Singular values of $E$")
 
-        if is_top:
-            legend_elements = [
-                Line2D([0], [0], marker="o", color="w", lw=0,
-                       markerfacecolor=PALETTE[0], markersize=3, label="Class 0"),
-                Line2D([0], [0], marker="s", color="w", lw=0,
-                       markerfacecolor=PALETTE[1], markersize=3, label="Class 1"),
-            ]
-            ax.legend(handles=legend_elements, loc="best", fontsize=4)
-        else:
-            ax.set_xlabel("MDS 1")
+    # --- Panel (b): GMM fit on loading norms ---
+    norms = gmm_info['norms']
+    gmm = gmm_info['gmm']
+    gmm_labels = gmm_info['labels']
 
-    # SVD spectrum of E (per-query energy tensor) — same style as motivating panel (c)
-    query_sets = [
-        (signal_indices, "Signal", PALETTE[1], "-"),
-        (orthogonal_indices, '"Orthogonal"', PALETTE[2], "--"),
-    ]
+    # Histogram colored by signal vs orthogonal
+    norms_signal = norms[:n_signal]
+    norms_orth = norms[n_signal:]
 
-    n_show = 50
-    r_hat_signal = None
-    for q_idx, label, color, ls in query_sets:
-        E, _ = per_query_energy_tensor(responses[:, q_idx, :])
-        r_hat, _, sv = estimate_discriminative_rank(E, n_elbows=1)
-        sv = sv / sv[0]
-        k = min(n_show, len(sv))
-        ax_svd.plot(np.arange(1, k + 1), sv[:k],
-                    color=color, linestyle=ls, linewidth=1.2,
-                    marker="o", markersize=2, label=label)
-        if label == "Signal":
-            r_hat_signal = r_hat
+    bins = np.linspace(norms.min(), norms.max(), 30)
+    ax_gmm.hist(norms_signal, bins=bins, alpha=0.6, color=PALETTE[1],
+                label="Signal", density=True, edgecolor="none")
+    ax_gmm.hist(norms_orth, bins=bins, alpha=0.6, color=PALETTE[2],
+                label='"Orthogonal"', density=True, edgecolor="none")
 
-    # Annotate r̂ on the spectrum
-    if r_hat_signal is not None:
-        ax_svd.axvline(x=r_hat_signal, color="0.4", linestyle=":", linewidth=0.8,
-                       alpha=0.7)
-        ax_svd.text(r_hat_signal + 0.5, 0.85, f"$\\hat{{r}}={r_hat_signal}$",
-                    fontsize=5, color="0.3")
+    # Overlay GMM density curves
+    x_plot = np.linspace(norms.min() - 0.005, norms.max() + 0.005, 300)
+    means = gmm.means_.ravel()
+    stds = np.sqrt(gmm.covariances_.ravel())
+    weights = gmm.weights_
 
-    ax_svd.set_xlabel("Component $r$")
-    ax_svd.set_ylabel("$\\sigma_r / \\sigma_1$")
-    ax_svd.set_title("(b) Singular values of $E$")
-    ax_svd.legend(loc="upper right", fontsize=4)
+    # Total GMM density
+    density_total = np.zeros_like(x_plot)
+    for k in range(2):
+        comp_density = weights[k] * scipy_norm.pdf(x_plot, means[k], stds[k])
+        density_total += comp_density
+
+    # Individual components
+    zero_comp = int(np.argmin(means))
+    active_comp = 1 - zero_comp
+    for k, (style, lbl) in [(zero_comp, ("--", "Near-zero")),
+                              (active_comp, ("-", "Active"))]:
+        comp_density = weights[k] * scipy_norm.pdf(x_plot, means[k], stds[k])
+        ax_gmm.plot(x_plot, comp_density, color="0.3", linestyle=style,
+                    linewidth=0.8)
+
+    ax_gmm.plot(x_plot, density_total, color="0.1", linewidth=1.0)
+
+    # Annotate π₀ and ρ̂
+    ax_gmm.text(0.97, 0.95,
+                f"$\\hat{{\\pi}}_0 = {gmm_info['pi0']:.2f}$\n"
+                f"$\\hat{{\\rho}} = {rho_hat:.2f}$",
+                transform=ax_gmm.transAxes, fontsize=5, va="top", ha="right",
+                bbox=dict(boxstyle="round,pad=0.2", facecolor="white",
+                          edgecolor="0.7", alpha=0.8))
+
+    ax_gmm.set_xlabel("Loading norm $\\|U_{q,\\cdot}\\|$")
+    ax_gmm.set_ylabel("Density")
+    ax_gmm.set_title("(b) GMM on loading norms")
+    ax_gmm.legend(loc="upper left", fontsize=4)
 
     # --- Panel (c): Failure probability P[err >= 0.5] ---
-    if ax_fail is not None and fail_csv_path is not None and Path(fail_csv_path).exists():
+    if fail_csv_path is not None and Path(fail_csv_path).exists():
         df_fail = pd.read_csv(fail_csv_path)
 
         qs_cfg = {
@@ -124,38 +133,25 @@ def plot_figure3_system_prompt(
                 continue
             ax_fail.plot(sub["m"], sub["failure_prob"],
                          marker="o", markersize=2, color=cfg["color"],
-                         linestyle=cfg["ls"], linewidth=0.8)
+                         linestyle=cfg["ls"], linewidth=0.8, label=cfg["label"])
 
-        # Theoretical bound: r̂ · ρ̂^m
-        null_idx = orthogonal_indices  # null/factual queries
+        # Theoretical bound: r̂ · ρ̂^m (from the all-queries GMM estimate)
         m_max = df_fail["m"].max()
         m_cont = np.linspace(1, m_max, 200)
 
-        for qs_name, idx in [("signal", signal_indices), ("factual", null_idx)]:
-            cfg = qs_cfg[qs_name]
-            E, _ = per_query_energy_tensor(responses[:, idx, :])
-            r_hat, U, s = estimate_discriminative_rank(E, n_elbows=1)
-            rho_hat, _ = estimate_rho(U, r_hat, tau=0.1)
-            mstar = predict_mstar(r_hat, rho_hat, epsilon=0.05)
+        if rho_hat > 0:
+            bound = np.minimum(1.0, r_hat * rho_hat ** m_cont)
+            ax_fail.plot(m_cont, bound, color="0.3", linestyle=":",
+                         linewidth=0.8, alpha=0.7, label=r"$\hat{r}\hat{\rho}^m$")
 
-            if rho_hat > 0:
-                bound = np.minimum(1.0, r_hat * rho_hat ** m_cont)
-                ax_fail.plot(m_cont, bound, color=cfg["color"], linestyle=":",
-                             linewidth=0.8, alpha=0.7)
+        # Vertical line at m*
+        if np.isfinite(mstar) and mstar > 1:
+            ax_fail.axvline(x=mstar, color="0.4", linestyle=":",
+                            linewidth=0.6, alpha=0.5)
+            ax_fail.text(mstar * 1.15, 0.9, f"$\\hat{{m}}^*={mstar}$",
+                         fontsize=5, color="0.3")
 
-            if np.isfinite(mstar):
-                ax_fail.axvline(x=mstar, color=cfg["color"], linestyle=":",
-                                linewidth=0.6, alpha=0.5)
-
-        # Legend
-        leg = [Line2D([0], [0], color=cfg["color"], linestyle=cfg["ls"],
-                       lw=0.8, marker="o", markersize=2, label=cfg["label"])
-               for cfg in qs_cfg.values()]
-        leg.append(Line2D([0], [0], color="0.4", linestyle=":", lw=0.8,
-                          label=r"$\hat{r}\hat{\rho}^m$"))
-        ax_fail.legend(handles=leg, loc="upper right", fontsize=4)
-
-        ax_fail.axhline(y=0.5, color="gray", linestyle=":", alpha=0.4, linewidth=0.5)
+        ax_fail.legend(loc="upper right", fontsize=4)
         ax_fail.set_xscale("log")
         ax_fail.set_ylim(-0.02, 1.05)
         ax_fail.set_xlabel("Number of queries $m$")
@@ -298,7 +294,7 @@ def plot_figure4_row1(
 
 
 def plot_system_prompt_figures(config, output_dir: str = "figures"):
-    """Generate Figure 3 (a,b) and Figure 4 row 1 (a,b,c) for system prompt experiment."""
+    """Generate Figure 3 (a,b,c) and Figure 4 row 1 (a,b,c) for system prompt experiment."""
     set_paper_style()
 
     # Load default data (ministral-8b + nomic)
@@ -316,23 +312,21 @@ def plot_system_prompt_figures(config, output_dir: str = "figures"):
     signal_indices = data["signal_indices"]
     orthogonal_indices = data["orthogonal_indices"]
 
-    # --- Figure 3: Qualitative (panels a, b, c) ---
+    # --- Figure 3: Estimation and theory validation (3 panels) ---
     fail_csv = Path("results/system_prompt/failure_probs.csv")
 
     fig3 = plt.figure(figsize=(5.5, 1.65))
-    gs3 = GridSpec(2, 3, figure=fig3, wspace=0.55, hspace=0.55)
+    gs3 = GridSpec(1, 3, figure=fig3,
+                   left=0.08, right=0.97, bottom=0.22, top=0.82, wspace=0.45)
 
-    ax3_a_top = fig3.add_subplot(gs3[0, 0])
-    ax3_a_bot = fig3.add_subplot(gs3[1, 0])
-    ax3_b = fig3.add_subplot(gs3[:, 1])
-    ax3_c = fig3.add_subplot(gs3[:, 2])
+    ax3_a = fig3.add_subplot(gs3[0, 0])
+    ax3_b = fig3.add_subplot(gs3[0, 1])
+    ax3_c = fig3.add_subplot(gs3[0, 2])
 
     plot_figure3_system_prompt(
         responses, labels, signal_indices, orthogonal_indices,
-        ax3_a_top, ax3_a_bot, ax3_b,
-        ax_fail=ax3_c,
+        ax3_a, ax3_b, ax3_c,
         fail_csv_path=str(fail_csv),
-        m_mds=5,
     )
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
