@@ -167,15 +167,6 @@ def plot_figure3_system_prompt(
             except RuntimeError:
                 pass
 
-        # Vertical lines at m* for multiple ε values
-        epsilons = [0.05, 0.1, 0.2]
-        eps_colors = [PALETTE[1], PALETTE[2], PALETTE[3]]
-        for eps, eps_color in zip(epsilons, eps_colors):
-            ms = predict_mstar(r_hat, rho_hat, epsilon=eps)
-            if np.isfinite(ms) and ms > 1:
-                ax_fail.axvline(x=ms, color=eps_color, linestyle="--",
-                                linewidth=0.6, alpha=0.7)
-
         # Legend
         leg = [Line2D([0], [0], color=PALETTE[0], linestyle="-", lw=0.8,
                        marker="o", markersize=2, label="Empirical")]
@@ -189,13 +180,6 @@ def plot_figure3_system_prompt(
                                     f" $\\gamma\\!={gamma_fit:.3f}$)"))
         except NameError:
             pass
-        for eps, eps_color in zip(epsilons, eps_colors):
-            ms = predict_mstar(r_hat, rho_hat, epsilon=eps)
-            if np.isfinite(ms) and ms > 1:
-                leg.append(Line2D([0], [0], color=eps_color, linestyle="--",
-                                  lw=0.6,
-                                  label=f"$m^*\\!={ms}$"
-                                        f" ($\\epsilon\\!={eps}$)"))
         ax_fail.legend(handles=leg, loc="upper right", fontsize=4)
         ax_fail.set_xscale("log")
         ax_fail.set_ylim(-0.02, 1.05)
