@@ -197,7 +197,7 @@ def plot_system_prompt_figures(config, output_dir: str = "figures"):
     # --- Figure 3: Estimation and theory validation (3 panels) ---
     fail_csv = Path("results/system_prompt/failure_probs.csv")
 
-    fig3 = plt.figure(figsize=(5.5, 1.65))
+    fig3 = plt.figure(figsize=(5.5, 1.485))
     gs3 = GridSpec(1, 3, figure=fig3,
                    left=0.08, right=0.97, bottom=0.22, top=0.82, wspace=0.45)
 

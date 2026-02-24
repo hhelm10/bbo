@@ -63,7 +63,7 @@ def plot_estimation_panels(
 
     # --- Panel (a): Scree plot ---
     sv_norm = s / s[0]
-    n_show = min(50, len(sv_norm))
+    n_show = min(20, len(sv_norm))
     ax_scree.plot(np.arange(1, n_show + 1), sv_norm[:n_show],
                   color=PALETTE[0], linewidth=1.2, marker="o", markersize=2)
 
