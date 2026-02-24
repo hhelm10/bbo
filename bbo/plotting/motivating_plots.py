@@ -56,8 +56,8 @@ def plot_motivating_figure(
     sensitive_fracs = np.array([meta_by_id[i]["sensitive_frac"] for i in valid_ids])
 
     # --- Layout ---
-    fig = plt.figure(figsize=(5.5, 1.65))
-    gs = GridSpec(2, 3, figure=fig, wspace=0.55, hspace=0.55)
+    fig = plt.figure(figsize=(5.5, 1.4))
+    gs = GridSpec(2, 3, figure=fig, wspace=0.55, hspace=0.7)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
     ax_a_bot = fig.add_subplot(gs[1, 0])
@@ -164,13 +164,13 @@ def plot_motivating_figure(
 
     # Top: Scree plot of E
     sv_norm = s / s[0]
-    n_show = min(50, len(sv_norm))
+    n_show = min(30, len(sv_norm))
     ax_c_top.plot(np.arange(1, n_show + 1), sv_norm[:n_show],
-                  color=PALETTE[0], linewidth=1.2, marker="o", markersize=2)
+                  color=PALETTE[0], linewidth=1.2, marker="o", markersize=1.5)
     ax_c_top.axvline(x=r_hat, color="0.4", linestyle="--", linewidth=1.2, alpha=0.8)
-    ax_c_top.text(r_hat + 2.5, 0.85, f"$\\hat{{r}}={r_hat}$",
+    ax_c_top.text(r_hat + 1.5, 0.85, f"$\\hat{{r}}={r_hat}$",
                   fontsize=5, color="0.3")
-    ax_c_top.set_xticklabels([])
+    ax_c_top.set_xlabel("Component $r$")
     ax_c_top.set_ylabel("$\\sigma_r / \\sigma_1$")
     ax_c_top.set_title("(c) Discriminative structure")
 
