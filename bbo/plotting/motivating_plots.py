@@ -207,7 +207,7 @@ def plot_figure3_estimation(
     """
     set_paper_style()
 
-    fig = plt.figure(figsize=(5.5, 1.485))
+    fig = plt.figure(figsize=(5.5, 1.41))
     gs = GridSpec(1, 3, figure=fig,
                   left=0.08, right=0.97, bottom=0.22, top=0.82, wspace=0.45)
     ax_a = fig.add_subplot(gs[0, 0])
