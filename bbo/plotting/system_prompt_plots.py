@@ -212,8 +212,8 @@ def plot_system_prompt_figures(config, output_dir: str = "figures"):
     )
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    fig3.savefig(f"{output_dir}/figure3_system_prompt.pdf")
-    fig3.savefig(f"{output_dir}/figure3_system_prompt.png", dpi=200)
+    fig3.savefig(f"{output_dir}/figure3_system_prompt.pdf", bbox_inches="tight")
+    fig3.savefig(f"{output_dir}/figure3_system_prompt.png", dpi=200, bbox_inches="tight")
     plt.close(fig3)
     print(f"Saved Figure 3 (system prompt) to {output_dir}/figure3_system_prompt.pdf")
 
@@ -232,6 +232,6 @@ def plot_system_prompt_figures(config, output_dir: str = "figures"):
                       default_base_model=default_bm,
                       default_embedding_model=default_em)
 
-    fig4.savefig(f"{output_dir}/figure4_row1_system_prompt.pdf")
+    fig4.savefig(f"{output_dir}/figure4_row1_system_prompt.pdf", bbox_inches="tight")
     plt.close(fig4)
     print(f"Saved Figure 4 row 1 to {output_dir}/figure4_row1_system_prompt.pdf")

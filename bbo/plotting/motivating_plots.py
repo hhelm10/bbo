@@ -189,7 +189,7 @@ def plot_motivating_figure(
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    fig.savefig(f"{output_dir}/motivating_figure.pdf")
+    fig.savefig(f"{output_dir}/motivating_figure.pdf", bbox_inches="tight")
     plt.close(fig)
 
 
@@ -220,7 +220,7 @@ def plot_figure3_estimation(
     )
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    fig.savefig(f"{output_dir}/figure3_estimation.pdf")
-    fig.savefig(f"{output_dir}/figure3_estimation.png", dpi=200)
+    fig.savefig(f"{output_dir}/figure3_estimation.pdf", bbox_inches="tight")
+    fig.savefig(f"{output_dir}/figure3_estimation.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved Figure 3 (estimation) to {output_dir}/figure3_estimation.pdf")
