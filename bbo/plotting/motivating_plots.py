@@ -56,8 +56,8 @@ def plot_motivating_figure(
     sensitive_fracs = np.array([meta_by_id[i]["sensitive_frac"] for i in valid_ids])
 
     # --- Layout ---
-    fig = plt.figure(figsize=(5.5, 1.4))
-    gs = GridSpec(2, 3, figure=fig, wspace=0.55, hspace=0.7)
+    fig = plt.figure(figsize=(5.5, 1.55))
+    gs = GridSpec(2, 3, figure=fig, wspace=0.55, hspace=0.95)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
     ax_a_bot = fig.add_subplot(gs[1, 0])
@@ -170,9 +170,8 @@ def plot_motivating_figure(
     ax_c_top.axvline(x=r_hat, color="0.4", linestyle="--", linewidth=1.2, alpha=0.8)
     ax_c_top.text(r_hat + 1.5, 0.85, f"$\\hat{{r}}={r_hat}$",
                   fontsize=5, color="0.3")
-    ax_c_top.set_xlabel("Component $r$")
     ax_c_top.set_ylabel("$\\sigma_r / \\sigma_1$")
-    ax_c_top.set_title("(c) Discriminative structure")
+    ax_c_top.set_title("(c) Singular values of $E$")
 
     # Bottom: B_q histogram
     B_signal = B_q[:n_signal]
@@ -182,8 +181,9 @@ def plot_motivating_figure(
                   label="Signal", density=True, edgecolor="none")
     ax_c_bot.hist(B_orth, bins=bins, alpha=0.6, color=PALETTE[2],
                   label='"Orthogonal"', density=True, edgecolor="none")
-    ax_c_bot.set_xlabel("$B_q$ (between-class excess)")
+    ax_c_bot.set_xlabel("$B_q$")
     ax_c_bot.set_ylabel("Density")
+    ax_c_bot.set_title("Per-query signal $B_q$")
     ax_c_bot.legend(loc="upper right", fontsize=4)
 
     # Save
