@@ -180,7 +180,7 @@ def plot_motivating_figure(
                   label="Signal", edgecolor="none")
     ax_c_bot.hist(B_orth, bins=bins, alpha=0.6, color=PALETTE[2],
                   label='"Orthogonal"', edgecolor="none")
-    ax_c_bot.set_xlabel("$B_q$ (between-class excess)")
+    ax_c_bot.set_xlabel("Magnitude of signal")
     ax_c_bot.set_ylabel("Count")
     ax_c_bot.set_title("(d) Per-query signal")
     ax_c_bot.legend(loc="upper right", fontsize=4)
