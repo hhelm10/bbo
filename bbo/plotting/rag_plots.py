@@ -2,7 +2,7 @@
 
 (a) Scree plot of Ẽ with dashed line at r̂
 (b) Stacked histograms of |Ũ_{q,ℓ}| for ℓ=1,2, colored by signal/control, with K=1,2 GMM
-(c) Failure probability vs m: empirical (n=10,80), fitted, theoretical bound
+(c) Mean classification error vs m: empirical (n=10,80), fitted a·ρ^m + L*
 """
 
 import numpy as np
@@ -23,7 +23,7 @@ from bbo.estimation.rank_rho import (
 )
 
 
-def plot_rag_figure(npz_path, fail_csv_path, output_path="figures/figure_rag.pdf"):
+def plot_rag_figure(npz_path, classification_csv_path, output_path="figures/figure_rag.pdf"):
     """Generate the 3-panel RAG experiment figure."""
 
     set_paper_style()
@@ -132,21 +132,24 @@ def plot_rag_figure(npz_path, fail_csv_path, output_path="figures/figure_rag.pdf
                 x_plot, comp_density, color=comp_colors[cidx], linewidth=0.8,
             )
 
-        ax_h.set_xlabel(f"$|\\tilde{{U}}_{{q,{ell+1}}}|$")
-        if ell == 0:
-            ax_h.set_ylabel("Density")
+        ax_h.set_xlabel("$|\\tilde{U}_{q,\\ell}|$")
+        ax_h.set_ylabel("Density")
 
-        # Compact rho annotation
+        # Compact rho annotation — lower right to avoid legend overlap
         ax_h.text(
-            0.97, 0.92,
+            0.97, 0.12,
             f"$\\hat{{\\rho}}_{ell+1}\\!=\\!{rho_l:.2f}$",
             transform=ax_h.transAxes, fontsize=4.5,
-            ha="right", va="top",
+            ha="right", va="bottom",
             bbox=dict(
                 boxstyle="round,pad=0.15", facecolor="white",
                 edgecolor="none", alpha=0.7,
             ),
         )
+
+    # Drop xticks and xlabel on top row
+    ax_top.set_xticklabels([])
+    ax_top.set_xlabel("")
 
     # Title spanning both sub-rows
     ax_top.set_title("(b) GMM on $|\\tilde{U}_{q,\\ell}|$")
@@ -161,58 +164,61 @@ def plot_rag_figure(npz_path, fail_csv_path, output_path="figures/figure_rag.pdf
     ax_top.legend(handles=leg_handles, loc="upper right", fontsize=3.5, ncol=2)
 
     # =====================================================================
-    # Panel (c): Failure probability
+    # Panel (c): Mean classification error (Theorem 2 validation)
     # =====================================================================
-    df_fail = pd.read_csv(fail_csv_path)
-    df_sig = df_fail[df_fail["query_set"] == "signal"]
+    ax_err = ax_fail  # rename for clarity
+
+    df_cls = pd.read_csv(classification_csv_path)
+    df_mds_sig = df_cls[
+        (df_cls["method"] == "mds") & (df_cls["distribution"] == "signal")
+    ]
 
     n_colors = {80: PALETTE[0], 10: PALETTE[1]}
     m_cont = np.linspace(1, 100, 300)
 
-    # Theoretical bound: Σ_ℓ ρ̂_ℓ^m
-    bound = np.minimum(
-        1.0,
-        np.sum([rho_l ** m_cont for rho_l in rho_hats], axis=0),
-    )
-    ax_fail.plot(
-        m_cont, bound, color="0.3", linestyle=":", linewidth=0.8, alpha=0.7,
-    )
-
-    def _bound_model(m, a, rho, gamma):
-        return a * rho ** m + gamma
+    def _error_model(m, a, rho, Lstar):
+        return a * rho ** m + Lstar
 
     fit_results = {}
     for n_val in [80, 10]:
-        sub = df_sig[df_sig["n"] == n_val].sort_values("m")
+        sub = df_mds_sig[df_mds_sig["n"] == n_val].sort_values("m")
         if sub.empty:
             continue
 
+        m_data = sub["m"].values.astype(float)
+        err_data = 1.0 - sub["mean_accuracy"].values
+
         # Empirical points
-        ax_fail.plot(
-            sub["m"], sub["failure_prob"],
+        ax_err.plot(
+            m_data, err_data,
             marker="o", markersize=2, color=n_colors[n_val],
             linestyle="-", linewidth=0.8,
         )
 
-        # Fit a·ρ^m + γ
-        m_data = sub["m"].values.astype(float)
-        y_data = sub["failure_prob"].values
+        # Fit a·ρ^m + L*
         if len(m_data) >= 3:
             try:
                 popt, _ = curve_fit(
-                    _bound_model, m_data, y_data,
-                    p0=[1.0, 0.5, 0.01],
-                    bounds=([0, 0, 0], [10, 1, 1]),
+                    _error_model, m_data, err_data,
+                    p0=[0.3, 0.5, 0.01],
+                    bounds=([0, 0, 0], [2, 1, 0.5]),
                 )
-                a_fit, rho_fit, gamma_fit = popt
-                y_fit = _bound_model(m_cont, a_fit, rho_fit, gamma_fit)
-                ax_fail.plot(
+                a_fit, rho_fit, Lstar_fit = popt
+                y_fit = _error_model(m_cont, a_fit, rho_fit, Lstar_fit)
+                ax_err.plot(
                     m_cont, y_fit, color=n_colors[n_val],
                     linestyle="--", linewidth=0.8, alpha=0.8,
                 )
-                fit_results[n_val] = (a_fit, rho_fit, gamma_fit)
+                fit_results[n_val] = (a_fit, rho_fit, Lstar_fit)
             except RuntimeError:
                 pass
+
+    # Theoretical rate: Σ_ℓ ρ̂_ℓ^m (decay envelope, no offset)
+    theory_rate = np.sum([rho_l ** m_cont for rho_l in rho_hats], axis=0)
+    ax_err.plot(
+        m_cont, theory_rate, color="0.3", linestyle=":", linewidth=0.8,
+        alpha=0.7,
+    )
 
     # Legend
     leg = [
@@ -228,18 +234,19 @@ def plot_rag_figure(npz_path, fail_csv_path, output_path="figures/figure_rag.pdf
             Line2D([0], [0], color="0.5", linestyle="--", lw=0.8,
                    label="Fit ($a\\rho^m\\!+\\!\\gamma$)"),
         )
-    ax_fail.legend(handles=leg, loc="upper right", fontsize=4)
+    ax_err.legend(handles=leg, loc="upper right", fontsize=4)
 
     # Annotate fit expressions
     annot_cfg = {
-        80: {"m": 8, "va": "top", "offset": -0.04},
-        10: {"m": 8, "va": "bottom", "offset": 0.04},
+        80: {"m": 8, "va": "top", "offset": -0.02},
+        10: {"m": 8, "va": "bottom", "offset": 0.02},
     }
-    for n_val, (a_f, rho_f, gamma_f) in fit_results.items():
-        txt = f"${a_f:.1f}\\!\\cdot\\!{rho_f:.2f}^m\\!+\\!{gamma_f:.2f}$"
+    for n_val, (a_f, rho_f, Lstar_f) in fit_results.items():
+        txt = (f"${a_f:.2f}\\!\\cdot\\!{rho_f:.2f}^m"
+               f"\\!+\\!{Lstar_f:.3f}$")
         cfg = annot_cfg[n_val]
-        y_annot = _bound_model(cfg["m"], a_f, rho_f, gamma_f)
-        ax_fail.text(
+        y_annot = _error_model(cfg["m"], a_f, rho_f, Lstar_f)
+        ax_err.text(
             cfg["m"], y_annot + cfg["offset"], txt,
             fontsize=4, color=n_colors[n_val],
             ha="center", va=cfg["va"],
@@ -249,11 +256,11 @@ def plot_rag_figure(npz_path, fail_csv_path, output_path="figures/figure_rag.pdf
             ),
         )
 
-    ax_fail.set_xscale("log")
-    ax_fail.set_ylim(-0.02, 1.05)
-    ax_fail.set_xlabel("Number of queries $m$")
-    ax_fail.set_ylabel(r"$\mathbb{P}[\mathrm{err} \geq 0.5]$")
-    ax_fail.set_title("(c) Failure probability")
+    ax_err.set_xscale("log")
+    ax_err.set_ylim(-0.02, 0.45)
+    ax_err.set_xlabel("Number of queries $m$")
+    ax_err.set_ylabel(r"Mean error")
+    ax_err.set_title("(c) Classification error")
 
     # --- Save ---
     fig.tight_layout()
@@ -266,5 +273,5 @@ def plot_rag_figure(npz_path, fail_csv_path, output_path="figures/figure_rag.pdf
     rho_str = ", ".join(f"{r:.2f}" for r in rho_hats)
     print(f"  r_hat={r_hat}, rho_hats=[{rho_str}]")
     print(f"  m*(95%)={predict_mstar(rho_hats, 0.05)}")
-    for n_val, (a_f, rho_f, gamma_f) in fit_results.items():
-        print(f"  Fit n={n_val}: {a_f:.2f}*{rho_f:.3f}^m + {gamma_f:.3f}")
+    for n_val, (a_f, rho_f, Lstar_f) in fit_results.items():
+        print(f"  Fit n={n_val}: {a_f:.3f}*{rho_f:.3f}^m + {Lstar_f:.4f}")
