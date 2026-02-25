@@ -1,7 +1,7 @@
-"""Shared 3-panel estimation figure: scree plot, GMM on B_q, failure probability.
+"""Shared 3-panel estimation figure: scree plot, per-direction GMM, failure probability.
 
 Used by both the motivating example (Figure 3) and system prompt experiment
-to validate the r̂, ρ̂ estimation procedure.
+to validate the r̂, ρ̂_ℓ estimation procedure.
 """
 
 import numpy as np
@@ -33,9 +33,9 @@ def plot_estimation_panels(
 ):
     """Plot the 3-panel estimation figure on provided axes.
 
-    (a) Scree plot: singular values of E (all queries), vertical line at r̂
-    (b) GMM fit: histogram of B_q with 2-component GMM overlay
-    (c) Failure probability: P[err >= 0.5] with r̂ρ̂^m theoretical overlay
+    (a) Scree plot: singular values of Ẽ, vertical line at r̂
+    (b) GMM fit: histogram of |Ũ_{q,1}| with 2-component GMM overlay
+    (c) Failure probability: P[err >= 0.5] with Σ_ℓ ρ̂_ℓ^m theoretical overlay
 
     Parameters
     ----------
@@ -46,18 +46,16 @@ def plot_estimation_panels(
     fail_csv_path : str, optional
         Path to failure_probs.csv with columns: query_set, n, m, failure_prob
     """
-    # --- Compute E from ALL queries (signal + orthogonal) ---
+    # --- Compute Ẽ (between-class centered) from ALL queries ---
     all_idx = np.concatenate([signal_indices, orthogonal_indices])
     E_all, pairs = per_query_energy_tensor(responses[:, all_idx, :])
+    E_disc, _, B_q = compute_E_disc(E_all, pairs, labels)
 
-    # r̂ from scree of full E
-    r_hat, U, s = estimate_discriminative_rank(E_all, n_elbows=1)
+    # r̂ from scree of Ẽ
+    r_hat, U, s = estimate_discriminative_rank(E_disc, n_elbows=1)
 
-    # B_q from between-class centering
-    _, _, B_q = compute_E_disc(E_all, pairs, labels)
-
-    # ρ̂ from 2-component GMM on B_q
-    rho_hat, gmm_info = estimate_rho(B_q)
+    # Per-direction ρ̂_ℓ from GMM on |Ũ_{q,ℓ}|
+    rho_hats, gmm_info = estimate_rho(U, r_hat)
 
     n_signal = len(signal_indices)
 
@@ -73,25 +71,28 @@ def plot_estimation_panels(
 
     ax_scree.set_xlabel("Component $r$")
     ax_scree.set_ylabel("$\\sigma_r / \\sigma_1$")
-    ax_scree.set_title("(a) Singular values of $E$")
+    ax_scree.set_title("(a) Singular values of $\\tilde{E}$")
 
-    # --- Panel (b): GMM on B_q ---
-    gmm2 = gmm_info['gmm']
-    gmm1 = gmm_info['gmm1']
-    bic1 = gmm_info['bic1']
-    bic2 = gmm_info['bic2']
+    # --- Panel (b): GMM on |Ũ_{q,1}| (direction ℓ=1) ---
+    dir_info = gmm_info['per_direction'][0]
+    loadings = dir_info['loadings']
+    gmm2 = dir_info['gmm']
+    gmm1 = dir_info['gmm1']
+    bic1 = dir_info['bic1']
+    bic2 = dir_info['bic2']
+    rho_1 = dir_info['rho_l']
 
-    B_signal = B_q[:n_signal]
-    B_orth = B_q[n_signal:]
+    L_signal = loadings[:n_signal]
+    L_orth = loadings[n_signal:]
 
-    bins = np.linspace(B_q.min(), B_q.max(), 30)
-    ax_gmm.hist(B_signal, bins=bins, alpha=0.6, color=PALETTE[1],
+    bins = np.linspace(loadings.min(), loadings.max(), 30)
+    ax_gmm.hist(L_signal, bins=bins, alpha=0.6, color=PALETTE[1],
                 label="Signal", density=True, edgecolor="none")
-    ax_gmm.hist(B_orth, bins=bins, alpha=0.6, color=PALETTE[2],
+    ax_gmm.hist(L_orth, bins=bins, alpha=0.6, color=PALETTE[2],
                 label='"Orthogonal"', density=True, edgecolor="none")
 
     # Density curves
-    x_plot = np.linspace(B_q.min() - 0.005, B_q.max() + 0.005, 300)
+    x_plot = np.linspace(loadings.min() - 0.005, loadings.max() + 0.005, 300)
 
     # K=1
     m1_mean = gmm1.means_[0, 0]
@@ -113,9 +114,9 @@ def plot_estimation_panels(
                             color=comp_colors[cidx])
         ax_gmm.plot(x_plot, comp_density, color=comp_colors[cidx], linewidth=0.8)
 
-    ax_gmm.set_xlabel("$B_q$ (between-class excess)")
+    ax_gmm.set_xlabel("$|\\tilde{U}_{q,1}|$")
     ax_gmm.set_ylabel("Density")
-    ax_gmm.set_title("(b) GMM on $B_q$")
+    ax_gmm.set_title("(b) GMM on $|\\tilde{U}_{q,1}|$")
 
     # Main legend (upper right)
     leg_main = [Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
@@ -128,8 +129,12 @@ def plot_estimation_panels(
     ax_gmm.add_artist(leg1)
 
     # ρ̂ legend (center right)
-    leg_rho = [Line2D([], [], linestyle="none",
-                      label=f"$\\hat{{\\rho}} = {rho_hat:.2f}$")]
+    rho_strs = ", ".join(f"{r:.2f}" for r in rho_hats)
+    if r_hat == 1:
+        rho_label = f"$\\hat{{\\rho}}_1 = {rho_hats[0]:.2f}$"
+    else:
+        rho_label = f"$\\hat{{\\rho}}_\\ell = [{rho_strs}]$"
+    leg_rho = [Line2D([], [], linestyle="none", label=rho_label)]
     ax_gmm.legend(handles=leg_rho, loc="center right", fontsize=4,
                   handlelength=0, handletextpad=0)
 
@@ -156,9 +161,11 @@ def plot_estimation_panels(
         m_max = df_fail["m"].max()
         m_cont = np.linspace(1, m_max, 200)
 
-        # Theoretical bound: r̂ · ρ̂^m
-        if rho_hat > 0:
-            bound = np.minimum(1.0, r_hat * rho_hat ** m_cont)
+        # Theoretical bound: Σ_ℓ ρ̂_ℓ^m
+        if np.any(rho_hats > 0):
+            bound = np.minimum(1.0,
+                               np.sum([rho_l ** m_cont for rho_l in rho_hats],
+                                      axis=0))
             ax_fail.plot(m_cont, bound, color="0.3", linestyle=":",
                          linewidth=0.8, alpha=0.7)
 
@@ -196,11 +203,14 @@ def plot_estimation_panels(
                        marker="o", markersize=2, label="$n=80$"),
                Line2D([0], [0], color=n_colors[10], linestyle="-", lw=0.8,
                        marker="o", markersize=2, label="$n=10$")]
-        if rho_hat > 0:
+        if np.any(rho_hats > 0):
+            if r_hat == 1:
+                bound_label = (f"$\\hat{{\\rho}}_1^m$"
+                               f"\n($\\hat{{\\rho}}_1\\!={rho_hats[0]:.2f}$)")
+            else:
+                bound_label = "$\\sum_\\ell \\hat{\\rho}_\\ell^m$"
             leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
-                              label=f"$\\hat{{r}}\\hat{{\\rho}}^m$"
-                                    f"\n($\\hat{{r}}\\!={r_hat},"
-                                    f"\\,\\hat{{\\rho}}\\!={rho_hat:.2f}$)"))
+                              label=bound_label))
         if fit_results:
             leg.append(Line2D([0], [0], color="0.5", linestyle="--", lw=0.8,
                               label="Fit ($r\\rho^m\\!+\\!\\gamma$)"))

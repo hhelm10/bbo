@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-"""Compute discriminative rank r̂, zero-set probability ρ̂, and predicted m*
-for all system prompt and motivating experiment NPZ files.
+"""Compute discriminative rank r̂, per-direction zero-set probabilities ρ̂_ℓ,
+and predicted m* for all system prompt and motivating experiment NPZ files.
 
-Uses the per-query between-class excess B_q with a 2-component GMM to
-estimate ρ̂, and the singular value spectrum of E to estimate r̂.
+Uses the SVD of Ẽ (between-class centered) and per-direction GMM on |Ũ_{q,ℓ}|.
 
 Outputs a CSV with columns:
     experiment, base_model, embed_model, query_set, n_queries,
-    r_hat, rho_hat, pi0, sv_ratio, mstar_80, mstar_90, mstar_95
+    r_hat, rho_hats, sv_ratio, mstar_80, mstar_90, mstar_95
 
 Usage:
     python scripts/compute_rank_rho.py
@@ -29,7 +28,7 @@ from bbo.estimation.rank_rho import (
 
 
 def process_npz(responses, labels, all_indices):
-    """Compute r̂, ρ̂ from B_q (per-query between-class excess) via GMM.
+    """Compute r̂, ρ̂_ℓ from per-direction GMM on |Ũ_{q,ℓ}|.
 
     Parameters
     ----------
@@ -43,26 +42,23 @@ def process_npz(responses, labels, all_indices):
     """
     E, pairs = per_query_energy_tensor(responses[:, all_indices, :])
 
-    # r̂ from scree of full E
-    r_hat, U, s = estimate_discriminative_rank(E, n_elbows=1)
+    # Between-class centering
+    E_disc, _, B_q = compute_E_disc(E, pairs, labels)
 
-    # B_q from between-class centering
-    _, _, B_q = compute_E_disc(E, pairs, labels)
+    # r̂ from scree of Ẽ
+    r_hat, U, s = estimate_discriminative_rank(E_disc, n_elbows=1)
 
-    # ρ̂ from 2-component GMM on B_q
-    rho_hat, info = estimate_rho(B_q)
+    # Per-direction ρ̂_ℓ from GMM on |Ũ_{q,ℓ}|
+    rho_hats, info = estimate_rho(U, r_hat)
 
     return {
         "n_queries": len(all_indices),
         "r_hat": r_hat,
-        "rho_hat": rho_hat,
-        "pi0": info["pi0"],
-        "bic1": info["bic1"],
-        "bic2": info["bic2"],
+        "rho_hats": rho_hats,
         "sv_ratio": float(s[0] / s[1]) if len(s) > 1 else np.inf,
-        "mstar_80": predict_mstar(r_hat, rho_hat, epsilon=0.20),
-        "mstar_90": predict_mstar(r_hat, rho_hat, epsilon=0.10),
-        "mstar_95": predict_mstar(r_hat, rho_hat, epsilon=0.05),
+        "mstar_80": predict_mstar(rho_hats, epsilon=0.20),
+        "mstar_90": predict_mstar(rho_hats, epsilon=0.10),
+        "mstar_95": predict_mstar(rho_hats, epsilon=0.05),
     }
 
 
@@ -105,6 +101,7 @@ def main():
 
             res = process_npz(responses, labels, all_idx)
 
+            rho_str = ", ".join(f"{r:.4f}" for r in res["rho_hats"])
             rows.append({
                 "experiment": "system_prompt",
                 "base_model": base_model,
@@ -112,16 +109,15 @@ def main():
                 "query_set": "all",
                 "n_queries": res["n_queries"],
                 "r_hat": res["r_hat"],
-                "rho_hat": round(res["rho_hat"], 4),
-                "pi0": round(res["pi0"], 4),
+                "rho_hats": rho_str,
                 "sv_ratio": round(res["sv_ratio"], 2),
                 "mstar_80": res["mstar_80"],
                 "mstar_90": res["mstar_90"],
                 "mstar_95": res["mstar_95"],
             })
             print(f"  all (M={res['n_queries']:3d}): "
-                  f"r̂={res['r_hat']}, ρ̂={res['rho_hat']:.4f}, "
-                  f"π₀={res['pi0']:.4f}, σ₁/σ₂={res['sv_ratio']:.2f}, "
+                  f"r̂={res['r_hat']}, ρ̂=[{rho_str}], "
+                  f"σ₁/σ₂={res['sv_ratio']:.2f}, "
                   f"m*={res['mstar_95']}")
 
     # --- Motivating experiment ---
@@ -140,6 +136,7 @@ def main():
         if len(all_idx) > 0:
             res = process_npz(responses, labels, all_idx)
 
+            rho_str = ", ".join(f"{r:.4f}" for r in res["rho_hats"])
             rows.append({
                 "experiment": "motivating",
                 "base_model": "Qwen2.5-1.5B",
@@ -147,16 +144,15 @@ def main():
                 "query_set": "all",
                 "n_queries": res["n_queries"],
                 "r_hat": res["r_hat"],
-                "rho_hat": round(res["rho_hat"], 4),
-                "pi0": round(res["pi0"], 4),
+                "rho_hats": rho_str,
                 "sv_ratio": round(res["sv_ratio"], 2),
                 "mstar_80": res["mstar_80"],
                 "mstar_90": res["mstar_90"],
                 "mstar_95": res["mstar_95"],
             })
             print(f"  all (M={res['n_queries']:3d}): "
-                  f"r̂={res['r_hat']}, ρ̂={res['rho_hat']:.4f}, "
-                  f"π₀={res['pi0']:.4f}, σ₁/σ₂={res['sv_ratio']:.2f}, "
+                  f"r̂={res['r_hat']}, ρ̂=[{rho_str}], "
+                  f"σ₁/σ₂={res['sv_ratio']:.2f}, "
                   f"m*={res['mstar_95']}")
 
     # --- Save results ---

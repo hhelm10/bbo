@@ -151,18 +151,16 @@ def plot_motivating_figure(
     ax_b.legend(handles=leg_n + leg_dist, loc="upper right", ncol=2, fontsize=4)
 
     # --- Panel (c): Discriminative structure ---
-    # Compute E from ALL queries (signal + orthogonal)
+    # Compute Ẽ (between-class centered) from ALL queries
     all_idx = np.concatenate([sensitive_indices, orthogonal_indices])
     E_all, pairs = per_query_energy_tensor(responses[:, all_idx, :])
+    E_disc, _, B_q = compute_E_disc(E_all, pairs, labels)
 
-    # r̂ from scree of full E
-    r_hat, U, s = estimate_discriminative_rank(E_all, n_elbows=1)
-
-    # B_q from between-class centering
-    _, _, B_q = compute_E_disc(E_all, pairs, labels)
+    # r̂ from scree of Ẽ
+    r_hat, U, s = estimate_discriminative_rank(E_disc, n_elbows=1)
     n_signal = len(sensitive_indices)
 
-    # Top: Scree plot of E
+    # Top: Scree plot of Ẽ
     sv_norm = s / s[0]
     n_show = min(30, len(sv_norm))
     ax_c_top.plot(np.arange(1, n_show + 1), sv_norm[:n_show],
@@ -172,7 +170,7 @@ def plot_motivating_figure(
                   fontsize=5, color="0.3")
     ax_c_top.set_xticklabels([])
     ax_c_top.set_ylabel("$\\sigma_r / \\sigma_1$")
-    ax_c_top.set_title("(c) Singular values of $E$")
+    ax_c_top.set_title("(c) Singular values of $\\tilde{E}$")
 
     # Bottom: B_q histogram
     B_signal = B_q[:n_signal]

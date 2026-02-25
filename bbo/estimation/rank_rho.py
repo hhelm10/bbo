@@ -1,14 +1,12 @@
-"""Estimate discriminative rank r̂ and zero-set probability ρ̂ from data.
-
-Uses the per-query between-class excess B_q to estimate ρ̂ via GMM, and
-the singular value spectrum of E to estimate r̂ via profile likelihood.
+"""Estimate discriminative rank r̂ and per-direction zero-set probabilities ρ̂_ℓ.
 
 Steps:
-1. Compute E (per-query pairwise dissimilarities for all model pairs)
-2. Partition pairs into within-class and cross-class; compute B_q
-   (per-query between-class excess = mean cross-class - mean within-class)
-3. SVD of E → r̂ via spectral gap (1 elbow)
-4. Two-component GMM on B_q → ρ̂ = π̂₀ (near-zero component weight)
+1. Compute Ẽ (between-class centered per-query dissimilarities)
+2. SVD of Ẽ → r̂ via spectral gap (profile likelihood)
+3. For each direction ℓ = 1..r̂, fit a 2-component GMM to |Ũ_{q,ℓ}|
+   (the left-singular-vector loadings). The near-zero component weight
+   gives ρ̂_ℓ, the probability a random query carries no signal along ℓ.
+4. Failure bound: Σ_ℓ ρ̂_ℓ^m. For r̂ = 1 this reduces to a single GMM on B_q.
 """
 
 import numpy as np
@@ -71,7 +69,7 @@ def estimate_discriminative_rank(E: np.ndarray, n_elbows: int = 1):
     Parameters
     ----------
     E : ndarray of shape (M, n_pairs)
-        Per-query energy tensor (full, not between-class centered).
+        Per-query energy tensor (can be full or between-class centered).
     n_elbows : int, default=1
         Number of elbows to find in the singular value spectrum.
 
@@ -89,88 +87,98 @@ def estimate_discriminative_rank(E: np.ndarray, n_elbows: int = 1):
     return r_hat, U, s
 
 
-def estimate_rho(B_q: np.ndarray):
-    """Estimate ρ̂ via two-component GMM on per-query between-class excess.
+def estimate_rho(U: np.ndarray, r_hat: int):
+    """Estimate per-direction zero-set probabilities ρ̂_ℓ via GMM.
 
-    Fits K=1 and K=2 GMMs to B_q. The near-zero component of the K=2 model
-    captures queries with no discriminative contribution (orthogonal queries),
-    while the positive component captures discriminative (signal) queries.
+    For each direction ℓ = 1..r̂, fits K=1 and K=2 GMMs to the absolute
+    left-singular-vector loadings |U_{q,ℓ}|. The near-zero component
+    weight gives ρ̂_ℓ.
 
-    ρ̂ = π̂₀, the mixing weight of the near-zero component.
+    For r̂ = 1, the loadings |U_{q,1}| are proportional to B_q, so the
+    procedure reduces to fitting a GMM on B_q.
 
     Parameters
     ----------
-    B_q : ndarray of shape (M,)
-        Per-query between-class excess values.
+    U : ndarray of shape (M, k)
+        Left singular vectors from SVD of Ẽ.
+    r_hat : int
+        Estimated discriminative rank.
 
     Returns
     -------
-    rho_hat : float
-        Estimated zero-set probability.
+    rho_hats : ndarray of shape (r_hat,)
+        Per-direction zero-set probabilities.
     info : dict
         Diagnostic information:
-        - 'pi0': mixing weight of the near-zero component
-        - 'B_q': the input B_q values
-        - 'gmm': fitted 2-component GaussianMixture object
-        - 'gmm1': fitted 1-component GMM (for BIC comparison)
-        - 'bic1': BIC of 1-component model
-        - 'bic2': BIC of 2-component model
-        - 'labels': component assignments (0=near-zero, 1=active)
+        - 'per_direction': list of dicts (one per direction ℓ), each with:
+            - 'loadings': |U_{q,ℓ}| values
+            - 'gmm': fitted 2-component GaussianMixture
+            - 'gmm1': fitted 1-component GMM
+            - 'bic1', 'bic2': BIC values
+            - 'rho_l': ρ̂_ℓ for this direction
+            - 'labels': component assignments (0=near-zero, 1=active)
     """
-    B_col = B_q.reshape(-1, 1)
+    rho_hats = np.zeros(r_hat)
+    per_direction = []
 
-    # Fit 1- and 2-component GMMs
-    gmm1 = GaussianMixture(n_components=1, random_state=0).fit(B_col)
-    gmm2 = GaussianMixture(n_components=2, random_state=0).fit(B_col)
+    for ell in range(r_hat):
+        loadings = np.abs(U[:, ell])
+        L_col = loadings.reshape(-1, 1)
 
-    bic1 = gmm1.bic(B_col)
-    bic2 = gmm2.bic(B_col)
+        gmm1 = GaussianMixture(n_components=1, random_state=0).fit(L_col)
+        gmm2 = GaussianMixture(n_components=2, random_state=0).fit(L_col)
 
-    # Identify the near-zero component (lower mean)
-    means = gmm2.means_.ravel()
-    zero_comp = int(np.argmin(means))
-    pi0 = gmm2.weights_[zero_comp]
+        bic1 = gmm1.bic(L_col)
+        bic2 = gmm2.bic(L_col)
 
-    # Component labels: 0=near-zero, 1=active
-    raw_labels = gmm2.predict(B_col)
-    labels = np.where(raw_labels == zero_comp, 0, 1)
+        # Near-zero component = lower mean
+        means = gmm2.means_.ravel()
+        zero_comp = int(np.argmin(means))
+        rho_l = gmm2.weights_[zero_comp]
 
-    rho_hat = pi0
+        raw_labels = gmm2.predict(L_col)
+        labels = np.where(raw_labels == zero_comp, 0, 1)
 
-    info = {
-        'pi0': pi0,
-        'B_q': B_q,
-        'gmm': gmm2,
-        'gmm1': gmm1,
-        'bic1': bic1,
-        'bic2': bic2,
-        'labels': labels,
-    }
-    return rho_hat, info
+        rho_hats[ell] = rho_l
+        per_direction.append({
+            'loadings': loadings,
+            'gmm': gmm2,
+            'gmm1': gmm1,
+            'bic1': bic1,
+            'bic2': bic2,
+            'rho_l': rho_l,
+            'labels': labels,
+        })
+
+    info = {'per_direction': per_direction}
+    return rho_hats, info
 
 
-def predict_mstar(r_hat: int, rho_hat: float, epsilon: float = 0.05):
-    """Predict the query budget m* from the theoretical bound.
+def predict_mstar(rho_hats, epsilon: float = 0.05):
+    """Predict the query budget m* from the theoretical bound Σ_ℓ ρ̂_ℓ^m ≤ ε.
 
-    m* = ⌈log(2r / ε) / (−log ρ)⌉
+    Finds the smallest m such that Σ_ℓ ρ̂_ℓ^m ≤ ε.
 
     Parameters
     ----------
-    r_hat : int
-        Estimated discriminative rank.
-    rho_hat : float
-        Estimated worst-case zero-set probability.
+    rho_hats : float or array-like
+        Per-direction zero-set probabilities. Scalar for r̂=1.
     epsilon : float, default=0.05
         Desired failure probability.
 
     Returns
     -------
     mstar : int or float
-        Predicted query budget. Returns 1 if ρ̂ = 0 (every query discriminates),
-        np.inf if ρ̂ ≥ 1 (no query discriminates).
+        Predicted query budget. Returns 1 if all ρ̂_ℓ = 0,
+        np.inf if any ρ̂_ℓ ≥ 1.
     """
-    if rho_hat >= 1:
+    rho_hats = np.atleast_1d(np.asarray(rho_hats, dtype=float))
+    if np.any(rho_hats >= 1):
         return np.inf
-    if rho_hat <= 0:
+    if np.all(rho_hats <= 0):
         return 1
-    return int(np.ceil(np.log(2 * r_hat / epsilon) / (-np.log(rho_hat))))
+    # Binary search for smallest m where sum(rho_l^m) <= epsilon
+    for m in range(1, 10000):
+        if np.sum(rho_hats ** m) <= epsilon:
+            return m
+    return np.inf
