@@ -12,8 +12,6 @@ Steps:
 import numpy as np
 from sklearn.mixture import GaussianMixture
 
-from bbo.embedding.mds import select_dimension
-
 
 def compute_E_disc(E: np.ndarray, pairs: np.ndarray, labels: np.ndarray):
     """Compute the between-class centered dissimilarity matrix and B_q.
@@ -63,27 +61,32 @@ def compute_E_disc(E: np.ndarray, pairs: np.ndarray, labels: np.ndarray):
     return E_disc, cross, B_q
 
 
-def estimate_discriminative_rank(E: np.ndarray, n_elbows: int = 1):
-    """Estimate r̂ from the singular value spectrum of E.
+def estimate_discriminative_rank(E: np.ndarray):
+    """Estimate r̂ from the singular value spectrum of Ẽ via largest successive ratio.
+
+    r̂ = argmax_r (σ_r / σ_{r+1}), i.e. the position of the largest spectral gap.
 
     Parameters
     ----------
     E : ndarray of shape (M, n_pairs)
-        Per-query energy tensor (can be full or between-class centered).
-    n_elbows : int, default=1
-        Number of elbows to find in the singular value spectrum.
+        Between-class centered per-query energy matrix Ẽ.
 
     Returns
     -------
     r_hat : int
-        Estimated discriminative rank.
+        Estimated discriminative rank (≥ 1).
     U : ndarray of shape (M, k)
         Left singular vectors (query loadings).
     s : ndarray of shape (k,)
         Singular values in descending order.
     """
     U, s, Vt = np.linalg.svd(E, full_matrices=False)
-    r_hat = select_dimension(s, n_elbows=n_elbows)
+    # Largest successive ratio σ_r / σ_{r+1} in the leading half of the spectrum.
+    # Restricting to the first half avoids spurious gaps at the numerical rank
+    # boundary while still covering any plausible discriminative rank.
+    k = max(2, len(s) // 2)
+    ratios = s[:k - 1] / s[1:k]
+    r_hat = int(np.argmax(ratios)) + 1  # 1-indexed
     return r_hat, U, s
 
 

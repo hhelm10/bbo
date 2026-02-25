@@ -52,7 +52,7 @@ def plot_estimation_panels(
     E_disc, _, B_q = compute_E_disc(E_all, pairs, labels)
 
     # r̂ from scree of Ẽ
-    r_hat, U, s = estimate_discriminative_rank(E_disc, n_elbows=1)
+    r_hat, U, s = estimate_discriminative_rank(E_disc)
 
     # Per-direction ρ̂_ℓ from GMM on |Ũ_{q,ℓ}|
     rho_hats, gmm_info = estimate_rho(U, r_hat)
