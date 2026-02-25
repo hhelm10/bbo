@@ -205,8 +205,7 @@ def plot_estimation_panels(
                        marker="o", markersize=2, label="$n=10$")]
         if np.any(rho_hats > 0):
             if r_hat == 1:
-                bound_label = (f"$\\hat{{\\rho}}_1^m$"
-                               f"\n($\\hat{{\\rho}}_1\\!={rho_hats[0]:.2f}$)")
+                bound_label = "$\\hat{\\rho}_1^m$"
             else:
                 bound_label = "$\\sum_\\ell \\hat{\\rho}_\\ell^m$"
             leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
