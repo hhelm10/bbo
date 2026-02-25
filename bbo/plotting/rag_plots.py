@@ -77,8 +77,8 @@ def plot_rag_figure(npz_path, classification_csv_path, output_path="figures/figu
     ax_gmm.set_visible(False)
 
     gs_inner = ax_gmm.get_subplotspec().subgridspec(2, 1, hspace=0.45)
-    ax_top = fig.add_subplot(gs_inner[0])
     ax_bot = fig.add_subplot(gs_inner[1])
+    ax_top = fig.add_subplot(gs_inner[0], sharex=ax_bot, sharey=ax_bot)
 
     for ell, ax_h in enumerate([ax_top, ax_bot]):
         dir_info = gmm_info["per_direction"][ell]
@@ -100,7 +100,7 @@ def plot_rag_figure(npz_path, classification_csv_path, output_path="figures/figu
         )
         ax_h.hist(
             L_control, bins=bins, alpha=0.6, color=PALETTE[2],
-            label="Control", density=True, edgecolor="none",
+            label="Orthogonal", density=True, edgecolor="none",
         )
 
         x_plot = np.linspace(
@@ -148,20 +148,35 @@ def plot_rag_figure(npz_path, classification_csv_path, output_path="figures/figu
         )
 
     # Drop xticks and xlabel on top row
-    ax_top.set_xticklabels([])
+    plt.setp(ax_top.get_xticklabels(), visible=False)
     ax_top.set_xlabel("")
+
+    # Shared yticks
+    ax_bot.set_yticks([0, 50])
 
     # Title spanning both sub-rows
     ax_top.set_title("(b) GMM on $|\\tilde{U}_{q,\\ell}|$")
 
-    # Single legend on top axes
-    leg_handles = [
+    # K + BIC legend on each row
+    for ell, ax_h in enumerate([ax_top, ax_bot]):
+        di = gmm_info["per_direction"][ell]
+        leg_k = [
+            Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
+                   label=f"$K\\!=\\!1$ (BIC$={di['bic1']:.0f}$)"),
+            Line2D([0], [0], color="0.3", linestyle="-", lw=0.8,
+                   label=f"$K\\!=\\!2$ (BIC$={di['bic2']:.0f}$)"),
+        ]
+        ax_h.legend(handles=leg_k, loc="upper right", fontsize=3.5, ncol=1)
+
+    # Add Signal/Orthogonal legend to top axes (second legend)
+    from matplotlib.legend import Legend
+    leg_sc = [
         Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
-        Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label="Control"),
-        Line2D([0], [0], color="0.3", linestyle="--", lw=0.8, label="$K\\!=\\!1$"),
-        Line2D([0], [0], color="0.3", linestyle="-", lw=0.8, label="$K\\!=\\!2$"),
+        Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label="Orthogonal"),
     ]
-    ax_top.legend(handles=leg_handles, loc="upper right", fontsize=3.5, ncol=2)
+    leg2 = Legend(ax_top, leg_sc, ["Signal", "Orthogonal"],
+                 loc="upper left", fontsize=3.5)
+    ax_top.add_artist(leg2)
 
     # =====================================================================
     # Panel (c): Mean classification error (Theorem 2 validation)
