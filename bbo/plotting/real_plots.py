@@ -273,6 +273,22 @@ def _plot_mean_error(ax, classification_csv, method="mds", dist="relevant",
                           label="$\\sum_\\ell \\hat{\\rho}_\\ell^m$"))
     ax.legend(handles=leg, loc="upper right", fontsize=3.5)
 
+    # Annotate fit parameters near curves
+    sorted_n = sorted(fit_results.keys(), reverse=True)
+    for i, n_val in enumerate(sorted_n):
+        a_f, rho_f, gamma_f = fit_results[n_val]
+        txt = (f"${a_f:.2f}\\!\\cdot\\!{rho_f:.2f}^m"
+               f"\\!+\\!{gamma_f:.3f}$")
+        offset = -0.02 if i == 0 else 0.02
+        va = "top" if i == 0 else "bottom"
+        m_annot = 8
+        y_annot = _error_model(m_annot, a_f, rho_f, gamma_f)
+        ax.text(m_annot, y_annot + offset, txt,
+                fontsize=4, color=n_colors[n_val],
+                ha="center", va=va,
+                bbox=dict(boxstyle="round,pad=0.15", facecolor="white",
+                          edgecolor="none", alpha=0.7))
+
 
 def plot_real_data_3x3(
     motivating_npz: str,
