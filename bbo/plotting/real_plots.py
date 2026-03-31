@@ -280,58 +280,145 @@ def _plot_failure_prob(ax, fail_csv, rho_hats=None, query_set="uniform"):
                           edgecolor="none", alpha=0.7))
 
 
+def _plot_mean_error(ax, classification_csv, rho_hats=None,
+                     method="mds", dist="signal"):
+    """Col 3 (RAG): Mean error vs m with fitted a·ρ^m + γ and theory bound."""
+    df = pd.read_csv(classification_csv)
+
+    if "method" in df.columns:
+        df_plot = df[(df["method"] == method) & (df["distribution"] == dist)]
+    else:
+        df_plot = df[df["distribution"] == dist]
+
+    n_values = sorted(df_plot["n"].unique())
+    n_colors = {n: PALETTE[i] for i, n in enumerate(n_values)}
+    m_cont = np.linspace(1, 100, 300)
+
+    def _error_model(m, a, rho, gamma):
+        return a * rho ** m + gamma
+
+    fit_results = {}
+    for n_val in n_values:
+        sub = df_plot[df_plot["n"] == n_val].sort_values("m")
+        if sub.empty:
+            continue
+        m_data = sub["m"].values.astype(float)
+        err = 1.0 - sub["mean_accuracy"].values
+        ax.plot(m_data, err, marker="o", markersize=2,
+                color=n_colors[n_val], linestyle="-", linewidth=0.8)
+
+        if len(m_data) >= 3:
+            try:
+                popt, _ = curve_fit(
+                    _error_model, m_data, err,
+                    p0=[0.3, 0.5, 0.01],
+                    bounds=([0, 0, 0], [2, 1, 0.5]),
+                )
+                y_fit = _error_model(m_cont, *popt)
+                ax.plot(m_cont, y_fit, color=n_colors[n_val],
+                        linestyle="--", linewidth=0.8, alpha=0.8)
+                fit_results[n_val] = popt
+            except RuntimeError:
+                pass
+
+    # Theory rate: Σ_ℓ ρ̂_ℓ^m
+    if rho_hats is not None and np.any(np.array(rho_hats) > 0):
+        theory = np.sum([rho_l ** m_cont for rho_l in rho_hats], axis=0)
+        ax.plot(m_cont, theory, color="0.3", linestyle=":", linewidth=0.8,
+                alpha=0.7)
+
+    ax.set_xscale("log")
+    ax.set_ylim(-0.02, 0.45)
+    ax.set_xlabel("Queries $m$")
+    ax.set_ylabel("Mean error")
+
+    # Legend
+    leg = [Line2D([0], [0], color=n_colors[n], linestyle="-", lw=0.8,
+                  marker="o", markersize=2, label=f"$n={n}$")
+           for n in n_values]
+    if fit_results:
+        leg.append(Line2D([0], [0], color="0.5", linestyle="--", lw=0.8,
+                          label="Fit ($a\\rho^m\\!+\\!\\gamma$)"))
+    if rho_hats is not None:
+        leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
+                          label="$\\sum_\\ell \\hat{\\rho}_\\ell^m$"))
+    ax.legend(handles=leg, loc="upper right", fontsize=3.5)
+
+    # Annotate fit parameters
+    sorted_n = sorted(fit_results.keys(), reverse=True)
+    for i, n_val in enumerate(sorted_n):
+        a_f, rho_f, gamma_f = fit_results[n_val]
+        txt = (f"${a_f:.2f}\\!\\cdot\\!{rho_f:.2f}^m"
+               f"\\!+\\!{gamma_f:.3f}$")
+        offset = -0.02 if i == 0 else 0.02
+        va = "top" if i == 0 else "bottom"
+        m_annot = 8
+        y_annot = _error_model(m_annot, a_f, rho_f, gamma_f)
+        ax.text(m_annot, y_annot + offset, txt,
+                fontsize=4, color=n_colors[n_val],
+                ha="center", va=va,
+                bbox=dict(boxstyle="round,pad=0.15", facecolor="white",
+                          edgecolor="none", alpha=0.7))
+
+
 def plot_real_data_3x3(
     motivating_npz: str,
     motivating_fail_csv: str,
     system_prompt_npz: str,
     system_prompt_fail_csv: str,
     rag_npz: str,
-    rag_fail_csv: str,
+    rag_classification_csv: str,
     output_path: str = "figures/figure_real_3x3.pdf",
 ):
     """3×3 real data figure.
 
     Rows: Motivating, System Prompt, RAG
-    Cols: Scree plot, GMM on |Ũ_{q,ℓ}|, P[err >= 0.5] vs m
+    Cols: Scree plot, GMM on |Ũ_{q,ℓ}|, col 3 metric
+      - Motivating & SysPrompt col 3: P[err >= 0.5] (Theorem 1)
+      - RAG col 3: Mean error (Theorem 2)
 
     RAG row col 2 uses subgridspec for two stacked GMM histograms (ℓ=1, ℓ=2).
     """
     set_paper_style()
+    from matplotlib.legend import Legend
 
-    # Use GridSpec: 3 rows × 3 cols, but RAG GMM cell gets subdivided
-    fig = plt.figure(figsize=(5.5, 4.5))
+    fig = plt.figure(figsize=(5.5, 4.2))
     gs = gridspec.GridSpec(3, 3, figure=fig,
-                           left=0.08, right=0.97, bottom=0.07, top=0.94,
-                           wspace=0.45, hspace=0.35)
+                           left=0.10, right=0.98, bottom=0.08, top=0.93,
+                           wspace=0.40, hspace=0.30)
 
     row_labels = ["Motivating", "System Prompt", "RAG"]
     datasets = [
         {
             "npz": motivating_npz,
-            "fail_csv": motivating_fail_csv,
             "signal_key": "sensitive_indices",
             "orth_key": "orthogonal_indices",
-            "query_set": "uniform",
+            "col3": "fail",
+            "col3_path": motivating_fail_csv,
+            "col3_kw": {"query_set": "uniform"},
         },
         {
             "npz": system_prompt_npz,
-            "fail_csv": system_prompt_fail_csv,
             "signal_key": "signal_indices",
             "orth_key": "orthogonal_indices",
-            "query_set": "uniform",
+            "col3": "fail",
+            "col3_path": system_prompt_fail_csv,
+            "col3_kw": {"query_set": "uniform"},
         },
         {
             "npz": rag_npz,
-            "fail_csv": rag_fail_csv,
             "signal_key": "signal_indices",
             "orth_key": "control_indices",
-            "query_set": "signal",
+            "col3": "mean_error",
+            "col3_path": rag_classification_csv,
+            "col3_kw": {"dist": "signal"},
         },
     ]
 
-    is_bottom = lambda r: r == len(row_labels) - 1
+    n_rows = len(row_labels)
 
     for row_idx, (label, ds) in enumerate(zip(row_labels, datasets)):
+        is_last = row_idx == n_rows - 1
         data = np.load(ds["npz"], allow_pickle=True)
         responses = data["responses"]
         labels = data["labels"]
@@ -345,81 +432,76 @@ def plot_real_data_3x3(
         )
         if row_idx == 0:
             ax_scree.set_title("Singular values of $\\tilde{E}$")
-        if not is_bottom(row_idx):
+        if not is_last:
             ax_scree.set_xlabel("")
             ax_scree.set_xticklabels([])
 
-        # Row label on y-axis side
+        # Row label
         ax_scree.annotate(
-            label, xy=(-0.45, 0.5), xycoords="axes fraction",
+            label, xy=(-0.50, 0.5), xycoords="axes fraction",
             fontsize=7, fontweight="bold", rotation=90,
             ha="center", va="center",
         )
 
         # --- Col 2: GMM ---
         if row_idx < 2:
-            # Single direction (ℓ=1) for motivating and system prompt
             ax_gmm = fig.add_subplot(gs[row_idx, 1])
             _plot_gmm_single(ax_gmm, gmm_info, r_hat, rho_hats, n_signal,
                              direction=0)
             if row_idx == 0:
                 ax_gmm.set_title("GMM on $|\\tilde{U}_{q,\\ell}|$")
-            if not is_bottom(row_idx):
+            if not is_last:
                 ax_gmm.set_xlabel("")
                 ax_gmm.set_xticklabels([])
             ax_gmm.set_ylabel("Density")
 
-            # Signal/Orth legend
-            from matplotlib.legend import Legend
             leg_sc = [
-                Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6,
-                       label="Signal"),
-                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6,
-                       label="Orthogonal"),
+                Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
+                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label="Orthogonal"),
             ]
             leg2 = Legend(ax_gmm, leg_sc, ["Signal", "Orthogonal"],
                           loc="upper left", fontsize=3.5)
             ax_gmm.add_artist(leg2)
         else:
-            # RAG: two stacked sub-rows for ℓ=1 and ℓ=2
-            gs_inner = gs[row_idx, 1].subgridspec(2, 1, hspace=0.5)
-            ax_gmm_top = fig.add_subplot(gs_inner[0])
-            ax_gmm_bot = fig.add_subplot(gs_inner[1], sharex=ax_gmm_top,
-                                          sharey=ax_gmm_top)
+            gs_inner = gs[row_idx, 1].subgridspec(2, 1, hspace=0.45)
+            ax_gmm_bot = fig.add_subplot(gs_inner[1])
+            ax_gmm_top = fig.add_subplot(gs_inner[0], sharex=ax_gmm_bot,
+                                          sharey=ax_gmm_bot)
 
             _plot_gmm_single(ax_gmm_top, gmm_info, r_hat, rho_hats, n_signal,
                              direction=0)
             _plot_gmm_single(ax_gmm_bot, gmm_info, r_hat, rho_hats, n_signal,
                              direction=1)
 
-            # Clean up top sub-row
             plt.setp(ax_gmm_top.get_xticklabels(), visible=False)
             ax_gmm_top.set_xlabel("")
             ax_gmm_top.set_ylabel("Density")
             ax_gmm_bot.set_ylabel("Density")
 
-            # Signal/Orth legend on top
-            from matplotlib.legend import Legend
             leg_sc = [
-                Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6,
-                       label="Signal"),
-                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6,
-                       label="Orthogonal"),
+                Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
+                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label="Orthogonal"),
             ]
             leg2 = Legend(ax_gmm_top, leg_sc, ["Signal", "Orthogonal"],
                           loc="upper left", fontsize=3.5)
             ax_gmm_top.add_artist(leg2)
 
-        # --- Col 3: P[err >= 0.5] vs m ---
-        ax_fail = fig.add_subplot(gs[row_idx, 2])
-        _plot_failure_prob(ax_fail, ds["fail_csv"], rho_hats=rho_hats,
-                           query_set=ds["query_set"])
+        # --- Col 3 ---
+        ax_c3 = fig.add_subplot(gs[row_idx, 2])
+        if ds["col3"] == "fail":
+            _plot_failure_prob(ax_c3, ds["col3_path"], rho_hats=rho_hats,
+                               **ds["col3_kw"])
+            if row_idx == 0:
+                ax_c3.set_title("$\\mathbb{P}[\\mathrm{err} \\geq 0.5]$ vs $m$")
+        else:
+            _plot_mean_error(ax_c3, ds["col3_path"], rho_hats=rho_hats,
+                             **ds["col3_kw"])
+            if row_idx == 0:
+                ax_c3.set_title("Mean error vs $m$")
 
-        if row_idx == 0:
-            ax_fail.set_title("$\\mathbb{P}[\\mathrm{err} \\geq 0.5]$ vs $m$")
-        if not is_bottom(row_idx):
-            ax_fail.set_xlabel("")
-            ax_fail.set_xticklabels([])
+        if not is_last:
+            ax_c3.set_xlabel("")
+            ax_c3.set_xticklabels([])
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)
