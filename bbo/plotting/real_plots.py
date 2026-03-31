@@ -204,85 +204,75 @@ def _plot_gmm_single(ax, gmm_info, r_hat, rho_hats, n_signal, direction=0):
     ax.legend(handles=leg_k, loc="upper right", fontsize=3.5)
 
 
-def _plot_mean_error(ax, classification_csv, method="mds", dist="relevant",
-                     n_values=None, rho_hats=None):
-    """Col 3: Mean error vs m, with optional fitted curves and theory bound."""
-    df = pd.read_csv(classification_csv)
+def _plot_failure_prob(ax, fail_csv, rho_hats=None, query_set="uniform"):
+    """Col 3: P[err >= 0.5] vs m with fitted curves and theory bound."""
+    df = pd.read_csv(fail_csv)
 
-    # Filter to MDS + specified distribution
-    if "method" in df.columns:
-        df_plot = df[(df["method"] == method) & (df["distribution"] == dist)]
-    else:
-        df_plot = df[df["distribution"] == dist]
-
-    if n_values is None:
-        n_values = sorted(df_plot["n"].unique())
-
-    n_colors = {n: PALETTE[i] for i, n in enumerate(n_values)}
+    n_colors = {80: PALETTE[0], 10: PALETTE[1]}
     m_cont = np.linspace(1, 100, 300)
 
-    def _error_model(m, a, rho, Lstar):
-        return a * rho ** m + Lstar
+    def _bound_model(m, a, rho, gamma):
+        return a * rho ** m + gamma
 
     fit_results = {}
-    for n_val in n_values:
-        sub = df_plot[df_plot["n"] == n_val].sort_values("m")
+    for n_val in [80, 10]:
+        sub = df[(df["query_set"] == query_set) & (df["n"] == n_val)].sort_values("m")
         if sub.empty:
             continue
         m_data = sub["m"].values.astype(float)
-        err = 1.0 - sub["mean_accuracy"].values
-        ax.plot(m_data, err, marker="o", markersize=2,
-                color=n_colors[n_val], linestyle="-", linewidth=0.8,
-                label=f"$n={n_val}$")
+        y_data = sub["failure_prob"].values
 
-        # Fit a·ρ^m + γ
+        ax.plot(m_data, y_data, marker="o", markersize=2,
+                color=n_colors[n_val], linestyle="-", linewidth=0.8)
+
         if len(m_data) >= 3:
             try:
                 popt, _ = curve_fit(
-                    _error_model, m_data, err,
-                    p0=[0.3, 0.5, 0.01],
-                    bounds=([0, 0, 0], [2, 1, 0.5]),
+                    _bound_model, m_data, y_data,
+                    p0=[1.0, 0.5, 0.01],
+                    bounds=([0, 0, 0], [10, 1, 1]),
                 )
-                y_fit = _error_model(m_cont, *popt)
+                y_fit = _bound_model(m_cont, *popt)
                 ax.plot(m_cont, y_fit, color=n_colors[n_val],
                         linestyle="--", linewidth=0.8, alpha=0.8)
                 fit_results[n_val] = popt
             except RuntimeError:
                 pass
 
-    # Theoretical rate: Σ_ℓ ρ̂_ℓ^m
+    # Theory bound: Σ_ℓ ρ̂_ℓ^m
     if rho_hats is not None and np.any(np.array(rho_hats) > 0):
-        theory = np.sum([rho_l ** m_cont for rho_l in rho_hats], axis=0)
+        theory = np.minimum(
+            1.0, np.sum([rho_l ** m_cont for rho_l in rho_hats], axis=0))
         ax.plot(m_cont, theory, color="0.3", linestyle=":", linewidth=0.8,
                 alpha=0.7)
 
     ax.set_xscale("log")
-    ax.set_ylim(-0.02, 0.55)
+    ax.set_ylim(-0.02, 1.05)
     ax.set_xlabel("Queries $m$")
-    ax.set_ylabel("Mean error")
+    ax.set_ylabel("$\\mathbb{P}[\\mathrm{err} \\geq 0.5]$")
 
     # Legend
     leg = [Line2D([0], [0], color=n_colors[n], linestyle="-", lw=0.8,
                   marker="o", markersize=2, label=f"$n={n}$")
-           for n in n_values]
-    if fit_results:
-        leg.append(Line2D([0], [0], color="0.5", linestyle="--", lw=0.8,
-                          label="Fit ($a\\rho^m\\!+\\!\\gamma$)"))
+           for n in [80, 10]]
     if rho_hats is not None:
         leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
                           label="$\\sum_\\ell \\hat{\\rho}_\\ell^m$"))
+    if fit_results:
+        leg.append(Line2D([0], [0], color="0.5", linestyle="--", lw=0.8,
+                          label="Fit ($a\\rho^m\\!+\\!\\gamma$)"))
     ax.legend(handles=leg, loc="upper right", fontsize=3.5)
 
-    # Annotate fit parameters near curves
+    # Annotate fit parameters
     sorted_n = sorted(fit_results.keys(), reverse=True)
     for i, n_val in enumerate(sorted_n):
         a_f, rho_f, gamma_f = fit_results[n_val]
         txt = (f"${a_f:.2f}\\!\\cdot\\!{rho_f:.2f}^m"
-               f"\\!+\\!{gamma_f:.3f}$")
-        offset = -0.02 if i == 0 else 0.02
+               f"\\!+\\!{gamma_f:.2f}$")
+        offset = -0.04 if i == 0 else 0.04
         va = "top" if i == 0 else "bottom"
-        m_annot = 8
-        y_annot = _error_model(m_annot, a_f, rho_f, gamma_f)
+        m_annot = 6
+        y_annot = _bound_model(m_annot, a_f, rho_f, gamma_f)
         ax.text(m_annot, y_annot + offset, txt,
                 fontsize=4, color=n_colors[n_val],
                 ha="center", va=va,
@@ -292,17 +282,17 @@ def _plot_mean_error(ax, classification_csv, method="mds", dist="relevant",
 
 def plot_real_data_3x3(
     motivating_npz: str,
-    motivating_csv: str,
+    motivating_fail_csv: str,
     system_prompt_npz: str,
-    system_prompt_csv: str,
+    system_prompt_fail_csv: str,
     rag_npz: str,
-    rag_csv: str,
+    rag_fail_csv: str,
     output_path: str = "figures/figure_real_3x3.pdf",
 ):
     """3×3 real data figure.
 
     Rows: Motivating, System Prompt, RAG
-    Cols: Scree plot, GMM on |Ũ_{q,ℓ}|, Mean error vs m
+    Cols: Scree plot, GMM on |Ũ_{q,ℓ}|, P[err >= 0.5] vs m
 
     RAG row col 2 uses subgridspec for two stacked GMM histograms (ℓ=1, ℓ=2).
     """
@@ -318,24 +308,24 @@ def plot_real_data_3x3(
     datasets = [
         {
             "npz": motivating_npz,
-            "csv": motivating_csv,
+            "fail_csv": motivating_fail_csv,
             "signal_key": "sensitive_indices",
             "orth_key": "orthogonal_indices",
-            "dist": "relevant",
+            "query_set": "uniform",
         },
         {
             "npz": system_prompt_npz,
-            "csv": system_prompt_csv,
+            "fail_csv": system_prompt_fail_csv,
             "signal_key": "signal_indices",
             "orth_key": "orthogonal_indices",
-            "dist": "relevant",
+            "query_set": "uniform",
         },
         {
             "npz": rag_npz,
-            "csv": rag_csv,
+            "fail_csv": rag_fail_csv,
             "signal_key": "signal_indices",
             "orth_key": "control_indices",
-            "dist": "signal",
+            "query_set": "signal",
         },
     ]
 
@@ -420,17 +410,16 @@ def plot_real_data_3x3(
                           loc="upper left", fontsize=3.5)
             ax_gmm_top.add_artist(leg2)
 
-        # --- Col 3: Mean error vs m ---
-        ax_err = fig.add_subplot(gs[row_idx, 2])
-        _plot_mean_error(ax_err, ds["csv"], dist=ds["dist"],
-                         rho_hats=rho_hats)
+        # --- Col 3: P[err >= 0.5] vs m ---
+        ax_fail = fig.add_subplot(gs[row_idx, 2])
+        _plot_failure_prob(ax_fail, ds["fail_csv"], rho_hats=rho_hats,
+                           query_set=ds["query_set"])
 
         if row_idx == 0:
-            ax_err.set_title("Mean error vs $m$")
+            ax_fail.set_title("$\\mathbb{P}[\\mathrm{err} \\geq 0.5]$ vs $m$")
         if not is_bottom(row_idx):
-            ax_err.set_xlabel("")
-            ax_err.set_xticklabels([])
-        ax_err.set_ylabel("Mean error")
+            ax_fail.set_xlabel("")
+            ax_fail.set_xticklabels([])
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)
