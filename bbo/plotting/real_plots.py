@@ -139,8 +139,6 @@ def _plot_scree(ax, responses, labels, signal_indices, orthogonal_indices,
             fontsize=5, color="0.3")
     ax.set_xlabel("Component $r$")
     ax.set_ylabel("$\\sigma_r / \\sigma_1$")
-    if title_prefix:
-        ax.set_title(title_prefix)
 
     return r_hat, U, s, rho_hats, gmm_info, len(signal_indices)
 
@@ -288,6 +286,8 @@ def plot_real_data_3x3(
         },
     ]
 
+    is_bottom = lambda r: r == len(row_labels) - 1
+
     for row_idx, (label, ds) in enumerate(zip(row_labels, datasets)):
         data = np.load(ds["npz"], allow_pickle=True)
         responses = data["responses"]
@@ -302,6 +302,9 @@ def plot_real_data_3x3(
         )
         if row_idx == 0:
             ax_scree.set_title("Singular values of $\\tilde{E}$")
+        if not is_bottom(row_idx):
+            ax_scree.set_xlabel("")
+            ax_scree.set_xticklabels([])
 
         # Row label on y-axis side
         ax_scree.annotate(
@@ -318,6 +321,11 @@ def plot_real_data_3x3(
                              direction=0)
             if row_idx == 0:
                 ax_gmm.set_title("GMM on $|\\tilde{U}_{q,\\ell}|$")
+            if not is_bottom(row_idx):
+                ax_gmm.set_xlabel("")
+                ax_gmm.set_xticklabels([])
+            # Col 2 — no ylabel (interior column)
+            ax_gmm.set_ylabel("")
 
             # Signal/Orth legend
             from matplotlib.legend import Legend
@@ -342,9 +350,12 @@ def plot_real_data_3x3(
             _plot_gmm_single(ax_gmm_bot, gmm_info, r_hat, rho_hats, n_signal,
                              direction=1)
 
-            # Clean up top row
+            # Clean up top sub-row
             plt.setp(ax_gmm_top.get_xticklabels(), visible=False)
             ax_gmm_top.set_xlabel("")
+            # Interior column — no ylabels
+            ax_gmm_top.set_ylabel("")
+            ax_gmm_bot.set_ylabel("")
 
             # Signal/Orth legend on top
             from matplotlib.legend import Legend
@@ -360,12 +371,15 @@ def plot_real_data_3x3(
 
         # --- Col 3: Mean error vs m ---
         ax_err = fig.add_subplot(gs[row_idx, 2])
-
-        # Determine distribution name and available n values
         _plot_mean_error(ax_err, ds["csv"], dist=ds["dist"])
 
         if row_idx == 0:
             ax_err.set_title("Mean error vs $m$")
+        if not is_bottom(row_idx):
+            ax_err.set_xlabel("")
+            ax_err.set_xticklabels([])
+        # Col 3 — no ylabel (interior column)
+        ax_err.set_ylabel("")
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)
