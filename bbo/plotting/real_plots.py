@@ -256,10 +256,10 @@ def plot_real_data_3x3(
     set_paper_style()
 
     # Use GridSpec: 3 rows × 3 cols, but RAG GMM cell gets subdivided
-    fig = plt.figure(figsize=(5.5, 5.0))
+    fig = plt.figure(figsize=(5.5, 4.5))
     gs = gridspec.GridSpec(3, 3, figure=fig,
                            left=0.08, right=0.97, bottom=0.07, top=0.94,
-                           wspace=0.45, hspace=0.55)
+                           wspace=0.45, hspace=0.35)
 
     row_labels = ["Motivating", "System Prompt", "RAG"]
     datasets = [
@@ -324,8 +324,7 @@ def plot_real_data_3x3(
             if not is_bottom(row_idx):
                 ax_gmm.set_xlabel("")
                 ax_gmm.set_xticklabels([])
-            # Col 2 — no ylabel (interior column)
-            ax_gmm.set_ylabel("")
+            ax_gmm.set_ylabel("Density")
 
             # Signal/Orth legend
             from matplotlib.legend import Legend
@@ -353,9 +352,8 @@ def plot_real_data_3x3(
             # Clean up top sub-row
             plt.setp(ax_gmm_top.get_xticklabels(), visible=False)
             ax_gmm_top.set_xlabel("")
-            # Interior column — no ylabels
-            ax_gmm_top.set_ylabel("")
-            ax_gmm_bot.set_ylabel("")
+            ax_gmm_top.set_ylabel("Density")
+            ax_gmm_bot.set_ylabel("Density")
 
             # Signal/Orth legend on top
             from matplotlib.legend import Legend
@@ -378,8 +376,7 @@ def plot_real_data_3x3(
         if not is_bottom(row_idx):
             ax_err.set_xlabel("")
             ax_err.set_xticklabels([])
-        # Col 3 — no ylabel (interior column)
-        ax_err.set_ylabel("")
+        ax_err.set_ylabel("Mean error")
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)
