@@ -651,14 +651,15 @@ def plot_figure2(df_e: pd.DataFrame, df_f: pd.DataFrame,
 
 
 def plot_figure_combined(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
-                         df_exp3: pd.DataFrame, df_exp4: pd.DataFrame,
-                         df_e: pd.DataFrame, df_f: pd.DataFrame,
-                         df_g: pd.DataFrame,
+                         df_exp4: pd.DataFrame,
+                         df_e: pd.DataFrame,
                          output_dir: str = "results/figures"):
-    """Combined Figure: Row 1 = Theorem 1 (a-d), Row 2 = Theorem 2 (e-g).
+    """Combined Figure: Row 1 = Theorem 1 (a-d), Row 2 = Theorem 2 (e-h).
 
-    Uses a 12-column GridSpec so row 1 has 4×3-col panels and
-    row 2 has 3×4-col panels, giving both rows equal total width.
+    Row 1: P[error >= 0.5] for (a) vary r, (b) vary ρ, (c) effect of n, (d) vary η
+    Row 2: |Mean Error - L*| for same four experiments
+
+    Uses a 12-column GridSpec: each row has 4 panels × 3 columns.
     """
     set_paper_style()
     from matplotlib.gridspec import GridSpec
@@ -668,46 +669,47 @@ def plot_figure_combined(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
                   left=0.07, right=0.99, bottom=0.09, top=0.92,
                   wspace=0.4, hspace=0.72)
 
-    # Row 1: 4 panels, each spanning 3 of 12 columns
-    ax1 = fig.add_subplot(gs[0, 0:3])
-    ax2 = fig.add_subplot(gs[0, 3:6])
-    ax4 = fig.add_subplot(gs[0, 6:9])   # panel (c) — error vs n
-    ax3 = fig.add_subplot(gs[0, 9:12])   # panel (d) — query dist
+    # Row 1: 4 panels (Theorem 1 — P[err >= 0.5])
+    ax_a = fig.add_subplot(gs[0, 0:3])
+    ax_b = fig.add_subplot(gs[0, 3:6])
+    ax_c = fig.add_subplot(gs[0, 6:9])
+    ax_d = fig.add_subplot(gs[0, 9:12])
 
-    # Row 2: 3 panels, each spanning 4 of 12 columns
-    ax_e = fig.add_subplot(gs[1, 0:4])
-    ax_f = fig.add_subplot(gs[1, 4:8])
-    ax_g = fig.add_subplot(gs[1, 8:12])
+    # Row 2: 4 panels (Theorem 2 — |Mean Error - L*|)
+    ax_e = fig.add_subplot(gs[1, 0:3])
+    ax_f = fig.add_subplot(gs[1, 3:6])
+    ax_g = fig.add_subplot(gs[1, 6:9])
+    ax_h = fig.add_subplot(gs[1, 9:12])
 
-    # ===== ROW 1: Theorem 1 =====
     n_reps = int(df_exp1["n_reps"].iloc[0])
-    r_values = sorted(df_exp1["r"].unique())
     m_dense = np.logspace(np.log10(1), np.log10(100), 200)
 
+    # ===== ROW 1: Theorem 1 — P[error >= 0.5] =====
+
     # Panel (a): vary r
+    r_values = sorted(df_exp1["r"].unique())
     for i, r in enumerate(r_values):
         color = PALETTE[i % len(PALETTE)]
         sub = df_exp1[df_exp1["r"] == r]
         rho = sub["rho"].iloc[0]
         y = _map_zeros(sub["prob_high_error"].values, n_reps)
-        ax1.plot(sub["m"], y, marker="o", color=color, label=f"$r = {r}$")
+        ax_a.plot(sub["m"], y, marker="o", color=color, label=f"$r = {r}$")
         bound = _theory_bound(m_dense, r, rho)
-        ax1.plot(m_dense, _smooth_floor(bound, n_reps), color=color,
-                 linestyle="--", linewidth=1.0, alpha=0.7)
+        ax_a.plot(m_dense, _smooth_floor(bound, n_reps), color=color,
+                  linestyle="--", linewidth=1.0, alpha=0.7)
 
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
                                   linewidth=1.0, alpha=0.7, label="$r\\rho^m$")
-    h1, l1 = ax1.get_legend_handles_labels()
-    h1.append(theory_handle)
-    l1.append("$r\\rho^m$")
+    h1, l1 = ax_a.get_legend_handles_labels()
+    h1.append(theory_handle); l1.append("$r\\rho^m$")
 
-    ax1.set_xscale("log")
-    _setup_broken_log_y(ax1, n_reps)
-    ax1.set_xlabel("Queries $m$")
-    ax1.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-    ax1.set_title("(a) Varying rank $r$\n$n\\!=\\!100,\\; \\rho\\!\\approx\\!0.7,\\; \\eta\\!=\\!0$",
-                  fontsize=7)
-    ax1.legend(h1, l1, loc="lower left", bbox_to_anchor=(0.02, 0), ncol=2)
+    ax_a.set_xscale("log")
+    _setup_broken_log_y(ax_a, n_reps)
+    ax_a.set_xlabel("Queries $m$")
+    ax_a.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
+    ax_a.set_title("(a) Varying rank $r$\n$n\\!=\\!100,\\; \\rho\\!\\approx\\!0.7,\\; \\eta\\!=\\!0$",
+                   fontsize=7)
+    ax_a.legend(h1, l1, loc="lower left", bbox_to_anchor=(0.02, 0), ncol=2)
 
     # Panel (b): vary rho
     rho_values = sorted(df_exp2["rho"].unique())
@@ -715,25 +717,22 @@ def plot_figure_combined(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         color = PALETTE[i % len(PALETTE)]
         sub = df_exp2[df_exp2["rho"] == rho]
         y = _map_zeros(sub["prob_high_error"].values, n_reps)
-        ax2.plot(sub["m"], y, marker="o", color=color,
-                 label=f"$\\rho = {rho:.1f}$")
+        ax_b.plot(sub["m"], y, marker="o", color=color,
+                  label=f"$\\rho = {rho:.1f}$")
         bound = _theory_bound(m_dense, 5, rho)
-        ax2.plot(m_dense, _smooth_floor(bound, n_reps), color=color,
-                 linestyle="--", linewidth=1.0, alpha=0.7)
+        ax_b.plot(m_dense, _smooth_floor(bound, n_reps), color=color,
+                  linestyle="--", linewidth=1.0, alpha=0.7)
 
-    theory_handle2 = mlines.Line2D([], [], color="gray", linestyle="--",
-                                   linewidth=1.0, alpha=0.7, label="$r\\rho^m$")
-    h2, l2 = ax2.get_legend_handles_labels()
-    h2.append(theory_handle2)
-    l2.append("$r\\rho^m$")
+    h2, l2 = ax_b.get_legend_handles_labels()
+    h2.append(theory_handle); l2.append("$r\\rho^m$")
 
-    ax2.set_xscale("log")
-    _setup_broken_log_y(ax2, n_reps)
-    ax2.set_yticklabels([])
-    ax2.set_xlabel("Queries $m$")
-    ax2.set_title("(b) Varying $\\rho$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\eta\\!=\\!0$",
-                  fontsize=7)
-    ax2.legend(h2, l2, loc="lower left", bbox_to_anchor=(0.02, 0))
+    ax_b.set_xscale("log")
+    _setup_broken_log_y(ax_b, n_reps)
+    ax_b.set_yticklabels([])
+    ax_b.set_xlabel("Queries $m$")
+    ax_b.set_title("(b) Varying $\\rho$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\eta\\!=\\!0$",
+                   fontsize=7)
+    ax_b.legend(h2, l2, loc="lower left", bbox_to_anchor=(0.02, 0))
 
     # Panel (c): error vs n
     r_exp4 = int(df_exp4["r"].iloc[0])
@@ -745,151 +744,107 @@ def plot_figure_combined(df_exp1: pd.DataFrame, df_exp2: pd.DataFrame,
         color = PALETTE[i % len(PALETTE)]
         sub = df_exp4[df_exp4["m"] == m]
         y4 = _map_zeros(sub["prob_high_error"].values, n_reps)
-        ax4.plot(sub["n_models"], y4, marker="o", color=color,
-                 label=f"$m = {m}$")
+        ax_c.plot(sub["n_models"], y4, marker="o", color=color,
+                  label=f"$m = {m}$")
         bound_val = r_exp4 * rho4 ** m
         if bound_val > zp4:
-            ax4.axhline(y=bound_val, color=color, linestyle="--",
-                        linewidth=1.0, alpha=0.7)
+            ax_c.axhline(y=bound_val, color=color, linestyle="--",
+                         linewidth=1.0, alpha=0.7)
 
-    theory_handle4 = mlines.Line2D([], [], color="gray", linestyle="--",
-                                   linewidth=1.0, alpha=0.7, label="$r\\rho^m$")
-    h4, l4 = ax4.get_legend_handles_labels()
-    h4.append(theory_handle4)
-    l4.append("$r\\rho^m$")
+    h4, l4 = ax_c.get_legend_handles_labels()
+    h4.append(theory_handle); l4.append("$r\\rho^m$")
 
-    ax4.set_xscale("log")
-    _setup_broken_log_y(ax4, n_reps)
-    ax4.set_yticklabels([])
-    ax4.set_xlabel("Models $n$")
-    ax4.set_title("(c) Effect of $n$\n"
-                  f"$r\\!=\\!{r_exp4},\\; \\rho\\!=\\!0.7,\\; \\eta\\!=\\!0$",
-                  fontsize=7)
-    ax4.legend(h4, l4, loc="lower left", bbox_to_anchor=(0.02, 0))
+    ax_c.set_xscale("log")
+    _setup_broken_log_y(ax_c, n_reps)
+    ax_c.set_yticklabels([])
+    ax_c.set_xlabel("Models $n$")
+    ax_c.set_title("(c) Effect of $n$\n"
+                   f"$r\\!=\\!{r_exp4},\\; \\rho\\!=\\!0.7,\\; \\eta\\!=\\!0$",
+                   fontsize=7)
+    ax_c.legend(h4, l4, loc="lower left", bbox_to_anchor=(0.02, 0))
 
-    # Panel (d): query distribution
-    dist_labels = {"uniform": "Uniform", "signal": "Signal",
-                   "orthogonal": "Orthogonal"}
-    dist_colors = {"uniform": PALETTE[0], "signal": PALETTE[1],
-                   "orthogonal": PALETTE[2]}
-
-    if "signal_prob" in df_exp3.columns:
-        sp_values = sorted(df_exp3["signal_prob"].unique())
-    else:
-        sp_values = [None]
-
-    linestyles = ["-", "--", ":", "-."]
-    for j, sp in enumerate(sp_values):
-        sub_sp = df_exp3[df_exp3["signal_prob"] == sp] if sp is not None else df_exp3
-        ls = linestyles[j % len(linestyles)]
-        for dist_name, label in dist_labels.items():
-            sub = sub_sp[sub_sp["distribution"] == dist_name]
-            if sub.empty:
-                continue
-            color = dist_colors[dist_name]
-            full_label = label if j == 0 else None
-            y3 = _map_zeros(sub["prob_high_error"].values, n_reps)
-            ax3.plot(sub["m"], y3, marker="o", color=color,
-                     label=full_label, linestyle=ls)
-
-    if len(sp_values) > 1:
-        dist_handles = [mlines.Line2D([], [], color=dist_colors[d],
-                        label=dist_labels[d]) for d in dist_labels]
-        rho_handles = [mlines.Line2D([], [], color="gray",
-                       linestyle=linestyles[j],
-                       label=f"$\\rho = {1-sp:.1f}$")
-                       for j, sp in enumerate(sp_values)]
-        ax3.legend(handles=dist_handles + rho_handles,
-                   loc="lower left", bbox_to_anchor=(0.02, 0), ncol=2)
-    else:
-        ax3.legend(loc="lower left", bbox_to_anchor=(0.02, 0))
-
-    ax3.set_xscale("log")
-    _setup_broken_log_y(ax3, n_reps)
-    ax3.set_yticklabels([])
-    ax3.set_xlabel("Queries $m$")
-    ax3.set_title("(d) Query distribution\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\eta\\!=\\!0$",
-                  fontsize=7)
-
-    # ===== ROW 2: Theorem 2 (e, f, g) =====
-
-    # Panel (e): error vs m, varying eta
-    eta_values_e = sorted(df_e["eta"].unique())
-    for i, eta in enumerate(eta_values_e):
+    # Panel (d): vary eta — P[err >= 0.5]
+    eta_values = sorted(df_e["eta"].unique())
+    n_reps_e = int(df_e["n_reps"].iloc[0])
+    for i, eta in enumerate(eta_values):
         color = PALETTE[i % len(PALETTE)]
         sub = df_e[df_e["eta"] == eta]
+        y = _map_zeros(sub["prob_high_error"].values, n_reps_e)
+        ax_d.plot(sub["m"], y, marker="o", color=color,
+                  label=f"$\\eta = {eta}$")
+
+    ax_d.set_xscale("log")
+    _setup_broken_log_y(ax_d, n_reps_e)
+    ax_d.set_yticklabels([])
+    ax_d.set_xlabel("Queries $m$")
+    ax_d.set_title("(d) Label noise $\\eta$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\rho\\!\\approx\\!0.7$",
+                   fontsize=7)
+    ax_d.legend(loc="lower left", bbox_to_anchor=(0.02, 0))
+
+    # ===== ROW 2: Theorem 2 — |Mean Error - L*| =====
+
+    # Panel (e): vary r — |mean_error - 0| = mean_error (η=0)
+    for i, r in enumerate(r_values):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df_exp1[df_exp1["r"] == r]
         ax_e.plot(sub["m"], sub["mean_error"], marker="o", color=color,
-                  label=f"$\\eta = {eta}$")
-        ax_e.axhline(y=eta, color=color, linestyle="--", linewidth=0.8,
-                     alpha=0.6)
-
-    lstar_handle = mlines.Line2D([], [], color="gray", linestyle="--",
-                                 linewidth=0.8, alpha=0.7, label="$L^* = \\eta$")
-    h_e, l_e = ax_e.get_legend_handles_labels()
-    h_e = [h for h, l in zip(h_e, l_e) if l.startswith("$\\eta")]
-    l_e = [l for l in l_e if l.startswith("$\\eta")]
-    h_e.append(lstar_handle)
-    l_e.append("$L^* = \\eta$")
-
-    ax_e.set_xscale("log")
-    ax_e.set_ylim(0, 0.55)
-    ax_e.set_xlabel("Queries $m$")
-    ax_e.set_ylabel("Mean error")
-    ax_e.set_title("(e) Label noise $\\eta$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\rho\\!\\approx\\!0.7$",
-                   fontsize=7)
-    ax_e.legend(h_e, l_e, loc="lower left", bbox_to_anchor=(0.02, 0))
-
-    # Panel (f): error vs n, varying eta
-    eta_values_f = sorted(df_f["eta"].unique())
-    for i, eta in enumerate(eta_values_f):
-        color = PALETTE[i % len(PALETTE)]
-        sub = df_f[df_f["eta"] == eta]
-        ax_f.plot(sub["n_models"], sub["mean_error"], marker="o", color=color,
-                  label=f"$\\eta = {eta}$")
-        ax_f.axhline(y=eta, color=color, linestyle="--", linewidth=0.8,
-                     alpha=0.6)
-
-    h_f, l_f = ax_f.get_legend_handles_labels()
-    h_f = [h for h, l in zip(h_f, l_f) if l.startswith("$\\eta")]
-    l_f = [l for l in l_f if l.startswith("$\\eta")]
-    h_f.append(lstar_handle)
-    l_f.append("$L^* = \\eta$")
-
-    ax_f.set_xscale("log")
-    ax_f.set_ylim(0, 0.55)
-    ax_f.set_yticklabels([])
-    ax_f.set_xlabel("Models $n$")
-    ax_f.set_title("(f) Convergence in $n$\n$m\\!=\\!50,\\; r\\!=\\!5,\\; \\rho\\!\\approx\\!0.7$",
-                   fontsize=7)
-    ax_f.legend(h_f, l_f, loc="lower left", bbox_to_anchor=(0.02, 0))
-
-    # Panel (g): error vs m, varying r, fixed eta
-    eta_g = df_g["eta"].iloc[0]
-    r_values_g = sorted(df_g["r"].unique())
-    for i, r in enumerate(r_values_g):
-        color = PALETTE[i % len(PALETTE)]
-        sub = df_g[df_g["r"] == r]
-        ax_g.plot(sub["m"], sub["mean_error"], marker="o", color=color,
                   label=f"$r = {r}$")
 
-    ax_g.axhline(y=eta_g, color="gray", linestyle="--", linewidth=0.8,
-                 alpha=0.7)
+    ax_e.axhline(y=0, color="gray", linestyle="--", linewidth=0.8, alpha=0.5)
+    ax_e.set_xscale("log")
+    ax_e.set_ylim(-0.02, 0.55)
+    ax_e.set_xlabel("Queries $m$")
+    ax_e.set_ylabel("$|\\mathrm{Mean\\ error} - L^*|$")
+    ax_e.set_title("(e) Varying rank $r$\n$n\\!=\\!100,\\; \\rho\\!\\approx\\!0.7,\\; \\eta\\!=\\!0$",
+                   fontsize=7)
+    ax_e.legend(loc="upper right", fontsize=5)
 
-    h_g, l_g = ax_g.get_legend_handles_labels()
-    lstar_handle_g = mlines.Line2D([], [], color="gray", linestyle="--",
-                                   linewidth=0.8, alpha=0.7,
-                                   label=f"$L^* = {eta_g}$")
-    h_g.append(lstar_handle_g)
-    l_g.append(f"$L^* = {eta_g}$")
+    # Panel (f): vary rho — mean_error (η=0)
+    for i, rho in enumerate(rho_values):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df_exp2[df_exp2["rho"] == rho]
+        ax_f.plot(sub["m"], sub["mean_error"], marker="o", color=color,
+                  label=f"$\\rho = {rho:.1f}$")
+
+    ax_f.set_xscale("log")
+    ax_f.set_ylim(-0.02, 0.55)
+    ax_f.set_yticklabels([])
+    ax_f.set_xlabel("Queries $m$")
+    ax_f.set_title("(f) Varying $\\rho$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\eta\\!=\\!0$",
+                   fontsize=7)
+    ax_f.legend(loc="upper right", fontsize=5)
+
+    # Panel (g): effect of n — mean_error (η=0)
+    for i, m in enumerate(m_values_4):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df_exp4[df_exp4["m"] == m]
+        ax_g.plot(sub["n_models"], sub["mean_error"], marker="o", color=color,
+                  label=f"$m = {m}$")
 
     ax_g.set_xscale("log")
-    ax_g.set_ylim(0, 0.55)
+    ax_g.set_ylim(-0.02, 0.55)
     ax_g.set_yticklabels([])
-    ax_g.set_xlabel("Queries $m$")
-    ax_g.set_title("(g) Effect of $r$ (noisy)\n"
-                   f"$n\\!=\\!100,\\; \\eta\\!=\\!{eta_g},\\; \\rho\\!\\approx\\!0.7$",
+    ax_g.set_xlabel("Models $n$")
+    ax_g.set_title("(g) Effect of $n$\n"
+                   f"$r\\!=\\!{r_exp4},\\; \\rho\\!=\\!0.7,\\; \\eta\\!=\\!0$",
                    fontsize=7)
-    ax_g.legend(h_g, l_g, loc="lower left", bbox_to_anchor=(0.02, 0))
+    ax_g.legend(loc="upper right", fontsize=5)
+
+    # Panel (h): vary eta — |mean_error - η|
+    for i, eta in enumerate(eta_values):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df_e[df_e["eta"] == eta]
+        excess_error = np.abs(sub["mean_error"].values - eta)
+        ax_h.plot(sub["m"], excess_error, marker="o", color=color,
+                  label=f"$\\eta = {eta}$")
+
+    ax_h.set_xscale("log")
+    ax_h.set_ylim(-0.02, 0.55)
+    ax_h.set_yticklabels([])
+    ax_h.set_xlabel("Queries $m$")
+    ax_h.set_title("(h) Label noise $\\eta$\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\rho\\!\\approx\\!0.7$",
+                   fontsize=7)
+    ax_h.legend(loc="upper right", fontsize=5)
 
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{output_dir}/figure_combined.pdf")

@@ -62,6 +62,7 @@ def run_exp_e(config: ExpEConfig = None) -> pd.DataFrame:
                 "m": m,
                 "mean_error": errors.mean(),
                 "std_error": errors.std(),
+                "prob_high_error": (errors >= 0.5).mean(),
                 "bayes_risk": eta,
                 "n_reps": config.n_reps,
             })

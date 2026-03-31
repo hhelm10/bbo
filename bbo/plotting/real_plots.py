@@ -3,10 +3,20 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import seaborn as sns
+from matplotlib.lines import Line2D
 from pathlib import Path
+from scipy.stats import norm as scipy_norm
+from scipy.optimize import curve_fit
 
 from bbo.plotting.style import set_paper_style, PALETTE
+from bbo.distances.energy import per_query_energy_tensor
+from bbo.estimation.rank_rho import (
+    compute_E_disc,
+    estimate_discriminative_rank,
+    estimate_rho,
+)
 
 
 def plot_exp6_scree(singular_values: np.ndarray, output_dir: str = "results/figures"):
@@ -105,3 +115,259 @@ def plot_exp9(df: pd.DataFrame, output_dir: str = "results/figures"):
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     fig.savefig(f"{output_dir}/exp9_baselines.pdf")
     plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# 3×3 Real Data Figure
+# ---------------------------------------------------------------------------
+
+def _plot_scree(ax, responses, labels, signal_indices, orthogonal_indices,
+                title_prefix=""):
+    """Col 1: Scree plot of Ẽ with r̂ dashed line."""
+    all_idx = np.concatenate([signal_indices, orthogonal_indices])
+    E_all, pairs = per_query_energy_tensor(responses[:, all_idx, :])
+    E_disc, _, B_q = compute_E_disc(E_all, pairs, labels)
+    r_hat, U, s = estimate_discriminative_rank(E_disc)
+    rho_hats, gmm_info = estimate_rho(U, r_hat)
+
+    sv_norm = s / s[0]
+    n_show = min(20, len(sv_norm))
+    ax.plot(np.arange(1, n_show + 1), sv_norm[:n_show],
+            color=PALETTE[0], linewidth=1.2, marker="o", markersize=2)
+    ax.axvline(x=r_hat, color="0.4", linestyle="--", linewidth=1.2, alpha=0.8)
+    ax.text(r_hat + 1.5, 0.82, f"$\\hat{{r}}={r_hat}$",
+            fontsize=5, color="0.3")
+    ax.set_xlabel("Component $r$")
+    ax.set_ylabel("$\\sigma_r / \\sigma_1$")
+    if title_prefix:
+        ax.set_title(title_prefix)
+
+    return r_hat, U, s, rho_hats, gmm_info, len(signal_indices)
+
+
+def _plot_gmm_single(ax, gmm_info, r_hat, rho_hats, n_signal, direction=0):
+    """Plot a single-direction GMM histogram on ax."""
+    dir_info = gmm_info["per_direction"][direction]
+    loadings = dir_info["loadings"]
+    gmm2 = dir_info["gmm"]
+    gmm1 = dir_info["gmm1"]
+    bic1 = dir_info["bic1"]
+    bic2 = dir_info["bic2"]
+    rho_l = dir_info["rho_l"]
+
+    L_signal = loadings[:n_signal]
+    L_orth = loadings[n_signal:]
+
+    bins = np.linspace(loadings.min(), loadings.max(), 28)
+    ax.hist(L_signal, bins=bins, alpha=0.6, color=PALETTE[1],
+            label="Signal", density=True, edgecolor="none")
+    ax.hist(L_orth, bins=bins, alpha=0.6, color=PALETTE[2],
+            label="Orthogonal", density=True, edgecolor="none")
+
+    x_plot = np.linspace(loadings.min() - 0.005, loadings.max() + 0.005, 300)
+
+    # K=1 density
+    m1_mean = gmm1.means_[0, 0]
+    m1_std = np.sqrt(gmm1.covariances_[0, 0, 0])
+    ax.plot(x_plot, scipy_norm.pdf(x_plot, m1_mean, m1_std),
+            color="0.3", linestyle="--", linewidth=0.8)
+
+    # K=2 components
+    comp_colors = [PALETTE[2], PALETTE[1]]
+    means_k2 = gmm2.means_.ravel()
+    zero_comp = int(np.argmin(means_k2))
+    for k in range(2):
+        w = gmm2.weights_[k]
+        mu = gmm2.means_[k, 0]
+        std = np.sqrt(gmm2.covariances_[k, 0, 0])
+        comp_density = w * scipy_norm.pdf(x_plot, mu, std)
+        cidx = 0 if k == zero_comp else 1
+        ax.fill_between(x_plot, comp_density, alpha=0.2, color=comp_colors[cidx])
+        ax.plot(x_plot, comp_density, color=comp_colors[cidx], linewidth=0.8)
+
+    ax.set_xlabel("$|\\tilde{U}_{q,\\ell}|$")
+    ax.set_ylabel("Density")
+
+    # ρ̂ annotation
+    ax.text(0.97, 0.12,
+            f"$\\hat{{\\rho}}_{direction+1}\\!=\\!{rho_l:.2f}$",
+            transform=ax.transAxes, fontsize=4.5,
+            ha="right", va="bottom",
+            bbox=dict(boxstyle="round,pad=0.15", facecolor="white",
+                      edgecolor="none", alpha=0.7))
+
+    # K+BIC legend
+    leg_k = [
+        Line2D([0], [0], color="0.3", linestyle="--", lw=0.8,
+               label=f"$K\\!=\\!1$ (BIC$={bic1:.0f}$)"),
+        Line2D([0], [0], color="0.3", linestyle="-", lw=0.8,
+               label=f"$K\\!=\\!2$ (BIC$={bic2:.0f}$)"),
+    ]
+    ax.legend(handles=leg_k, loc="upper right", fontsize=3.5)
+
+
+def _plot_mean_error(ax, classification_csv, method="mds", dist="relevant",
+                     n_values=None, fit_curve=False):
+    """Col 3: Mean error vs m."""
+    df = pd.read_csv(classification_csv)
+
+    # Filter to MDS + specified distribution
+    if "method" in df.columns:
+        df_plot = df[(df["method"] == method) & (df["distribution"] == dist)]
+    else:
+        df_plot = df[df["distribution"] == dist]
+
+    if n_values is None:
+        n_values = sorted(df_plot["n"].unique())
+
+    n_colors = {n: PALETTE[i] for i, n in enumerate(n_values)}
+
+    for n_val in n_values:
+        sub = df_plot[df_plot["n"] == n_val].sort_values("m")
+        if sub.empty:
+            continue
+        err = 1.0 - sub["mean_accuracy"].values
+        ax.plot(sub["m"], err, marker="o", markersize=2,
+                color=n_colors[n_val], linestyle="-", linewidth=0.8,
+                label=f"$n={n_val}$")
+
+    ax.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5, linewidth=0.5)
+    ax.set_xscale("log")
+    ax.set_ylim(0, 0.55)
+    ax.set_xlabel("Queries $m$")
+    ax.set_ylabel("Mean error")
+    ax.legend(loc="upper right", fontsize=4)
+
+
+def plot_real_data_3x3(
+    motivating_npz: str,
+    motivating_csv: str,
+    system_prompt_npz: str,
+    system_prompt_csv: str,
+    rag_npz: str,
+    rag_csv: str,
+    output_path: str = "figures/figure_real_3x3.pdf",
+):
+    """3×3 real data figure.
+
+    Rows: Motivating, System Prompt, RAG
+    Cols: Scree plot, GMM on |Ũ_{q,ℓ}|, Mean error vs m
+
+    RAG row col 2 uses subgridspec for two stacked GMM histograms (ℓ=1, ℓ=2).
+    """
+    set_paper_style()
+
+    # Use GridSpec: 3 rows × 3 cols, but RAG GMM cell gets subdivided
+    fig = plt.figure(figsize=(5.5, 5.0))
+    gs = gridspec.GridSpec(3, 3, figure=fig,
+                           left=0.08, right=0.97, bottom=0.07, top=0.94,
+                           wspace=0.45, hspace=0.55)
+
+    row_labels = ["Motivating", "System Prompt", "RAG"]
+    datasets = [
+        {
+            "npz": motivating_npz,
+            "csv": motivating_csv,
+            "signal_key": "sensitive_indices",
+            "orth_key": "orthogonal_indices",
+            "dist": "relevant",
+        },
+        {
+            "npz": system_prompt_npz,
+            "csv": system_prompt_csv,
+            "signal_key": "signal_indices",
+            "orth_key": "orthogonal_indices",
+            "dist": "relevant",
+        },
+        {
+            "npz": rag_npz,
+            "csv": rag_csv,
+            "signal_key": "signal_indices",
+            "orth_key": "control_indices",
+            "dist": "signal",
+        },
+    ]
+
+    for row_idx, (label, ds) in enumerate(zip(row_labels, datasets)):
+        data = np.load(ds["npz"], allow_pickle=True)
+        responses = data["responses"]
+        labels = data["labels"]
+        signal_idx = data[ds["signal_key"]]
+        orth_idx = data[ds["orth_key"]]
+
+        # --- Col 1: Scree plot ---
+        ax_scree = fig.add_subplot(gs[row_idx, 0])
+        r_hat, U, s, rho_hats, gmm_info, n_signal = _plot_scree(
+            ax_scree, responses, labels, signal_idx, orth_idx,
+        )
+        if row_idx == 0:
+            ax_scree.set_title("Singular values of $\\tilde{E}$")
+
+        # Row label on y-axis side
+        ax_scree.annotate(
+            label, xy=(-0.45, 0.5), xycoords="axes fraction",
+            fontsize=7, fontweight="bold", rotation=90,
+            ha="center", va="center",
+        )
+
+        # --- Col 2: GMM ---
+        if row_idx < 2:
+            # Single direction (ℓ=1) for motivating and system prompt
+            ax_gmm = fig.add_subplot(gs[row_idx, 1])
+            _plot_gmm_single(ax_gmm, gmm_info, r_hat, rho_hats, n_signal,
+                             direction=0)
+            if row_idx == 0:
+                ax_gmm.set_title("GMM on $|\\tilde{U}_{q,\\ell}|$")
+
+            # Signal/Orth legend
+            from matplotlib.legend import Legend
+            leg_sc = [
+                Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6,
+                       label="Signal"),
+                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6,
+                       label="Orthogonal"),
+            ]
+            leg2 = Legend(ax_gmm, leg_sc, ["Signal", "Orthogonal"],
+                          loc="upper left", fontsize=3.5)
+            ax_gmm.add_artist(leg2)
+        else:
+            # RAG: two stacked sub-rows for ℓ=1 and ℓ=2
+            gs_inner = gs[row_idx, 1].subgridspec(2, 1, hspace=0.5)
+            ax_gmm_top = fig.add_subplot(gs_inner[0])
+            ax_gmm_bot = fig.add_subplot(gs_inner[1], sharex=ax_gmm_top,
+                                          sharey=ax_gmm_top)
+
+            _plot_gmm_single(ax_gmm_top, gmm_info, r_hat, rho_hats, n_signal,
+                             direction=0)
+            _plot_gmm_single(ax_gmm_bot, gmm_info, r_hat, rho_hats, n_signal,
+                             direction=1)
+
+            # Clean up top row
+            plt.setp(ax_gmm_top.get_xticklabels(), visible=False)
+            ax_gmm_top.set_xlabel("")
+
+            # Signal/Orth legend on top
+            from matplotlib.legend import Legend
+            leg_sc = [
+                Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6,
+                       label="Signal"),
+                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6,
+                       label="Orthogonal"),
+            ]
+            leg2 = Legend(ax_gmm_top, leg_sc, ["Signal", "Orthogonal"],
+                          loc="upper left", fontsize=3.5)
+            ax_gmm_top.add_artist(leg2)
+
+        # --- Col 3: Mean error vs m ---
+        ax_err = fig.add_subplot(gs[row_idx, 2])
+
+        # Determine distribution name and available n values
+        _plot_mean_error(ax_err, ds["csv"], dist=ds["dist"])
+
+        if row_idx == 0:
+            ax_err.set_title("Mean error vs $m$")
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path)
+    plt.close(fig)
+    print(f"Saved 3×3 real data figure to {output_path}")
