@@ -205,8 +205,8 @@ def _plot_gmm_single(ax, gmm_info, r_hat, rho_hats, n_signal, direction=0):
 
 
 def _plot_mean_error(ax, classification_csv, method="mds", dist="relevant",
-                     n_values=None, fit_curve=False):
-    """Col 3: Mean error vs m."""
+                     n_values=None, rho_hats=None):
+    """Col 3: Mean error vs m, with optional fitted curves and theory bound."""
     df = pd.read_csv(classification_csv)
 
     # Filter to MDS + specified distribution
@@ -219,22 +219,59 @@ def _plot_mean_error(ax, classification_csv, method="mds", dist="relevant",
         n_values = sorted(df_plot["n"].unique())
 
     n_colors = {n: PALETTE[i] for i, n in enumerate(n_values)}
+    m_cont = np.linspace(1, 100, 300)
 
+    def _error_model(m, a, rho, Lstar):
+        return a * rho ** m + Lstar
+
+    fit_results = {}
     for n_val in n_values:
         sub = df_plot[df_plot["n"] == n_val].sort_values("m")
         if sub.empty:
             continue
+        m_data = sub["m"].values.astype(float)
         err = 1.0 - sub["mean_accuracy"].values
-        ax.plot(sub["m"], err, marker="o", markersize=2,
+        ax.plot(m_data, err, marker="o", markersize=2,
                 color=n_colors[n_val], linestyle="-", linewidth=0.8,
                 label=f"$n={n_val}$")
 
-    ax.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5, linewidth=0.5)
+        # Fit a·ρ^m + γ
+        if len(m_data) >= 3:
+            try:
+                popt, _ = curve_fit(
+                    _error_model, m_data, err,
+                    p0=[0.3, 0.5, 0.01],
+                    bounds=([0, 0, 0], [2, 1, 0.5]),
+                )
+                y_fit = _error_model(m_cont, *popt)
+                ax.plot(m_cont, y_fit, color=n_colors[n_val],
+                        linestyle="--", linewidth=0.8, alpha=0.8)
+                fit_results[n_val] = popt
+            except RuntimeError:
+                pass
+
+    # Theoretical rate: Σ_ℓ ρ̂_ℓ^m
+    if rho_hats is not None and np.any(np.array(rho_hats) > 0):
+        theory = np.sum([rho_l ** m_cont for rho_l in rho_hats], axis=0)
+        ax.plot(m_cont, theory, color="0.3", linestyle=":", linewidth=0.8,
+                alpha=0.7)
+
     ax.set_xscale("log")
-    ax.set_ylim(0, 0.55)
+    ax.set_ylim(-0.02, 0.55)
     ax.set_xlabel("Queries $m$")
     ax.set_ylabel("Mean error")
-    ax.legend(loc="upper right", fontsize=4)
+
+    # Legend
+    leg = [Line2D([0], [0], color=n_colors[n], linestyle="-", lw=0.8,
+                  marker="o", markersize=2, label=f"$n={n}$")
+           for n in n_values]
+    if fit_results:
+        leg.append(Line2D([0], [0], color="0.5", linestyle="--", lw=0.8,
+                          label="Fit ($a\\rho^m\\!+\\!\\gamma$)"))
+    if rho_hats is not None:
+        leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
+                          label="$\\sum_\\ell \\hat{\\rho}_\\ell^m$"))
+    ax.legend(handles=leg, loc="upper right", fontsize=3.5)
 
 
 def plot_real_data_3x3(
@@ -369,7 +406,8 @@ def plot_real_data_3x3(
 
         # --- Col 3: Mean error vs m ---
         ax_err = fig.add_subplot(gs[row_idx, 2])
-        _plot_mean_error(ax_err, ds["csv"], dist=ds["dist"])
+        _plot_mean_error(ax_err, ds["csv"], dist=ds["dist"],
+                         rho_hats=rho_hats)
 
         if row_idx == 0:
             ax_err.set_title("Mean error vs $m$")
