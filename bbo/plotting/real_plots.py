@@ -382,10 +382,10 @@ def plot_real_data_3x3(
     set_paper_style()
     from matplotlib.legend import Legend
 
-    fig = plt.figure(figsize=(5.5, 4.2))
+    fig = plt.figure(figsize=(5.5, 3.8))
     gs = gridspec.GridSpec(3, 3, figure=fig,
-                           left=0.10, right=0.98, bottom=0.08, top=0.93,
-                           wspace=0.40, hspace=0.30)
+                           left=0.10, right=0.98, bottom=0.08, top=0.94,
+                           wspace=0.40, hspace=0.20)
 
     row_labels = ["Motivating", "System Prompt", "RAG"]
     datasets = [
