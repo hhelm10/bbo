@@ -1,4 +1,4 @@
-# BBO: Black-Box Orthogonal Classification via MDS Embeddings
+# On the Orthogonality of Queries in the Black-Box Setting
 
 Framework for understanding **query complexity** in classifying black-box generative models (e.g., LLMs) using multidimensional scaling (MDS) embeddings of pairwise energy distances between response distributions.
 
