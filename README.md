@@ -1,4 +1,4 @@
-# BBO: Black-Box Oracle Classification via MDS Embeddings
+# BBO: Black-Box Orthogonal Classification via MDS Embeddings
 
 Framework for understanding **query complexity** in classifying black-box generative models (e.g., LLMs) using multidimensional scaling (MDS) embeddings of pairwise energy distances between response distributions.
 
