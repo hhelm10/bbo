@@ -55,8 +55,7 @@ def run_step(step: str, config: MotivatingConfig):
     elif step == "plot":
         import numpy as np
         import pandas as pd
-        from bbo.plotting.real_plots import plot_exp8
-        from bbo.plotting.motivating_plots import plot_motivating_figure
+        from bbo.plotting.motivating_plots import plot_figure1_motivating
 
         csv_path = Path(config.output_dir) / "classification_results.csv"
         if not csv_path.exists():
@@ -72,26 +71,27 @@ def run_step(step: str, config: MotivatingConfig):
                 "Run 'embed' step first."
             )
 
-        fig_dir = Path(config.output_dir) / "figures"
+        per_trial_path = Path(config.output_dir) / "per_trial_m10.npz"
+        if not per_trial_path.exists():
+            raise FileNotFoundError(
+                f"Per-trial data not found at {per_trial_path}. "
+                "Run 'classify' step first."
+            )
 
-        # Existing per-experiment plot
-        df = pd.read_csv(csv_path)
-        plot_exp8(df, str(fig_dir))
-
-        # Motivating combined figure
         data = np.load(str(npz_path), allow_pickle=True)
         metadata_path = str(config.data_dir / "adapter_metadata.json")
-        plot_motivating_figure(
+        plot_figure1_motivating(
             responses=data["responses"],
             labels=data["labels"],
             sensitive_indices=data["sensitive_indices"],
             orthogonal_indices=data["orthogonal_indices"],
             metadata_path=metadata_path,
             classification_csv=str(csv_path),
+            per_trial_npz=str(per_trial_path),
             model_names=data.get("model_names"),
             output_dir="figures",
         )
-        print(f"Figures saved to {fig_dir}")
+        print(f"Figure saved to figures/figure1_motivating.pdf")
 
     else:
         raise ValueError(f"Unknown step: {step}")
