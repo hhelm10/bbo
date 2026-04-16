@@ -194,7 +194,7 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
     n_max = n_values[-1]
     n_train_max = n_max if n_max < n_models else None
     dist_rel = distributions["relevant"]
-    m_scatter = 10
+    m_scatter = 5
     dist_offset = hash("relevant") % 10000
     seeds_scatter = [config.seed + rep * 100003 + m_scatter * 1009
                      + dist_offset * 7 + n_max * 31

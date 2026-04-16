@@ -85,10 +85,10 @@ def plot_figure1_motivating(
     frac_norm = (fracs_1 - fracs_1.min()) / (fracs_1.max() - fracs_1.min() + 1e-12)
     colors_1 = orange_cmap(frac_norm)
 
-    # --- Panel (a): MDS scatter at m=10 — p10 and p90 ---
+    # --- Panel (a): MDS scatter at m=5 — p10 and p90 ---
     for ax, qi, title in [
-        (ax_a_top, qi_p10, "(a) 10th pctl query set, $m\\!=\\!10$"),
-        (ax_a_bot, qi_p90, "90th pctl query set, $m\\!=\\!10$"),
+        (ax_a_top, qi_p10, "(a) 10th pctl query set, $m\\!=\\!5$"),
+        (ax_a_bot, qi_p90, "90th pctl query set, $m\\!=\\!5$"),
     ]:
         D = pairwise_energy_distances_t0(responses, qi)
         X = ClassicalMDS(n_components=2).fit_transform(D)
