@@ -167,26 +167,27 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
                     "p90_accuracy": np.percentile(accuracies, 90),
                 })
 
-                # Concat baseline
-                acc_concat = Parallel(n_jobs=config.n_jobs, backend="loky")(
-                    delayed(_run_one_rep_concat)(
-                        responses, labels, M, m, dist, s,
-                        config.classifier, n_train
+                # Concat baseline (only for relevant distribution)
+                if dist_name == "relevant":
+                    acc_concat = Parallel(n_jobs=config.n_jobs, backend="loky")(
+                        delayed(_run_one_rep_concat)(
+                            responses, labels, M, m, dist, s,
+                            config.classifier, n_train
+                        )
+                        for s in seeds
                     )
-                    for s in seeds
-                )
-                acc_concat = np.array(acc_concat)
+                    acc_concat = np.array(acc_concat)
 
-                results.append({
-                    "method": "concat",
-                    "n": n,
-                    "distribution": dist_name,
-                    "m": m,
-                    "mean_accuracy": acc_concat.mean(),
-                    "std_accuracy": acc_concat.std(),
-                    "p10_accuracy": np.percentile(acc_concat, 10),
-                    "p90_accuracy": np.percentile(acc_concat, 90),
-                })
+                    results.append({
+                        "method": "concat",
+                        "n": n,
+                        "distribution": dist_name,
+                        "m": m,
+                        "mean_accuracy": acc_concat.mean(),
+                        "std_accuracy": acc_concat.std(),
+                        "p10_accuracy": np.percentile(acc_concat, 10),
+                        "p90_accuracy": np.percentile(acc_concat, 90),
+                    })
 
     # Save query indices for p10/p90 trials at m=10
     # Re-run just the specific trials to find representative query sets

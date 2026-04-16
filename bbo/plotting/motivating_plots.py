@@ -116,10 +116,8 @@ def plot_figure1_motivating(
     dist_name = "relevant"
 
     df_mds = df[(df["method"] == "mds") & (df["distribution"] == dist_name)]
-    df_cat = df[(df["method"] == "concat") & (df["distribution"] == dist_name)]
 
     sub_mds = df_mds[df_mds["n"] == n_plot].sort_values("m")
-    sub_cat = df_cat[df_cat["n"] == n_plot].sort_values("m")
 
     if not sub_mds.empty:
         ax_b.plot(sub_mds["m"], 1 - sub_mds["mean_accuracy"],
@@ -127,14 +125,10 @@ def plot_figure1_motivating(
                   linestyle="-", linewidth=0.8, label="Mean DKPS")
         ax_b.plot(sub_mds["m"], 1 - sub_mds["p90_accuracy"],
                   marker="^", markersize=2, color=PALETTE[2],
-                  linestyle="-", linewidth=0.8, label="90th pctl DKPS")
+                  linestyle="-", linewidth=0.8, label="90th pctl")
         ax_b.plot(sub_mds["m"], 1 - sub_mds["p10_accuracy"],
                   marker="v", markersize=2, color=PALETTE[3],
-                  linestyle="-", linewidth=0.8, label="10th pctl DKPS")
-    if not sub_cat.empty:
-        ax_b.plot(sub_cat["m"], 1 - sub_cat["mean_accuracy"],
-                  marker="D", markersize=2, color=PALETTE[1],
-                  linestyle="-.", linewidth=0.8, label="Concat")
+                  linestyle="-", linewidth=0.8, label="10th pctl")
 
     ax_b.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5, linewidth=0.5)
     ax_b.set_xscale("log")
@@ -149,7 +143,6 @@ def plot_figure1_motivating(
     all_n = sorted(df_mds["n"].unique())
 
     sub_mds_n = df_mds[df_mds["m"] == m_plot].sort_values("n")
-    sub_cat_n = df_cat[df_cat["m"] == m_plot].sort_values("n")
 
     if not sub_mds_n.empty:
         ax_c.plot(sub_mds_n["n"], 1 - sub_mds_n["mean_accuracy"],
@@ -157,14 +150,10 @@ def plot_figure1_motivating(
                   linestyle="-", linewidth=0.8, label="Mean DKPS")
         ax_c.plot(sub_mds_n["n"], 1 - sub_mds_n["p90_accuracy"],
                   marker="^", markersize=2, color=PALETTE[2],
-                  linestyle="-", linewidth=0.8, label="90th pctl DKPS")
+                  linestyle="-", linewidth=0.8, label="90th pctl")
         ax_c.plot(sub_mds_n["n"], 1 - sub_mds_n["p10_accuracy"],
                   marker="v", markersize=2, color=PALETTE[3],
-                  linestyle="-", linewidth=0.8, label="10th pctl DKPS")
-    if not sub_cat_n.empty:
-        ax_c.plot(sub_cat_n["n"], 1 - sub_cat_n["mean_accuracy"],
-                  marker="D", markersize=2, color=PALETTE[1],
-                  linestyle="-.", linewidth=0.8, label="Concat")
+                  linestyle="-", linewidth=0.8, label="10th pctl")
 
     ax_c.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5, linewidth=0.5)
     ax_c.set_xscale("log")
