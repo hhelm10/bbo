@@ -38,7 +38,7 @@ We construct two query sets of 100 questions each:
 
 **Primary (deterministic):** Each adapter responds to all 200 queries with greedy decoding (temperature 0, max 128 tokens). Responses are embedded into $\mathbb{R}^{768}$ via `nomic-embed-text-v1.5`, producing a response tensor of shape $(100, 200, 768)$.
 
-**Multi-response (stochastic):** For a subset of 20 adapters (10 per class) and 50 queries, we also generate 250 independent responses per (adapter, query) pair at temperature > 0. These are embedded into shape $(20, 50, 250, 768)$ and enable estimation of distributional distances beyond the single-response regime.
+**Multi-response (stochastic):** We select a balanced subset of 20 `Qwen2.5-1.5B-Instruct` LoRA adapters (10 per class) and 50 Politics & Government signal queries from the motivating experiment. For each (adapter, query) pair, we generate 250 independent responses at temperature 1 with a maximum of 128 tokens. Each response is embedded into $\mathbb{R}^{768}$ via `nomic-embed-text-v1.5`, yielding a response tensor of shape $(20, 50, 250, 768)$.
 
 ## Summary
 
