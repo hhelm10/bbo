@@ -36,7 +36,9 @@ We construct two query sets of 100 questions each:
 
 ## Response Generation and Embedding
 
-Each adapter responds to all 200 queries with greedy decoding (temperature 0, max 128 tokens). Responses are embedded into $\mathbb{R}^{768}$ via `nomic-embed-text-v1.5`, producing a response tensor of shape $(100, 200, 768)$.
+**Primary (deterministic):** Each adapter responds to all 200 queries with greedy decoding (temperature 0, max 128 tokens). Responses are embedded into $\mathbb{R}^{768}$ via `nomic-embed-text-v1.5`, producing a response tensor of shape $(100, 200, 768)$.
+
+**Multi-response (stochastic):** For a subset of 20 adapters (10 per class) and 50 queries, we also generate 250 independent responses per (adapter, query) pair at temperature > 0. These are embedded into shape $(20, 50, 250, 768)$ and enable estimation of distributional distances beyond the single-response regime.
 
 ## Summary
 
@@ -50,4 +52,6 @@ Each adapter responds to all 200 queries with greedy decoding (temperature 0, ma
 | Orthogonal queries | 100 (TriviaQA, filtered) |
 | Embedding model | `nomic-embed-text-v1.5` |
 | Embedding dimension | 768 |
-| Response length | max 128 tokens, temperature 0 |
+| Response length | max 128 tokens |
+| Primary responses | temperature 0, 1 per (adapter, query) |
+| Multi-responses | temperature > 0, 250 per (adapter, query), 20 adapters x 50 queries |
