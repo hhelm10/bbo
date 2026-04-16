@@ -118,8 +118,8 @@ def plot_figure1_motivating(
         ("uniform",    ":",  PALETTE[2], "Uniform"),
     ]
 
-    # Panel (b): Error vs m for n=80
-    n_plot = 80
+    # Panel (b): Error vs m for n=50
+    n_plot = 50
     for dist_name, ls, color, label in dist_config:
         sub = df_mds[(df_mds["distribution"] == dist_name) &
                      (df_mds["n"] == n_plot)].sort_values("m")
