@@ -59,7 +59,7 @@ def _run_one_rep(responses, labels, M, m, dist, seed, n_components, classifier,
     clf.fit(X[train_idx], labels[train_idx])
     preds = clf.predict(X[test_idx])
     accuracy = (preds == labels[test_idx]).mean()
-    return accuracy, query_idx
+    return accuracy
 
 
 def _run_one_rep_concat(responses, labels, M, m, dist, seed, classifier,
@@ -96,8 +96,8 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
     """Run the classification experiment with a-priori query partition.
 
     Sweeps over n_values (number of adapters) and m_values (number of queries).
-    Saves per-trial stats (min/max/median) and concat baseline.
-    Also saves query indices for median and worst trials at m=10
+    Saves per-trial stats (p10/p90) and concat baseline.
+    Also saves query indices for p10 and p90 trials at m=10
     for the MDS scatter panels.
 
     Parameters
@@ -107,7 +107,7 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
     Returns
     -------
     df : DataFrame with columns: method, n, distribution, m,
-         mean_accuracy, std_accuracy, min_accuracy, max_accuracy, median_accuracy
+         mean_accuracy, std_accuracy, p10_accuracy, p90_accuracy
     """
     # Load embedded responses
     data = np.load(config.npz_path, allow_pickle=True)
@@ -118,9 +118,7 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
 
     n_models, M, p = responses.shape
     print(f"Loaded: {n_models} models, {M} queries, {p}-d embeddings")
-    print(f"  Sensitive queries: {len(sensitive_indices)}")
-    print(f"  Orthogonal queries: {len(orthogonal_indices)}")
-    print(f"  Labels: {np.unique(labels, return_counts=True)}")
+    print(f"  n_components: {config.n_components}")
 
     # A-priori distributions
     distributions = {
@@ -132,12 +130,11 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
     n_values = getattr(config, "n_values", [n_models])
 
     results = []
-    per_trial_data = {}  # for saving MDS scatter query indices
 
     # Cap n_values based on available class sizes
     min_class_size = min(np.sum(labels == 0), np.sum(labels == 1))
     n_values = [n for n in n_values if n // 2 <= min_class_size]
-    print(f"  n_values (after capping to min class size {min_class_size}): {n_values}")
+    print(f"  n_values: {n_values}")
 
     for n in n_values:
         n_train = n if n < n_models else None
@@ -149,15 +146,15 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
                          + n * 31
                          for rep in range(config.n_reps)]
 
-                # MDS trials (return accuracy + query_idx)
-                trial_results = Parallel(n_jobs=config.n_jobs, backend="loky")(
+                # MDS trials
+                accuracies = Parallel(n_jobs=config.n_jobs, backend="loky")(
                     delayed(_run_one_rep)(
                         responses, labels, M, m, dist, s,
                         config.n_components, config.classifier, n_train
                     )
                     for s in seeds
                 )
-                accuracies = np.array([r[0] for r in trial_results])
+                accuracies = np.array(accuracies)
 
                 results.append({
                     "method": "mds",
@@ -166,22 +163,9 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
                     "m": m,
                     "mean_accuracy": accuracies.mean(),
                     "std_accuracy": accuracies.std(),
-                    "min_accuracy": accuracies.min(),
-                    "max_accuracy": accuracies.max(),
-                    "median_accuracy": np.median(accuracies),
+                    "p10_accuracy": np.percentile(accuracies, 10),
+                    "p90_accuracy": np.percentile(accuracies, 90),
                 })
-
-                # Save query indices for median/worst at m=10, relevant, largest n
-                if m == 10 and dist_name == "relevant" and n == n_values[-1]:
-                    median_idx = np.argsort(np.abs(accuracies - np.median(accuracies)))[0]
-                    worst_idx = np.argmin(accuracies)
-                    best_idx = np.argmax(accuracies)
-                    per_trial_data["query_indices_median"] = trial_results[median_idx][1]
-                    per_trial_data["query_indices_worst"] = trial_results[worst_idx][1]
-                    per_trial_data["query_indices_best"] = trial_results[best_idx][1]
-                    per_trial_data["accuracy_median"] = accuracies[median_idx]
-                    per_trial_data["accuracy_worst"] = accuracies[worst_idx]
-                    per_trial_data["accuracy_best"] = accuracies[best_idx]
 
                 # Concat baseline
                 acc_concat = Parallel(n_jobs=config.n_jobs, backend="loky")(
@@ -200,16 +184,49 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
                     "m": m,
                     "mean_accuracy": acc_concat.mean(),
                     "std_accuracy": acc_concat.std(),
-                    "min_accuracy": acc_concat.min(),
-                    "max_accuracy": acc_concat.max(),
-                    "median_accuracy": np.median(acc_concat),
+                    "p10_accuracy": np.percentile(acc_concat, 10),
+                    "p90_accuracy": np.percentile(acc_concat, 90),
                 })
 
-    # Save per-trial query indices for MDS scatter
-    if per_trial_data:
-        out_dir = Path(config.npz_path).parent
-        npz_path = out_dir / "per_trial_m10.npz"
-        np.savez(str(npz_path), **per_trial_data)
-        print(f"Saved per-trial m=10 data to {npz_path}")
+    # Save query indices for p10/p90 trials at m=10
+    # Re-run just the specific trials to find representative query sets
+    n_max = n_values[-1]
+    n_train_max = n_max if n_max < n_models else None
+    dist_rel = distributions["relevant"]
+    m_scatter = 10
+    dist_offset = hash("relevant") % 10000
+    seeds_scatter = [config.seed + rep * 100003 + m_scatter * 1009
+                     + dist_offset * 7 + n_max * 31
+                     for rep in range(config.n_reps)]
+
+    accs_scatter = Parallel(n_jobs=config.n_jobs, backend="loky")(
+        delayed(_run_one_rep)(
+            responses, labels, M, m_scatter, dist_rel, s,
+            config.n_components, config.classifier, n_train_max
+        )
+        for s in seeds_scatter
+    )
+    accs_scatter = np.array(accs_scatter)
+
+    # Find trials closest to p10 and p90
+    p10_val = np.percentile(accs_scatter, 10)
+    p90_val = np.percentile(accs_scatter, 90)
+    p10_idx = np.argmin(np.abs(accs_scatter - p10_val))
+    p90_idx = np.argmin(np.abs(accs_scatter - p90_val))
+
+    # Regenerate query indices for those specific trials
+    per_trial_data = {}
+    for label, idx in [("p10", p10_idx), ("p90", p90_idx)]:
+        rng = np.random.default_rng(seeds_scatter[idx])
+        qi = sample_queries(M, m_scatter, distribution=dist_rel, rng=rng)
+        per_trial_data[f"query_indices_{label}"] = qi
+        per_trial_data[f"accuracy_{label}"] = accs_scatter[idx]
+
+    out_dir = Path(config.npz_path).parent
+    npz_path = out_dir / "per_trial_m10.npz"
+    np.savez(str(npz_path), **per_trial_data)
+    print(f"Saved per-trial m=10 data to {npz_path}")
+    print(f"  p10 accuracy: {per_trial_data['accuracy_p10']:.3f}")
+    print(f"  p90 accuracy: {per_trial_data['accuracy_p90']:.3f}")
 
     return pd.DataFrame(results)

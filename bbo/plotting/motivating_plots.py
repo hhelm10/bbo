@@ -58,8 +58,8 @@ def plot_figure1_motivating(
 
     # Load per-trial data for MDS scatter
     per_trial = np.load(per_trial_npz, allow_pickle=True)
-    qi_best = per_trial["query_indices_best"]
-    qi_worst = per_trial["query_indices_worst"]
+    qi_p10 = per_trial["query_indices_p10"]
+    qi_p90 = per_trial["query_indices_p90"]
 
     # Load classification CSV
     df = pd.read_csv(classification_csv)
@@ -85,10 +85,10 @@ def plot_figure1_motivating(
     frac_norm = (fracs_1 - fracs_1.min()) / (fracs_1.max() - fracs_1.min() + 1e-12)
     colors_1 = orange_cmap(frac_norm)
 
-    # --- Panel (a): MDS scatter at m=10 — worst and best ---
+    # --- Panel (a): MDS scatter at m=10 — p10 and p90 ---
     for ax, qi, title in [
-        (ax_a_top, qi_worst, "(a) Worst query set, $m\\!=\\!10$"),
-        (ax_a_bot, qi_best, "Best query set, $m\\!=\\!10$"),
+        (ax_a_top, qi_p10, "(a) 10th pctl query set, $m\\!=\\!10$"),
+        (ax_a_bot, qi_p90, "90th pctl query set, $m\\!=\\!10$"),
     ]:
         D = pairwise_energy_distances_t0(responses, qi)
         X = ClassicalMDS(n_components=2).fit_transform(D)
@@ -125,12 +125,12 @@ def plot_figure1_motivating(
         ax_b.plot(sub_mds["m"], 1 - sub_mds["mean_accuracy"],
                   marker="o", markersize=2, color=PALETTE[0],
                   linestyle="-", linewidth=0.8, label="Mean DKPS")
-        ax_b.plot(sub_mds["m"], 1 - sub_mds["max_accuracy"],
+        ax_b.plot(sub_mds["m"], 1 - sub_mds["p90_accuracy"],
                   marker="^", markersize=2, color=PALETTE[2],
-                  linestyle="-", linewidth=0.8, label="Best DKPS")
-        ax_b.plot(sub_mds["m"], 1 - sub_mds["min_accuracy"],
+                  linestyle="-", linewidth=0.8, label="90th pctl DKPS")
+        ax_b.plot(sub_mds["m"], 1 - sub_mds["p10_accuracy"],
                   marker="v", markersize=2, color=PALETTE[3],
-                  linestyle="-", linewidth=0.8, label="Worst DKPS")
+                  linestyle="-", linewidth=0.8, label="10th pctl DKPS")
     if not sub_cat.empty:
         ax_b.plot(sub_cat["m"], 1 - sub_cat["mean_accuracy"],
                   marker="D", markersize=2, color=PALETTE[1],
@@ -155,12 +155,12 @@ def plot_figure1_motivating(
         ax_c.plot(sub_mds_n["n"], 1 - sub_mds_n["mean_accuracy"],
                   marker="o", markersize=2, color=PALETTE[0],
                   linestyle="-", linewidth=0.8, label="Mean DKPS")
-        ax_c.plot(sub_mds_n["n"], 1 - sub_mds_n["max_accuracy"],
+        ax_c.plot(sub_mds_n["n"], 1 - sub_mds_n["p90_accuracy"],
                   marker="^", markersize=2, color=PALETTE[2],
-                  linestyle="-", linewidth=0.8, label="Best DKPS")
-        ax_c.plot(sub_mds_n["n"], 1 - sub_mds_n["min_accuracy"],
+                  linestyle="-", linewidth=0.8, label="90th pctl DKPS")
+        ax_c.plot(sub_mds_n["n"], 1 - sub_mds_n["p10_accuracy"],
                   marker="v", markersize=2, color=PALETTE[3],
-                  linestyle="-", linewidth=0.8, label="Worst DKPS")
+                  linestyle="-", linewidth=0.8, label="10th pctl DKPS")
     if not sub_cat_n.empty:
         ax_c.plot(sub_cat_n["n"], 1 - sub_cat_n["mean_accuracy"],
                   marker="D", markersize=2, color=PALETTE[1],

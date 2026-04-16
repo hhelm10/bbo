@@ -75,7 +75,7 @@ class MotivatingConfig(ExperimentConfig):
     )
     n_reps: int = 500
     classifier: str = "rf"
-    n_components: Optional[int] = None
+    n_components: Optional[int] = 8
 
     # Paths (all relative to output_dir)
     output_dir: str = "results/motivating"
