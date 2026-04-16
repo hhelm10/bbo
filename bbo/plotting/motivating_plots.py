@@ -138,7 +138,7 @@ def plot_figure1_motivating(
 
     ax_b.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5, linewidth=0.5)
     ax_b.set_xscale("log")
-    ax_b.set_ylim(0.05, 0.55)
+    ax_b.set_ylim(-0.02, 0.55)
     ax_b.set_xlabel("Queries $m$")
     ax_b.set_ylabel("Mean error")
     ax_b.set_title(f"(b) Error vs $m$ ($n\\!=\\!{n_plot}$)")
@@ -168,7 +168,7 @@ def plot_figure1_motivating(
 
     ax_c.axhline(y=0.5, color="gray", linestyle=":", alpha=0.5, linewidth=0.5)
     ax_c.set_xscale("log")
-    ax_c.set_ylim(0.05, 0.55)
+    ax_c.set_ylim(-0.02, 0.55)
     ax_c.set_xticks(all_n)
     ax_c.set_xticklabels([str(n) for n in all_n])
     ax_c.xaxis.set_minor_locator(plt.NullLocator())
