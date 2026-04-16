@@ -71,13 +71,6 @@ def run_step(step: str, config: MotivatingConfig):
                 "Run 'embed' step first."
             )
 
-        per_trial_path = Path(config.output_dir) / "per_trial_m10.npz"
-        if not per_trial_path.exists():
-            raise FileNotFoundError(
-                f"Per-trial data not found at {per_trial_path}. "
-                "Run 'classify' step first."
-            )
-
         data = np.load(str(npz_path), allow_pickle=True)
         metadata_path = str(config.data_dir / "adapter_metadata.json")
         plot_figure1_motivating(
@@ -87,7 +80,6 @@ def run_step(step: str, config: MotivatingConfig):
             orthogonal_indices=data["orthogonal_indices"],
             metadata_path=metadata_path,
             classification_csv=str(csv_path),
-            per_trial_npz=str(per_trial_path),
             model_names=data.get("model_names"),
             output_dir="figures",
         )
