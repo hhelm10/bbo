@@ -136,8 +136,8 @@ def plot_figure1_motivating(
     ax_b.set_title(f"(b) Error vs $m$ ($n\\!=\\!{n_plot}$)")
     ax_b.legend(loc="upper right", fontsize=4)
 
-    # Panel (c): Error vs n for m=10
-    m_plot = 10
+    # Panel (c): Error vs n for m=5
+    m_plot = 5
     all_n = sorted(df_mds["n"].unique())
 
     for dist_name, ls, color, label in dist_config:
