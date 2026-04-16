@@ -121,9 +121,8 @@ def plot_exp9(df: pd.DataFrame, output_dir: str = "results/figures"):
 # 3×3 Real Data Figure
 # ---------------------------------------------------------------------------
 
-def _plot_scree(ax, responses, labels, signal_indices, orthogonal_indices,
-                title_prefix=""):
-    """Col 1: Scree plot of Ẽ with r̂ dashed line."""
+def _plot_scree(ax, responses, labels, signal_indices, orthogonal_indices):
+    """Col 1: Scree plot of Ẽ (between-class centered) with r̂ dashed line."""
     all_idx = np.concatenate([signal_indices, orthogonal_indices])
     E_all, pairs = per_query_energy_tensor(responses[:, all_idx, :])
     E_disc, _, B_q = compute_E_disc(E_all, pairs, labels)
@@ -183,7 +182,7 @@ def _plot_gmm_single(ax, gmm_info, r_hat, rho_hats, n_signal, direction=0):
         ax.fill_between(x_plot, comp_density, alpha=0.2, color=comp_colors[cidx])
         ax.plot(x_plot, comp_density, color=comp_colors[cidx], linewidth=0.8)
 
-    ax.set_xlabel("$|\\tilde{U}_{q,\\ell}|$")
+    ax.set_xlabel("$|\\hat{\\alpha}_{q,\\ell}|$")
     ax.set_ylabel("Density")
 
     # ρ̂ annotation
@@ -431,7 +430,7 @@ def plot_real_data_3x3(
             ax_scree, responses, labels, signal_idx, orth_idx,
         )
         if row_idx == 0:
-            ax_scree.set_title("Singular values of $\\tilde{E}$")
+            ax_scree.set_title("Singular values of $E$")
         if not is_last:
             ax_scree.set_xlabel("")
             ax_scree.set_xticklabels([])
@@ -449,7 +448,7 @@ def plot_real_data_3x3(
             _plot_gmm_single(ax_gmm, gmm_info, r_hat, rho_hats, n_signal,
                              direction=0)
             if row_idx == 0:
-                ax_gmm.set_title("GMM on $|\\tilde{U}_{q,\\ell}|$")
+                ax_gmm.set_title("GMM on $|\\hat{\\alpha}_{q,\\ell}|$")
             if not is_last:
                 ax_gmm.set_xlabel("")
                 ax_gmm.set_xticklabels([])
