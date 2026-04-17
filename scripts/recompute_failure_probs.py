@@ -115,7 +115,7 @@ if __name__ == "__main__":
         all_idx = np.concatenate([sig, orth])
         df = compute_failure_probs(
             data["responses"], data["labels"], all_idx,
-            m_values=m_values, n_values=[10, 20, 80],
+            m_values=m_values, n_values=[20, 80],
             n_reps=args.n_reps,
         )
         df.to_csv("results/motivating/failure_probs.csv", index=False)
@@ -132,7 +132,7 @@ if __name__ == "__main__":
         all_idx = np.concatenate([sig, orth])
         df = compute_failure_probs(
             data["responses"], data["labels"], all_idx,
-            m_values=m_values, n_values=[10, 80],
+            m_values=m_values, n_values=[20, 80],
             n_reps=args.n_reps,
         )
         df.to_csv("results/system_prompt/failure_probs.csv", index=False)
@@ -147,7 +147,7 @@ if __name__ == "__main__":
         df = compute_failure_probs_rag(
             data["responses"], data["labels"],
             data["signal_indices"], data["control_indices"],
-            m_values=m_values, n_values=[10, 80],
+            m_values=m_values, n_values=[20, 80],
             n_reps=args.n_reps,
         )
         df.to_csv("results/rag/failure_probs.csv", index=False)

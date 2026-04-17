@@ -205,14 +205,14 @@ def _plot_failure_prob(ax, fail_csv, rho_hats=None, query_set="uniform"):
     """Col 3: P[err >= 0.5] vs m with fitted curves and theory bound."""
     df = pd.read_csv(fail_csv)
 
-    n_colors = {80: PALETTE[0], 10: PALETTE[1]}
+    n_colors = {80: PALETTE[0], 20: PALETTE[1]}
     m_cont = np.linspace(1, 100, 300)
 
     def _bound_model(m, a, rho, gamma):
         return a * rho ** m + gamma
 
     fit_results = {}
-    for n_val in [80, 10]:
+    for n_val in [80, 20]:
         sub = df[(df["query_set"] == query_set) & (df["n"] == n_val)].sort_values("m")
         if sub.empty:
             continue
@@ -249,9 +249,10 @@ def _plot_failure_prob(ax, fail_csv, rho_hats=None, query_set="uniform"):
     ax.set_ylabel("$\\mathbb{P}[\\mathrm{err} \\geq 0.5]$")
 
     # Legend
+    plotted_n = [n for n in [80, 20, 10] if n in n_colors]
     leg = [Line2D([0], [0], color=n_colors[n], linestyle="-", lw=0.8,
                   marker="o", markersize=2, label=f"$n={n}$")
-           for n in [80, 10]]
+           for n in plotted_n]
     if rho_hats is not None:
         leg.append(Line2D([0], [0], color="0.3", linestyle=":", lw=0.8,
                           label="$\\sum_\\ell \\hat{\\rho}_\\ell^m$"))
@@ -287,8 +288,12 @@ def _plot_mean_error(ax, classification_csv, rho_hats=None,
     else:
         df_plot = df[df["distribution"] == dist]
 
-    n_values = sorted(df_plot["n"].unique())
-    n_colors = {n: PALETTE[i] for i, n in enumerate(n_values)}
+    available_n = sorted(df_plot["n"].unique())
+    # Prefer n=20 over n=10 if available, otherwise use what exists
+    n_values = [n for n in [20, 80] if n in available_n]
+    if not n_values:
+        n_values = [n for n in [10, 80] if n in available_n]
+    n_colors = {80: PALETTE[0], 20: PALETTE[1], 10: PALETTE[1]}
     m_cont = np.linspace(1, 100, 300)
 
     def _error_model(m, a, rho, gamma):
