@@ -12,12 +12,15 @@ from bbo.experiments.pilot_selection import run_pilot_experiment
 DATASETS = {
     "motivating": {
         "npz": "results/motivating/motivating_responses.npz",
+        "pool_keys": ("sensitive_indices", "orthogonal_indices"),
     },
     "system_prompt": {
         "npz": "results/system_prompt/embeddings/mistral-small__nomic-embed-text-v1.5.npz",
+        "pool_keys": ("signal_indices", "orthogonal_indices"),
     },
     "rag": {
         "npz": "results/rag/embeddings/ministral-8b__nomic-embed-text-v1.5.npz",
+        "pool_keys": ("signal_indices", "control_indices"),
     },
 }
 
@@ -49,8 +52,15 @@ def main():
         responses = data["responses"]
         labels = data["labels"]
 
+        # Build query pool from signal + orthogonal indices
+        pool_keys = cfg["pool_keys"]
+        query_pool = np.concatenate([data[k] for k in pool_keys])
+        print(f"  Query pool: {len(query_pool)} queries "
+              f"({' + '.join(f'{k}={len(data[k])}' for k in pool_keys)})")
+
         df = run_pilot_experiment(
             responses, labels,
+            query_pool=query_pool,
             selectors=SELECTORS,
             n_reps=args.n_reps,
         )

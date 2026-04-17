@@ -79,39 +79,48 @@ def _single_trial(responses, labels, query_indices, train_idx, test_idx,
     return (preds != labels[test_idx]).mean()
 
 
-def _run_one_rep(responses, labels, M, m, train_idx, test_idx,
+def _run_one_rep(responses, labels, query_pool, m, train_idx, test_idx,
                  n_components, classifier_name, seed, selectors):
-    """One repetition: estimate loadings from train, run all selectors."""
-    rng = np.random.default_rng(seed)
+    """One repetition: estimate loadings from train, run all selectors.
 
-    # Estimate loadings from train set
-    train_resp = responses[train_idx, :, :]
+    query_pool : ndarray of query indices to use for estimation and selection.
+        Selectors operate on indices into query_pool, mapped back to original
+        query space for classification.
+    """
+    rng = np.random.default_rng(seed)
+    M_pool = len(query_pool)
+
+    # Estimate loadings from train set on query_pool only
+    train_resp = responses[train_idx][:, query_pool, :]
     E, pairs = per_query_energy_tensor(train_resp)
     E_disc, _, _ = compute_E_disc(E, pairs, labels[train_idx])
     r_hat, U, s = estimate_discriminative_rank(E_disc)
     rho_hats, gmm_info = estimate_rho(U, r_hat)
 
-    # Partition queries into estimated signal / orthogonal
+    # Partition queries into estimated signal / orthogonal (indices into query_pool)
     signal_idx, ortho_idx = _get_signal_orthogonal_sets(U, r_hat, gmm_info)
 
     results = {}
     for sel_name in selectors:
         if sel_name == "uniform":
-            qi = rng.choice(M, size=m, replace=False)
+            pool_idx = rng.choice(M_pool, size=m, replace=False)
         elif sel_name == "uniform_signal":
             if len(signal_idx) >= m:
-                qi = rng.choice(signal_idx, size=m, replace=False)
+                pool_idx = rng.choice(signal_idx, size=m, replace=False)
             else:
-                qi = signal_idx.copy()
+                pool_idx = signal_idx.copy()
         elif sel_name == "uniform_orthogonal":
             if len(ortho_idx) >= m:
-                qi = rng.choice(ortho_idx, size=m, replace=False)
+                pool_idx = rng.choice(ortho_idx, size=m, replace=False)
             else:
-                qi = ortho_idx.copy()
+                pool_idx = ortho_idx.copy()
         elif sel_name == "greedy":
-            qi = select_queries_greedy(U, r_hat, m)
+            pool_idx = select_queries_greedy(U, r_hat, m)
         else:
             raise ValueError(f"Unknown selector: {sel_name}")
+
+        # Map back to original query indices
+        qi = query_pool[pool_idx]
 
         err = _single_trial(responses, labels, qi, train_idx, test_idx,
                             n_components, classifier_name)
@@ -122,6 +131,7 @@ def _run_one_rep(responses, labels, M, m, train_idx, test_idx,
 
 def run_pilot_experiment(
     responses, labels,
+    query_pool=None,
     n_train_values=(20, 80),
     m_values=(2, 5, 10, 20, 50, 100),
     selectors=("uniform", "uniform_signal", "uniform_orthogonal", "greedy"),
@@ -133,28 +143,25 @@ def run_pilot_experiment(
 ):
     """Run the pilot query selection experiment.
 
-    For each (n_train, m, selector), measures mean classification error
-    over n_reps random train/test splits.
-
     Parameters
     ----------
     responses : ndarray of shape (n_models, M, p)
     labels : ndarray of shape (n_models,)
+    query_pool : ndarray of int, optional
+        Indices of queries to use for estimation and selection.
+        If None, uses all M queries.
     n_train_values : sequence of int
     m_values : sequence of int
     selectors : sequence of str
-        "uniform", "uniform_signal", "uniform_orthogonal", "greedy"
-    n_reps : int
-    n_components : int
-    classifier : str
-    seed : int
-    n_jobs : int
+    n_reps, n_components, classifier, seed, n_jobs : ...
 
     Returns
     -------
     df : DataFrame with columns: n_train, m, selector, mean_error, std_error
     """
     n_models, M, p = responses.shape
+    if query_pool is None:
+        query_pool = np.arange(M)
     class0 = np.where(labels == 0)[0]
     class1 = np.where(labels == 1)[0]
 
@@ -177,7 +184,7 @@ def run_pilot_experiment(
             # Run all reps in parallel
             rep_results = Parallel(n_jobs=n_jobs, backend="loky")(
                 delayed(_run_one_rep)(
-                    responses, labels, M, m,
+                    responses, labels, query_pool, m,
                     train_idx, test_idx,
                     n_components, classifier,
                     seed + rep * 100003 + n_train * 31 + m * 1009,
