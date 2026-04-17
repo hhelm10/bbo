@@ -13,7 +13,6 @@ from scipy.optimize import curve_fit
 from bbo.plotting.style import set_paper_style, PALETTE
 from bbo.distances.energy import per_query_energy_tensor
 from bbo.estimation.rank_rho import (
-    compute_E_disc,
     estimate_discriminative_rank,
     estimate_rho,
 )
@@ -122,11 +121,10 @@ def plot_exp9(df: pd.DataFrame, output_dir: str = "results/figures"):
 # ---------------------------------------------------------------------------
 
 def _plot_scree(ax, responses, labels, signal_indices, orthogonal_indices):
-    """Col 1: Scree plot of Ẽ (between-class centered) with r̂ dashed line."""
+    """Col 1: Scree plot of E (raw) with r̂ dashed line."""
     all_idx = np.concatenate([signal_indices, orthogonal_indices])
     E_all, pairs = per_query_energy_tensor(responses[:, all_idx, :])
-    E_disc, _, B_q = compute_E_disc(E_all, pairs, labels)
-    r_hat, U, s = estimate_discriminative_rank(E_disc)
+    r_hat, U, s = estimate_discriminative_rank(E_all)
     rho_hats, gmm_info = estimate_rho(U, r_hat)
 
     sv_norm = s / s[0]
@@ -442,48 +440,24 @@ def plot_real_data_3x3(
             ha="center", va="center",
         )
 
-        # --- Col 2: GMM ---
-        if row_idx < 2:
-            ax_gmm = fig.add_subplot(gs[row_idx, 1])
-            _plot_gmm_single(ax_gmm, gmm_info, r_hat, rho_hats, n_signal,
-                             direction=0)
-            if row_idx == 0:
-                ax_gmm.set_title("GMM on $|\\hat{\\alpha}_{q,\\ell}|$")
-            if not is_last:
-                ax_gmm.set_xlabel("")
-                ax_gmm.set_xticklabels([])
-            ax_gmm.set_ylabel("Density")
+        # --- Col 2: GMM (single direction ℓ=1 for all rows) ---
+        ax_gmm = fig.add_subplot(gs[row_idx, 1])
+        _plot_gmm_single(ax_gmm, gmm_info, r_hat, rho_hats, n_signal,
+                         direction=0)
+        if row_idx == 0:
+            ax_gmm.set_title("GMM on $|\\hat{\\alpha}_{q,\\ell}|$")
+        if not is_last:
+            ax_gmm.set_xlabel("")
+            ax_gmm.set_xticklabels([])
+        ax_gmm.set_ylabel("Density")
 
-            leg_sc = [
-                Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
-                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label="Orthogonal"),
-            ]
-            leg2 = Legend(ax_gmm, leg_sc, ["Signal", "Orthogonal"],
-                          loc="upper left", fontsize=3.5)
-            ax_gmm.add_artist(leg2)
-        else:
-            gs_inner = gs[row_idx, 1].subgridspec(2, 1, hspace=0.45)
-            ax_gmm_bot = fig.add_subplot(gs_inner[1])
-            ax_gmm_top = fig.add_subplot(gs_inner[0], sharex=ax_gmm_bot,
-                                          sharey=ax_gmm_bot)
-
-            _plot_gmm_single(ax_gmm_top, gmm_info, r_hat, rho_hats, n_signal,
-                             direction=0)
-            _plot_gmm_single(ax_gmm_bot, gmm_info, r_hat, rho_hats, n_signal,
-                             direction=1)
-
-            plt.setp(ax_gmm_top.get_xticklabels(), visible=False)
-            ax_gmm_top.set_xlabel("")
-            ax_gmm_top.set_ylabel("Density")
-            ax_gmm_bot.set_ylabel("Density")
-
-            leg_sc = [
-                Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
-                Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label="Orthogonal"),
-            ]
-            leg2 = Legend(ax_gmm_top, leg_sc, ["Signal", "Orthogonal"],
-                          loc="upper left", fontsize=3.5)
-            ax_gmm_top.add_artist(leg2)
+        leg_sc = [
+            Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
+            Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label="Orthogonal"),
+        ]
+        leg2 = Legend(ax_gmm, leg_sc, ["Signal", "Orthogonal"],
+                      loc="upper left", fontsize=3.5)
+        ax_gmm.add_artist(leg2)
 
         # --- Col 3 ---
         ax_c3 = fig.add_subplot(gs[row_idx, 2])
