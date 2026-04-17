@@ -466,12 +466,11 @@ def plot_real_data_3x3(
             _plot_failure_prob(ax_c3, ds["col3_path"], rho_hats=rho_hats,
                                **ds["col3_kw"])
             if row_idx == 0:
-                ax_c3.set_title("$\\mathbb{P}[\\mathrm{err} \\geq 0.5]$ vs $m$")
+                ax_c3.set_title("Estimated \\& Fitted Errors")
         else:
             _plot_mean_error(ax_c3, ds["col3_path"], rho_hats=rho_hats,
                              **ds["col3_kw"])
-            if row_idx == 0:
-                ax_c3.set_title("Mean error vs $m$")
+            pass  # title set by fail branch above
 
         if not is_last:
             ax_c3.set_xlabel("")
