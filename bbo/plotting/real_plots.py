@@ -205,14 +205,14 @@ def _plot_failure_prob(ax, fail_csv, rho_hats=None, query_set="uniform"):
     """Col 3: P[err >= 0.5] vs m with fitted curves and theory bound."""
     df = pd.read_csv(fail_csv)
 
-    n_colors = {80: PALETTE[0], 20: PALETTE[1]}
+    n_colors = {80: PALETTE[0]}
     m_cont = np.linspace(1, 100, 300)
 
     def _bound_model(m, a, rho, gamma):
         return a * rho ** m + gamma
 
     fit_results = {}
-    for n_val in [80, 20]:
+    for n_val in [80]:
         sub = df[(df["query_set"] == query_set) & (df["n"] == n_val)].sort_values("m")
         if sub.empty:
             continue
@@ -288,12 +288,8 @@ def _plot_mean_error(ax, classification_csv, rho_hats=None,
     else:
         df_plot = df[df["distribution"] == dist]
 
-    available_n = sorted(df_plot["n"].unique())
-    # Prefer n=20 over n=10 if available, otherwise use what exists
-    n_values = [n for n in [20, 80] if n in available_n]
-    if not n_values:
-        n_values = [n for n in [10, 80] if n in available_n]
-    n_colors = {80: PALETTE[0], 20: PALETTE[1], 10: PALETTE[1]}
+    n_values = [80]
+    n_colors = {80: PALETTE[0]}
     m_cont = np.linspace(1, 100, 300)
 
     def _error_model(m, a, rho, gamma):
