@@ -244,7 +244,7 @@ def _plot_failure_prob(ax, fail_csv, rho_hats=None, query_set="uniform"):
                 alpha=0.7)
 
     ax.set_xscale("log")
-    ax.set_ylim(-0.02, 1.05)
+    ax.set_ylim(-0.02, 0.7)
     ax.set_xlabel("Queries $m$")
     ax.set_ylabel("$\\mathbb{P}[\\mathrm{err} \\geq 0.5]$")
 
@@ -326,7 +326,7 @@ def _plot_mean_error(ax, classification_csv, rho_hats=None,
                 alpha=0.7)
 
     ax.set_xscale("log")
-    ax.set_ylim(-0.02, 0.45)
+    ax.set_ylim(-0.02, 0.7)
     ax.set_xlabel("Queries $m$")
     ax.set_ylabel("Mean error")
 
