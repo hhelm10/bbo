@@ -93,8 +93,8 @@ def _run_one_rep(responses, labels, query_pool, m, train_idx, test_idx,
     # Estimate loadings from train set on query_pool only
     train_resp = responses[train_idx][:, query_pool, :]
     E, pairs = per_query_energy_tensor(train_resp)
-    E_disc, _, _ = compute_E_disc(E, pairs, labels[train_idx])
-    r_hat, U, s = estimate_discriminative_rank(E_disc)
+    # Use raw E (not E_disc) for query selection
+    r_hat, U, s = estimate_discriminative_rank(E)
     rho_hats, gmm_info = estimate_rho(U, r_hat)
 
     # Partition queries into estimated signal / orthogonal (indices into query_pool)
