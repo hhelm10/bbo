@@ -36,7 +36,6 @@ def plot_pilot_selection(
         ("uniform_signal",     PALETTE[0], "-",  "o", "Est. signal"),
         ("uniform_orthogonal", PALETTE[1], "-",  "v", "Est. orthogonal"),
         ("uniform",            PALETTE[2], "-",  "s", "Uniform"),
-        ("greedy",             PALETTE[3], "-",  "D", "Greedy"),
     ]
 
     n_styles = {20: "--", 80: "-"}
