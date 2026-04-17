@@ -261,19 +261,15 @@ def _plot_failure_prob(ax, fail_csv, rho_hats=None, query_set="uniform"):
                           label="Fit ($a\\rho^m\\!+\\!\\gamma$)"))
     ax.legend(handles=leg, loc="upper right", fontsize=3.5)
 
-    # Annotate fit parameters
-    sorted_n = sorted(fit_results.keys(), reverse=True)
-    for i, n_val in enumerate(sorted_n):
-        a_f, rho_f, gamma_f = fit_results[n_val]
+    # Annotate fit parameters above the fitted line
+    for n_val, (a_f, rho_f, gamma_f) in fit_results.items():
         txt = (f"${a_f:.2f}\\!\\cdot\\!{rho_f:.2f}^m"
                f"\\!+\\!{gamma_f:.2f}$")
-        offset = -0.04 if i == 0 else 0.04
-        va = "top" if i == 0 else "bottom"
-        m_annot = 6
+        m_annot = 8
         y_annot = _bound_model(m_annot, a_f, rho_f, gamma_f)
-        ax.text(m_annot, y_annot + offset, txt,
-                fontsize=4, color=n_colors[n_val],
-                ha="center", va=va,
+        ax.text(m_annot, y_annot + 0.05, txt,
+                fontsize=5.5, color=n_colors[n_val],
+                ha="center", va="bottom",
                 bbox=dict(boxstyle="round,pad=0.15", facecolor="white",
                           edgecolor="none", alpha=0.7))
 
@@ -342,19 +338,15 @@ def _plot_mean_error(ax, classification_csv, rho_hats=None,
                           label="$\\sum_\\ell \\hat{\\rho}_\\ell^m$"))
     ax.legend(handles=leg, loc="upper right", fontsize=3.5)
 
-    # Annotate fit parameters
-    sorted_n = sorted(fit_results.keys(), reverse=True)
-    for i, n_val in enumerate(sorted_n):
-        a_f, rho_f, gamma_f = fit_results[n_val]
+    # Annotate fit parameters above the fitted line
+    for n_val, (a_f, rho_f, gamma_f) in fit_results.items():
         txt = (f"${a_f:.2f}\\!\\cdot\\!{rho_f:.2f}^m"
                f"\\!+\\!{gamma_f:.3f}$")
-        offset = -0.02 if i == 0 else 0.02
-        va = "top" if i == 0 else "bottom"
         m_annot = 8
         y_annot = _error_model(m_annot, a_f, rho_f, gamma_f)
-        ax.text(m_annot, y_annot + offset, txt,
-                fontsize=4, color=n_colors[n_val],
-                ha="center", va=va,
+        ax.text(m_annot, y_annot + 0.05, txt,
+                fontsize=5.5, color=n_colors[n_val],
+                ha="center", va="bottom",
                 bbox=dict(boxstyle="round,pad=0.15", facecolor="white",
                           edgecolor="none", alpha=0.7))
 
