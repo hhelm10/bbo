@@ -30,26 +30,23 @@ def plot_pilot_selection(
         ("RAG", rag_csv),
     ]
 
-    n_colors = {20: PALETTE[0], 80: PALETTE[1]}
+    # Colors match Figure 1: Signal=PALETTE[0], Orthogonal=PALETTE[1], Uniform=PALETTE[2]
+    # Greedy gets PALETTE[3]
     sel_config = [
-        ("uniform",            "--", "o"),
-        ("uniform_signal",     "-",  "s"),
-        ("uniform_orthogonal", ":",  "v"),
-        ("greedy",             "-",  "D"),
+        ("uniform_signal",     PALETTE[0], "-",  "o", "Est. signal"),
+        ("uniform_orthogonal", PALETTE[1], "-",  "v", "Est. orthogonal"),
+        ("uniform",            PALETTE[2], "-",  "s", "Uniform"),
+        ("greedy",             PALETTE[3], "-",  "D", "Greedy"),
     ]
-    sel_labels = {
-        "uniform": "Uniform",
-        "uniform_signal": "Est. signal",
-        "uniform_orthogonal": "Est. orthogonal",
-        "greedy": "Greedy",
-    }
+
+    n_styles = {20: "--", 80: "-"}
 
     for ax, (title, csv_path) in zip(axes, datasets):
         df = pd.read_csv(csv_path)
 
-        for n_train in [20, 80]:
-            color = n_colors[n_train]
-            for sel_name, ls, marker in sel_config:
+        for sel_name, color, _, marker, label in sel_config:
+            for n_train in [20, 80]:
+                ls = n_styles[n_train]
                 sub = df[(df["selector"] == sel_name) &
                          (df["n_train"] == n_train)].sort_values("m")
                 if sub.empty:
@@ -67,14 +64,12 @@ def plot_pilot_selection(
     axes[0].set_ylabel("Mean error")
 
     # Shared legend
-    leg = [
-        Line2D([0], [0], color=n_colors[20], lw=1.0, label="$n=20$"),
-        Line2D([0], [0], color=n_colors[80], lw=1.0, label="$n=80$"),
-    ]
-    for sel_name, ls, marker in sel_config:
-        leg.append(Line2D([0], [0], color="0.4", linestyle=ls, lw=0.8,
-                          marker=marker, markersize=2,
-                          label=sel_labels[sel_name]))
+    leg = []
+    for sel_name, color, _, marker, label in sel_config:
+        leg.append(Line2D([0], [0], color=color, linestyle="-", lw=0.8,
+                          marker=marker, markersize=2, label=label))
+    leg.append(Line2D([0], [0], color="0.4", linestyle="-", lw=0.8, label="$n=80$"))
+    leg.append(Line2D([0], [0], color="0.4", linestyle="--", lw=0.8, label="$n=20$"))
     axes[1].legend(handles=leg, loc="upper right", fontsize=3.5, ncol=2)
 
     fig.tight_layout()
