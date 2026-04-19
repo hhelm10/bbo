@@ -62,18 +62,13 @@ def plot_pilot_selection(
 
     axes[0].set_ylabel("Mean error")
 
-    # Shared legend
+    # Shared legend: colors for query type, linestyle for estimated vs oracle
     leg = [
-        Line2D([0], [0], color=PALETTE[0], linestyle="-", lw=0.8,
-               marker="o", markersize=2, label="Est. signal"),
-        Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=0.8,
-               marker="v", markersize=2, label="Est. orthogonal"),
-        Line2D([0], [0], color=PALETTE[2], linestyle="-", lw=0.8,
-               marker="s", markersize=2, label="Uniform"),
-        Line2D([0], [0], color=PALETTE[0], linestyle="--", lw=0.8,
-               marker="o", markersize=2, label="Oracle signal"),
-        Line2D([0], [0], color=PALETTE[1], linestyle="--", lw=0.8,
-               marker="v", markersize=2, label="Oracle orthogonal"),
+        Line2D([0], [0], color=PALETTE[0], lw=1.0, label="Signal"),
+        Line2D([0], [0], color=PALETTE[1], lw=1.0, label="Orthogonal"),
+        Line2D([0], [0], color=PALETTE[2], lw=1.0, label="Uniform"),
+        Line2D([0], [0], color="0.4", linestyle="-", lw=0.8, label="Estimated"),
+        Line2D([0], [0], color="0.4", linestyle="--", lw=0.8, label="Oracle"),
     ]
     axes[1].legend(handles=leg, loc="upper right", fontsize=3.5, ncol=2)
 
