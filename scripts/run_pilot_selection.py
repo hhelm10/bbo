@@ -24,7 +24,8 @@ DATASETS = {
     },
 }
 
-SELECTORS = ("uniform", "uniform_signal", "uniform_orthogonal", "greedy")
+SELECTORS = ("uniform", "uniform_signal", "uniform_orthogonal",
+             "oracle_signal", "oracle_orthogonal")
 
 
 def main():
@@ -54,13 +55,17 @@ def main():
 
         # Build query pool from signal + orthogonal indices
         pool_keys = cfg["pool_keys"]
-        query_pool = np.concatenate([data[k] for k in pool_keys])
+        sig_idx = data[pool_keys[0]]
+        orth_idx = data[pool_keys[1]]
+        query_pool = np.concatenate([sig_idx, orth_idx])
+        n_true_signal = len(sig_idx)
         print(f"  Query pool: {len(query_pool)} queries "
-              f"({' + '.join(f'{k}={len(data[k])}' for k in pool_keys)})")
+              f"(signal={n_true_signal}, orthogonal={len(orth_idx)})")
 
         df = run_pilot_experiment(
             responses, labels,
             query_pool=query_pool,
+            n_true_signal=n_true_signal,
             selectors=SELECTORS,
             n_reps=args.n_reps,
         )

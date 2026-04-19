@@ -30,29 +30,29 @@ def plot_pilot_selection(
         ("RAG", rag_csv),
     ]
 
-    # Colors match Figure 1: Signal=PALETTE[0], Orthogonal=PALETTE[1], Uniform=PALETTE[2]
-    # Greedy gets PALETTE[3]
+    # Estimated selectors (solid) — colors match Figure 1
+    # Oracle selectors (dashed) — same colors
     sel_config = [
         ("uniform_signal",     PALETTE[0], "-",  "o", "Est. signal"),
         ("uniform_orthogonal", PALETTE[1], "-",  "v", "Est. orthogonal"),
         ("uniform",            PALETTE[2], "-",  "s", "Uniform"),
+        ("oracle_signal",      PALETTE[0], "--", "o", "Oracle signal"),
+        ("oracle_orthogonal",  PALETTE[1], "--", "v", "Oracle orthogonal"),
     ]
 
-    n_styles = {20: "--", 80: "-"}
+    n_plot = 80
 
     for ax, (title, csv_path) in zip(axes, datasets):
         df = pd.read_csv(csv_path)
 
-        for sel_name, color, _, marker, label in sel_config:
-            for n_train in [20, 80]:
-                ls = n_styles[n_train]
-                sub = df[(df["selector"] == sel_name) &
-                         (df["n_train"] == n_train)].sort_values("m")
-                if sub.empty:
-                    continue
-                ax.plot(sub["m"], sub["mean_error"],
-                        marker=marker, markersize=2, color=color,
-                        linestyle=ls, linewidth=0.8)
+        for sel_name, color, ls, marker, label in sel_config:
+            sub = df[(df["selector"] == sel_name) &
+                     (df["n_train"] == n_plot)].sort_values("m")
+            if sub.empty:
+                continue
+            ax.plot(sub["m"], sub["mean_error"],
+                    marker=marker, markersize=2, color=color,
+                    linestyle=ls, linewidth=0.8)
 
         ax.axhline(y=0.5, color="gray", linestyle=":", alpha=0.3, linewidth=0.5)
         ax.set_xscale("log")
@@ -63,12 +63,18 @@ def plot_pilot_selection(
     axes[0].set_ylabel("Mean error")
 
     # Shared legend
-    leg = []
-    for sel_name, color, _, marker, label in sel_config:
-        leg.append(Line2D([0], [0], color=color, linestyle="-", lw=0.8,
-                          marker=marker, markersize=2, label=label))
-    leg.append(Line2D([0], [0], color="0.4", linestyle="-", lw=0.8, label="$n=80$"))
-    leg.append(Line2D([0], [0], color="0.4", linestyle="--", lw=0.8, label="$n=20$"))
+    leg = [
+        Line2D([0], [0], color=PALETTE[0], linestyle="-", lw=0.8,
+               marker="o", markersize=2, label="Est. signal"),
+        Line2D([0], [0], color=PALETTE[1], linestyle="-", lw=0.8,
+               marker="v", markersize=2, label="Est. orthogonal"),
+        Line2D([0], [0], color=PALETTE[2], linestyle="-", lw=0.8,
+               marker="s", markersize=2, label="Uniform"),
+        Line2D([0], [0], color=PALETTE[0], linestyle="--", lw=0.8,
+               marker="o", markersize=2, label="Oracle signal"),
+        Line2D([0], [0], color=PALETTE[1], linestyle="--", lw=0.8,
+               marker="v", markersize=2, label="Oracle orthogonal"),
+    ]
     axes[1].legend(handles=leg, loc="upper right", fontsize=3.5, ncol=2)
 
     fig.tight_layout()

@@ -79,13 +79,14 @@ def _single_trial(responses, labels, query_indices, train_idx, test_idx,
     return (preds != labels[test_idx]).mean()
 
 
-def _run_one_rep(responses, labels, query_pool, m, train_idx, test_idx,
-                 n_components, classifier_name, seed, selectors):
+def _run_one_rep(responses, labels, query_pool, n_true_signal, m, train_idx,
+                 test_idx, n_components, classifier_name, seed, selectors):
     """One repetition: estimate loadings from train, run all selectors.
 
     query_pool : ndarray of query indices to use for estimation and selection.
-        Selectors operate on indices into query_pool, mapped back to original
-        query space for classification.
+        First n_true_signal entries are true signal queries.
+    n_true_signal : int
+        Number of true signal queries at the start of query_pool.
     """
     rng = np.random.default_rng(seed)
     M_pool = len(query_pool)
@@ -116,6 +117,21 @@ def _run_one_rep(responses, labels, query_pool, m, train_idx, test_idx,
                 pool_idx = ortho_idx.copy()
         elif sel_name == "greedy":
             pool_idx = select_queries_greedy(U, r_hat, m)
+        elif sel_name == "top_k":
+            magnitudes = np.linalg.norm(np.abs(U[:, :r_hat]), axis=1)
+            pool_idx = np.argsort(magnitudes)[::-1][:m]
+        elif sel_name == "oracle_signal":
+            oracle_sig = np.arange(n_true_signal)
+            if len(oracle_sig) >= m:
+                pool_idx = rng.choice(oracle_sig, size=m, replace=False)
+            else:
+                pool_idx = oracle_sig.copy()
+        elif sel_name == "oracle_orthogonal":
+            oracle_orth = np.arange(n_true_signal, M_pool)
+            if len(oracle_orth) >= m:
+                pool_idx = rng.choice(oracle_orth, size=m, replace=False)
+            else:
+                pool_idx = oracle_orth.copy()
         else:
             raise ValueError(f"Unknown selector: {sel_name}")
 
@@ -132,6 +148,7 @@ def _run_one_rep(responses, labels, query_pool, m, train_idx, test_idx,
 def run_pilot_experiment(
     responses, labels,
     query_pool=None,
+    n_true_signal=None,
     n_train_values=(20, 80),
     m_values=(2, 5, 10, 20, 50, 100),
     selectors=("uniform", "uniform_signal", "uniform_orthogonal", "greedy"),
@@ -162,6 +179,8 @@ def run_pilot_experiment(
     n_models, M, p = responses.shape
     if query_pool is None:
         query_pool = np.arange(M)
+    if n_true_signal is None:
+        n_true_signal = len(query_pool) // 2
     class0 = np.where(labels == 0)[0]
     class1 = np.where(labels == 1)[0]
 
@@ -184,7 +203,7 @@ def run_pilot_experiment(
             # Run all reps in parallel
             rep_results = Parallel(n_jobs=n_jobs, backend="loky")(
                 delayed(_run_one_rep)(
-                    responses, labels, query_pool, m,
+                    responses, labels, query_pool, n_true_signal, m,
                     train_idx, test_idx,
                     n_components, classifier,
                     seed + rep * 100003 + n_train * 31 + m * 1009,
