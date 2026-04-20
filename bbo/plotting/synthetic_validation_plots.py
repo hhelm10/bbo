@@ -55,74 +55,7 @@ def plot_synthetic_validation(
     theory_handle = mlines.Line2D([], [], color="gray", linestyle="--",
                                   linewidth=1.0, alpha=0.7, label="$r\\rho^m$")
 
-    # ===== Panel (a): Varying r =====
-    r_values = sorted(df_exp1["r"].unique())
-    for i, r in enumerate(r_values):
-        color = PALETTE[i % len(PALETTE)]
-        sub = df_exp1[df_exp1["r"] == r]
-        rho = sub["rho"].iloc[0]
-        y = _map_zeros(sub["prob_high_error"].values, n_reps)
-        ax_a.plot(sub["m"], y, marker="o", color=color, label=f"$r = {r}$")
-        bound = _theory_bound(m_dense, r, rho)
-        ax_a.plot(m_dense, _smooth_floor(bound, n_reps), color=color,
-                  linestyle="--", linewidth=1.0, alpha=0.7)
-
-    h, l = ax_a.get_legend_handles_labels()
-    h.append(theory_handle); l.append("$r\\rho^m$")
-    ax_a.set_xscale("log")
-    _setup_broken_log_y(ax_a, n_reps)
-    ax_a.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
-    ax_a.set_title("(a) Varying rank $r$\n$n\\!=\\!100,\\; \\rho\\!\\approx\\!0.7$",
-                   fontsize=7)
-    ax_a.legend(h, l, loc="lower left", bbox_to_anchor=(0.02, 0), ncol=2)
-
-    # ===== Panel (b): Varying ρ =====
-    rho_values = sorted(df_exp2["rho"].unique())
-    for i, rho in enumerate(rho_values):
-        color = PALETTE[i % len(PALETTE)]
-        sub = df_exp2[df_exp2["rho"] == rho]
-        y = _map_zeros(sub["prob_high_error"].values, n_reps)
-        ax_b.plot(sub["m"], y, marker="o", color=color,
-                  label=f"$\\rho = {rho:.1f}$")
-        bound = _theory_bound(m_dense, 5, rho)
-        ax_b.plot(m_dense, _smooth_floor(bound, n_reps), color=color,
-                  linestyle="--", linewidth=1.0, alpha=0.7)
-
-    h2, l2 = ax_b.get_legend_handles_labels()
-    h2.append(theory_handle); l2.append("$r\\rho^m$")
-    ax_b.set_xscale("log")
-    _setup_broken_log_y(ax_b, n_reps)
-    ax_b.set_yticklabels([])
-    ax_b.set_title("(b) Varying $\\rho$\n$n\\!=\\!100,\\; r\\!=\\!5$", fontsize=7)
-    ax_b.legend(h2, l2, loc="lower left", bbox_to_anchor=(0.02, 0))
-
-    # ===== Panel (c): Varying n =====
-    n_values_c = sorted(df_panel_c["n_models"].unique())
-    rho_c = df_panel_c["rho"].iloc[0]
-    r_c = int(df_panel_c["r"].iloc[0])
-
-    for i, n_val in enumerate(n_values_c):
-        color = PALETTE[i % len(PALETTE)]
-        sub = df_panel_c[df_panel_c["n_models"] == n_val].sort_values("m")
-        y = _map_zeros(sub["prob_high_error"].values, n_reps)
-        ax_c.plot(sub["m"], y, marker="o", color=color,
-                  label=f"$n = {n_val}$")
-
-    # Theory bound (same for all n)
-    bound_c = _theory_bound(m_dense, r_c, rho_c)
-    ax_c.plot(m_dense, _smooth_floor(bound_c, n_reps), color="gray",
-              linestyle="--", linewidth=1.0, alpha=0.7)
-
-    hc, lc = ax_c.get_legend_handles_labels()
-    hc.append(theory_handle); lc.append("$r\\rho^m$")
-    ax_c.set_xscale("log")
-    _setup_broken_log_y(ax_c, n_reps)
-    ax_c.set_yticklabels([])
-    ax_c.set_title(f"(c) Varying $n$\n$r\\!=\\!{r_c},\\; \\rho\\!=\\!{rho_c}$",
-                   fontsize=7)
-    ax_c.legend(hc, lc, loc="lower left", bbox_to_anchor=(0.02, 0))
-
-    # ===== Panel (d): Query distribution =====
+    # ===== Panel (a): Query distribution =====
     df_d = df_exp3[df_exp3["rho"] == 0.7] if "rho" in df_exp3.columns else df_exp3
     dist_labels = {"signal": "Signal", "uniform": "Uniform",
                    "orthogonal": "Orthogonal"}
@@ -134,15 +67,81 @@ def plot_synthetic_validation(
         if sub.empty:
             continue
         y = _map_zeros(sub["prob_high_error"].values, n_reps)
-        ax_d.plot(sub["m"], y, marker="o", color=dist_colors[dist_name],
+        ax_a.plot(sub["m"], y, marker="o", color=dist_colors[dist_name],
                   label=label)
 
+    ax_a.set_xscale("log")
+    _setup_broken_log_y(ax_a, n_reps)
+    ax_a.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
+    ax_a.set_title("(a) Query distribution\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\rho\\!=\\!0.7$",
+                   fontsize=7)
+    ax_a.legend(loc="lower left", bbox_to_anchor=(0.02, 0))
+
+    # ===== Panel (b): Varying r =====
+    r_values = sorted(df_exp1["r"].unique())
+    for i, r in enumerate(r_values):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df_exp1[df_exp1["r"] == r]
+        rho = sub["rho"].iloc[0]
+        y = _map_zeros(sub["prob_high_error"].values, n_reps)
+        ax_b.plot(sub["m"], y, marker="o", color=color, label=f"$r = {r}$")
+        bound = _theory_bound(m_dense, r, rho)
+        ax_b.plot(m_dense, _smooth_floor(bound, n_reps), color=color,
+                  linestyle="--", linewidth=1.0, alpha=0.7)
+
+    h, l = ax_b.get_legend_handles_labels()
+    h.append(theory_handle); l.append("$r\\rho^m$")
+    ax_b.set_xscale("log")
+    _setup_broken_log_y(ax_b, n_reps)
+    ax_b.set_yticklabels([])
+    ax_b.set_title("(b) Varying rank $r$\n$n\\!=\\!100,\\; \\rho\\!\\approx\\!0.7$",
+                   fontsize=7)
+    ax_b.legend(h, l, loc="lower left", bbox_to_anchor=(0.02, 0), ncol=2)
+
+    # ===== Panel (c): Varying ρ =====
+    rho_values = sorted(df_exp2["rho"].unique())
+    for i, rho in enumerate(rho_values):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df_exp2[df_exp2["rho"] == rho]
+        y = _map_zeros(sub["prob_high_error"].values, n_reps)
+        ax_c.plot(sub["m"], y, marker="o", color=color,
+                  label=f"$\\rho = {rho:.1f}$")
+        bound = _theory_bound(m_dense, 5, rho)
+        ax_c.plot(m_dense, _smooth_floor(bound, n_reps), color=color,
+                  linestyle="--", linewidth=1.0, alpha=0.7)
+
+    h2, l2 = ax_c.get_legend_handles_labels()
+    h2.append(theory_handle); l2.append("$r\\rho^m$")
+    ax_c.set_xscale("log")
+    _setup_broken_log_y(ax_c, n_reps)
+    ax_c.set_yticklabels([])
+    ax_c.set_title("(c) Varying $\\rho$\n$n\\!=\\!100,\\; r\\!=\\!5$", fontsize=7)
+    ax_c.legend(h2, l2, loc="lower left", bbox_to_anchor=(0.02, 0))
+
+    # ===== Panel (d): Varying n =====
+    n_values_c = sorted(df_panel_c["n_models"].unique())
+    rho_c = df_panel_c["rho"].iloc[0]
+    r_c = int(df_panel_c["r"].iloc[0])
+
+    for i, n_val in enumerate(n_values_c):
+        color = PALETTE[i % len(PALETTE)]
+        sub = df_panel_c[df_panel_c["n_models"] == n_val].sort_values("m")
+        y = _map_zeros(sub["prob_high_error"].values, n_reps)
+        ax_d.plot(sub["m"], y, marker="o", color=color,
+                  label=f"$n = {n_val}$")
+
+    bound_c = _theory_bound(m_dense, r_c, rho_c)
+    ax_d.plot(m_dense, _smooth_floor(bound_c, n_reps), color="gray",
+              linestyle="--", linewidth=1.0, alpha=0.7)
+
+    hc, lc = ax_d.get_legend_handles_labels()
+    hc.append(theory_handle); lc.append("$r\\rho^m$")
     ax_d.set_xscale("log")
     _setup_broken_log_y(ax_d, n_reps)
     ax_d.set_yticklabels([])
-    ax_d.set_title("(d) Query distribution\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\rho\\!=\\!0.7$",
+    ax_d.set_title(f"(d) Varying $n$\n$r\\!=\\!{r_c},\\; \\rho\\!=\\!{rho_c}$",
                    fontsize=7)
-    ax_d.legend(loc="lower left", bbox_to_anchor=(0.02, 0))
+    ax_d.legend(hc, lc, loc="lower left", bbox_to_anchor=(0.02, 0))
 
     # ===== Panel (e): Rank recovery =====
     r_values_e = sorted(df_panel_e["r"].unique())
@@ -199,23 +198,29 @@ def plot_synthetic_validation(
         ax_g.plot(sub["m"], _smooth_floor(y_true, n_reps), color=color,
                   linestyle="--", linewidth=1.0, alpha=0.7)
 
+    r_g = int(df_panel_g["r"].iloc[0])
     ax_g.set_xscale("log")
     _setup_broken_log_y(ax_g, n_reps)
     ax_g.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
     ax_g.set_xlabel("Queries $m$")
-    ax_g.set_title("(g) Predicted vs empirical\n$r\\!=\\!5,\\; n\\!=\\!100$",
+    ax_g.set_title(f"(g) Predicted vs empirical\n$r\\!=\\!{r_g},\\; n\\!=\\!100$",
                    fontsize=7)
 
-    leg_g = [
+    # ρ color legend
+    leg_rho = [mlines.Line2D([], [], color=PALETTE[i], lw=1.0,
+                              label=f"$\\rho = {rho}$")
+               for i, rho in enumerate(rho_values_g)]
+    # Method linestyle legend
+    leg_method = [
         mlines.Line2D([], [], color="0.4", linestyle="-", marker="o",
                       markersize=2, lw=0.8, label="Empirical"),
         mlines.Line2D([], [], color="0.4", linestyle=":", lw=1.0,
-                      label="$\\hat{r}\\hat{\\rho}^m$"),
+                      label="$r\\hat{\\rho}^m$"),
         mlines.Line2D([], [], color="0.4", linestyle="--", lw=1.0,
                       label="$r\\rho^m$"),
     ]
-    ax_g.legend(handles=leg_g, loc="lower left", bbox_to_anchor=(0.02, 0),
-                fontsize=5)
+    ax_g.legend(handles=leg_rho + leg_method, loc="lower left",
+                bbox_to_anchor=(0.02, 0), fontsize=4, ncol=2)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)
