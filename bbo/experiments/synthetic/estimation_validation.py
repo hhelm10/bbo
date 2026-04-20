@@ -113,7 +113,7 @@ def run_panel_c(m_values=(1, 2, 5, 10, 20, 50, 100),
     return pd.DataFrame(results)
 
 
-def run_panel_e(m_values=(1, 2, 5, 10, 20, 50, 100),
+def run_panel_e(m_values=(5, 10, 20, 50, 100),
                 r_values=(1, 2, 3, 5),
                 signal_prob=0.3, n_models=100, M=100, p_embed=20,
                 n_reps=1000, seed=42, n_jobs=-1):
@@ -148,7 +148,7 @@ def run_panel_e(m_values=(1, 2, 5, 10, 20, 50, 100),
     return pd.DataFrame(results)
 
 
-def run_panel_f(m_values=(1, 2, 5, 10, 20, 50, 100),
+def run_panel_f(m_values=(5, 10, 20, 50, 100),
                 rho_values=(0.3, 0.5, 0.7, 0.9),
                 r=5, n_models=100, M=100, p_embed=20,
                 n_reps=1000, seed=42, n_jobs=-1):
