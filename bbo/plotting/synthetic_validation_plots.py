@@ -169,8 +169,8 @@ def plot_synthetic_validation(
 
     ax_f.set_xscale("log")
     ax_f.set_ylim(bottom=-0.02)
-    ax_f.set_yticklabels([])
     ax_f.set_xlabel("Queries $m$")
+    ax_f.set_ylabel("$|\\hat{\\rho} - \\rho|$")
     ax_f.set_title("(f) Estimating $\\rho$\n$r\\!=\\!1,\\; n\\!=\\!100$",
                    fontsize=7)
     ax_f.legend(loc="upper right", fontsize=5)
