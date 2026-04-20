@@ -28,7 +28,7 @@ def plot_synthetic_validation(
     """2-row synthetic validation figure."""
     set_paper_style()
 
-    fig = plt.figure(figsize=(5.5, 4.0))
+    fig = plt.figure(figsize=(5.5, 3.4))
 
     # Separate GridSpecs for each row so wspace is independent
     gs_top = GridSpec(1, 4, figure=fig,
@@ -201,7 +201,7 @@ def plot_synthetic_validation(
 
     ax_g.set_xscale("log")
     _setup_broken_log_y(ax_g, n_reps)
-    ax_g.set_yticklabels([])
+    ax_g.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
     ax_g.set_xlabel("Queries $m$")
     ax_g.set_title("(g) Predicted vs empirical\n$r\\!=\\!5,\\; n\\!=\\!100$",
                    fontsize=7)
