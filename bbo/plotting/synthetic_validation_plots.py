@@ -31,7 +31,7 @@ def plot_synthetic_validation(
     fig = plt.figure(figsize=(5.5, 3.5))
     gs = GridSpec(2, 12, figure=fig,
                   left=0.07, right=0.99, bottom=0.09, top=0.92,
-                  wspace=0.7, hspace=0.85)
+                  wspace=1.0, hspace=0.85)
 
     # Row 1: 4 panels × 3 cols each
     ax_a = fig.add_subplot(gs[0, 0:3])
