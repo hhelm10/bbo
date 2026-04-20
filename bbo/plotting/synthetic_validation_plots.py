@@ -220,7 +220,7 @@ def plot_synthetic_validation(
                       label="$r\\rho^m$"),
     ]
     ax_g.legend(handles=leg_rho + leg_method, loc="upper right",
-                fontsize=4, ncol=2)
+                fontsize=5, ncol=2)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)
