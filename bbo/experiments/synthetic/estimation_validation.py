@@ -149,7 +149,7 @@ def run_panel_e(m_values=(5, 10, 20, 50, 100),
 
 
 def run_panel_f(m_values=(5, 10, 20, 50, 100),
-                rho_values=(0.3, 0.5, 0.7, 0.9),
+                rho_values=(0.3, 0.5, 0.7),
                 r=1, n_models=100, M=100, p_embed=20,
                 n_reps=1000, seed=42, n_jobs=-1):
     """Panel (f): ρ̂ vs m for varying ρ, conditioned on true r."""
