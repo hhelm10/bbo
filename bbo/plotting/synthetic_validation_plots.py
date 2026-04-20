@@ -28,21 +28,26 @@ def plot_synthetic_validation(
     """2-row synthetic validation figure."""
     set_paper_style()
 
-    fig = plt.figure(figsize=(5.5, 3.5))
-    gs = GridSpec(2, 12, figure=fig,
-                  left=0.07, right=0.99, bottom=0.09, top=0.92,
-                  wspace=1.0, hspace=0.85)
+    fig = plt.figure(figsize=(5.5, 4.0))
 
-    # Row 1: 4 panels × 3 cols each
-    ax_a = fig.add_subplot(gs[0, 0:3])
-    ax_b = fig.add_subplot(gs[0, 3:6])
-    ax_c = fig.add_subplot(gs[0, 6:9])
-    ax_d = fig.add_subplot(gs[0, 9:12])
+    # Separate GridSpecs for each row so wspace is independent
+    gs_top = GridSpec(1, 4, figure=fig,
+                      left=0.07, right=0.99, bottom=0.58, top=0.92,
+                      wspace=0.4)
+    gs_bot = GridSpec(1, 3, figure=fig,
+                      left=0.07, right=0.99, bottom=0.09, top=0.42,
+                      wspace=0.5)
 
-    # Row 2: 3 panels × 4 cols each
-    ax_e = fig.add_subplot(gs[1, 0:4])
-    ax_f = fig.add_subplot(gs[1, 4:8])
-    ax_g = fig.add_subplot(gs[1, 8:12])
+    # Row 1: 4 panels
+    ax_a = fig.add_subplot(gs_top[0, 0])
+    ax_b = fig.add_subplot(gs_top[0, 1])
+    ax_c = fig.add_subplot(gs_top[0, 2])
+    ax_d = fig.add_subplot(gs_top[0, 3])
+
+    # Row 2: 3 panels
+    ax_e = fig.add_subplot(gs_bot[0, 0])
+    ax_f = fig.add_subplot(gs_bot[0, 1])
+    ax_g = fig.add_subplot(gs_bot[0, 2])
 
     n_reps = int(df_exp1["n_reps"].iloc[0])
     m_dense = np.logspace(np.log10(1), np.log10(100), 200)
@@ -66,7 +71,6 @@ def plot_synthetic_validation(
     h.append(theory_handle); l.append("$r\\rho^m$")
     ax_a.set_xscale("log")
     _setup_broken_log_y(ax_a, n_reps)
-    ax_a.set_xlabel("Queries $m$")
     ax_a.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
     ax_a.set_title("(a) Varying rank $r$\n$n\\!=\\!100,\\; \\rho\\!\\approx\\!0.7$",
                    fontsize=7)
@@ -89,7 +93,6 @@ def plot_synthetic_validation(
     ax_b.set_xscale("log")
     _setup_broken_log_y(ax_b, n_reps)
     ax_b.set_yticklabels([])
-    ax_b.set_xlabel("Queries $m$")
     ax_b.set_title("(b) Varying $\\rho$\n$n\\!=\\!100,\\; r\\!=\\!5$", fontsize=7)
     ax_b.legend(h2, l2, loc="lower left", bbox_to_anchor=(0.02, 0))
 
@@ -115,7 +118,6 @@ def plot_synthetic_validation(
     ax_c.set_xscale("log")
     _setup_broken_log_y(ax_c, n_reps)
     ax_c.set_yticklabels([])
-    ax_c.set_xlabel("Queries $m$")
     ax_c.set_title(f"(c) Varying $n$\n$r\\!=\\!{r_c},\\; \\rho\\!=\\!{rho_c}$",
                    fontsize=7)
     ax_c.legend(hc, lc, loc="lower left", bbox_to_anchor=(0.02, 0))
@@ -138,7 +140,6 @@ def plot_synthetic_validation(
     ax_d.set_xscale("log")
     _setup_broken_log_y(ax_d, n_reps)
     ax_d.set_yticklabels([])
-    ax_d.set_xlabel("Queries $m$")
     ax_d.set_title("(d) Query distribution\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\rho\\!=\\!0.7$",
                    fontsize=7)
     ax_d.legend(loc="lower left", bbox_to_anchor=(0.02, 0))
