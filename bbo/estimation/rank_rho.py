@@ -84,8 +84,12 @@ def estimate_discriminative_rank(E: np.ndarray):
     # Largest successive ratio σ_r / σ_{r+1} in the leading half of the spectrum.
     # Restricting to the first half avoids spurious gaps at the numerical rank
     # boundary while still covering any plausible discriminative rank.
+    # Clip denominator at a noise floor to avoid inf ratios from near-zero
+    # singular values (occurs when the matrix is nearly rank-deficient).
     k = max(2, len(s) // 2)
-    ratios = s[:k - 1] / s[1:k]
+    noise_floor = s[0] * 1e-10
+    denom = np.maximum(s[1:k], noise_floor)
+    ratios = s[:k - 1] / denom
     r_hat = int(np.argmax(ratios)) + 1  # 1-indexed
     return r_hat, U, s
 

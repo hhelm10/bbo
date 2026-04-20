@@ -43,10 +43,9 @@ def _one_rep_estimate(responses, labels, M, m, seed, r_true=None):
 
     resp_sub = responses[:, query_idx, :]
     E, pairs = per_query_energy_tensor(resp_sub)
-    E_disc, _, _ = compute_E_disc(E, pairs, labels)
 
     try:
-        r_hat, U, s = estimate_discriminative_rank(E_disc)
+        r_hat, U, s = estimate_discriminative_rank(E)
         r_for_rho = r_true if r_true is not None else r_hat
         rho_hats, _ = estimate_rho(U, r_for_rho)
     except (ValueError, np.linalg.LinAlgError):
@@ -65,10 +64,9 @@ def _one_rep_estimate_and_classify(responses, labels, M, m, seed,
     # Estimation
     resp_sub = responses[:, query_idx, :]
     E, pairs = per_query_energy_tensor(resp_sub)
-    E_disc, _, _ = compute_E_disc(E, pairs, labels)
 
     try:
-        r_hat, U, s = estimate_discriminative_rank(E_disc)
+        r_hat, U, s = estimate_discriminative_rank(E)
         rho_hats, _ = estimate_rho(U, r_hat)
     except (ValueError, np.linalg.LinAlgError):
         r_hat = 1
