@@ -134,14 +134,15 @@ def run_panel_e(m_values=(1, 2, 5, 10, 20, 50, 100),
                     responses, labels, M, m, s
                 ) for s in seeds
             )
-            r_hats = [e[0] for e in est]
-            p_correct = np.mean([rh == r for rh in r_hats])
+            r_hats = np.array([e[0] for e in est])
+            r_errors = np.abs(r_hats - r)
             results.append({
                 "r": r, "m": m,
-                "p_correct_rank": p_correct,
+                "mean_r_error": r_errors.mean(),
+                "std_r_error": r_errors.std(),
                 "n_reps": n_reps,
             })
-            print(f"  r={r}, m={m}: P[r̂=r]={p_correct:.3f}")
+            print(f"  r={r}, m={m}: |r̂-r|={r_errors.mean():.3f}")
 
     return pd.DataFrame(results)
 
@@ -171,14 +172,16 @@ def run_panel_f(m_values=(1, 2, 5, 10, 20, 50, 100),
                 ) for s in seeds
             )
             # Use max rho_hat across directions as the scalar estimate
-            rho_hats_all = [max(e[1]) if len(e[1]) > 0 else np.nan for e in est]
+            rho_hats_all = np.array([max(e[1]) if len(e[1]) > 0 else np.nan for e in est])
+            rho_errors = np.abs(rho_hats_all - rho)
             results.append({
                 "rho_true": rho, "m": m,
                 "rho_hat_mean": np.nanmean(rho_hats_all),
-                "rho_hat_std": np.nanstd(rho_hats_all),
+                "mean_rho_error": np.nanmean(rho_errors),
+                "std_rho_error": np.nanstd(rho_errors),
                 "n_reps": n_reps,
             })
-            print(f"  rho={rho}, m={m}: ρ̂={np.nanmean(rho_hats_all):.3f}")
+            print(f"  rho={rho}, m={m}: |ρ̂-ρ|={np.nanmean(rho_errors):.3f}")
 
     return pd.DataFrame(results)
 

@@ -143,39 +143,37 @@ def plot_synthetic_validation(
                    fontsize=7)
     ax_d.legend(loc="lower left", bbox_to_anchor=(0.02, 0))
 
-    # ===== Panel (e): Rank recovery =====
+    # ===== Panel (e): Rank recovery error =====
     r_values_e = sorted(df_panel_e["r"].unique())
     for i, r in enumerate(r_values_e):
         color = PALETTE[i % len(PALETTE)]
         sub = df_panel_e[df_panel_e["r"] == r].sort_values("m")
-        ax_e.plot(sub["m"], sub["p_correct_rank"], marker="o", color=color,
+        ax_e.plot(sub["m"], sub["mean_r_error"], marker="o", color=color,
                   label=f"$r = {r}$")
 
     ax_e.set_xscale("log")
-    ax_e.set_ylim(-0.02, 1.05)
+    ax_e.set_ylim(bottom=-0.1)
     ax_e.set_xlabel("Queries $m$")
-    ax_e.set_ylabel("$P[\\hat{r} = r]$")
-    ax_e.set_title("(e) Rank recovery\n$\\rho\\!=\\!0.7,\\; n\\!=\\!100$",
+    ax_e.set_ylabel("$|\\hat{r} - r|$")
+    ax_e.set_title("(e) Rank estimation error\n$\\rho\\!=\\!0.7,\\; n\\!=\\!100$",
                    fontsize=7)
-    ax_e.legend(loc="lower right", fontsize=5)
+    ax_e.legend(loc="upper right", fontsize=5)
 
-    # ===== Panel (f): ρ̂ recovery =====
+    # ===== Panel (f): ρ̂ estimation error =====
     rho_values_f = sorted(df_panel_f["rho_true"].unique())
     for i, rho in enumerate(rho_values_f):
         color = PALETTE[i % len(PALETTE)]
         sub = df_panel_f[df_panel_f["rho_true"] == rho].sort_values("m")
-        ax_f.plot(sub["m"], sub["rho_hat_mean"], marker="o", color=color,
+        ax_f.plot(sub["m"], sub["mean_rho_error"], marker="o", color=color,
                   label=f"$\\rho = {rho}$")
-        ax_f.axhline(y=rho, color=color, linestyle="--", linewidth=0.8,
-                     alpha=0.5)
 
     ax_f.set_xscale("log")
-    ax_f.set_ylim(-0.02, 1.05)
+    ax_f.set_ylim(bottom=-0.02)
     ax_f.set_yticklabels([])
     ax_f.set_xlabel("Queries $m$")
-    ax_f.set_title("(f) $\\hat{\\rho}$ recovery\n$r\\!=\\!5,\\; n\\!=\\!100$",
+    ax_f.set_title("(f) $\\hat{\\rho}$ estimation error\n$r\\!=\\!5,\\; n\\!=\\!100$",
                    fontsize=7)
-    ax_f.legend(loc="lower right", fontsize=5)
+    ax_f.legend(loc="upper right", fontsize=5)
 
     # ===== Panel (g): Predicted vs empirical =====
     rho_values_g = sorted(df_panel_g["rho_true"].unique())
