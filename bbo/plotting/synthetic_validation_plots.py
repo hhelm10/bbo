@@ -155,7 +155,7 @@ def plot_synthetic_validation(
     ax_e.set_ylim(-0.02, 1.05)
     ax_e.set_xlabel("Queries $m$")
     ax_e.set_ylabel("$P[\\hat{r} = r]$")
-    ax_e.set_title("(e) Rank recovery\n$\\rho\\!=\\!0.7,\\; n\\!=\\!100$",
+    ax_e.set_title("(e) Estimating rank\n$\\rho\\!=\\!0.7,\\; n\\!=\\!100$",
                    fontsize=7)
     ax_e.legend(loc="lower right", fontsize=5)
 
@@ -171,7 +171,7 @@ def plot_synthetic_validation(
     ax_f.set_ylim(bottom=-0.02)
     ax_f.set_yticklabels([])
     ax_f.set_xlabel("Queries $m$")
-    ax_f.set_title("(f) $\\hat{\\rho}$ estimation error\n$r\\!=\\!1,\\; n\\!=\\!100$",
+    ax_f.set_title("(f) Estimating $\\rho$\n$r\\!=\\!1,\\; n\\!=\\!100$",
                    fontsize=7)
     ax_f.legend(loc="upper right", fontsize=5)
 
