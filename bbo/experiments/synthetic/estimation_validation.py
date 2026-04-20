@@ -33,8 +33,11 @@ def _one_rep_classify(responses, labels, M, m, seed, n_components, classifier,
     return int(err >= 0.5)
 
 
-def _one_rep_estimate(responses, labels, M, m, seed):
-    """Single estimation trial. Returns (r_hat, rho_hats)."""
+def _one_rep_estimate(responses, labels, M, m, seed, r_true=None):
+    """Single estimation trial. Returns (r_hat, rho_hats).
+
+    If r_true is provided, uses it for GMM (oracle rank) instead of estimated r̂.
+    """
     rng = np.random.default_rng(seed)
     query_idx = sample_queries(M, m, rng=rng)
 
@@ -44,7 +47,8 @@ def _one_rep_estimate(responses, labels, M, m, seed):
 
     try:
         r_hat, U, s = estimate_discriminative_rank(E_disc)
-        rho_hats, _ = estimate_rho(U, r_hat)
+        r_for_rho = r_true if r_true is not None else r_hat
+        rho_hats, _ = estimate_rho(U, r_for_rho)
     except (ValueError, np.linalg.LinAlgError):
         r_hat = 1
         rho_hats = np.array([1.0])
@@ -150,7 +154,7 @@ def run_panel_f(m_values=(1, 2, 5, 10, 20, 50, 100),
                 rho_values=(0.3, 0.5, 0.7, 0.9),
                 r=5, n_models=100, M=100, p_embed=20,
                 n_reps=1000, seed=42, n_jobs=-1):
-    """Panel (f): ρ̂ vs m for varying ρ."""
+    """Panel (f): ρ̂ vs m for varying ρ, conditioned on true r."""
     results = []
     for rho in rho_values:
         signal_prob = 1 - rho
@@ -167,11 +171,11 @@ def run_panel_f(m_values=(1, 2, 5, 10, 20, 50, 100),
                      for rep in range(n_reps)]
             est = Parallel(n_jobs=n_jobs, backend="loky")(
                 delayed(_one_rep_estimate)(
-                    responses, labels, M, m, s
+                    responses, labels, M, m, s, r_true=r
                 ) for s in seeds
             )
-            # Use max rho_hat across directions as the scalar estimate
-            rho_hats_all = np.array([max(e[1]) if len(e[1]) > 0 else np.nan for e in est])
+            # Use mean rho_hat across directions as the scalar estimate
+            rho_hats_all = np.array([np.mean(e[1]) if len(e[1]) > 0 else np.nan for e in est])
             rho_errors = np.abs(rho_hats_all - rho)
             results.append({
                 "rho_true": rho, "m": m,
