@@ -175,7 +175,7 @@ def plot_synthetic_validation(
     ax_f.set_ylabel("$|\\hat{\\rho} - \\rho|$")
     ax_f.set_title("(f) Estimating $\\rho$\n$r\\!=\\!1,\\; n\\!=\\!100$",
                    fontsize=7)
-    ax_f.legend(loc="upper right", fontsize=5)
+    ax_f.legend(loc="lower left", fontsize=5)
 
     # ===== Panel (g): Predicted vs empirical =====
     rho_values_g = sorted(df_panel_g["rho_true"].unique())
@@ -219,8 +219,8 @@ def plot_synthetic_validation(
         mlines.Line2D([], [], color="0.4", linestyle="--", lw=1.0,
                       label="$r\\rho^m$"),
     ]
-    ax_g.legend(handles=leg_rho + leg_method, loc="lower left",
-                bbox_to_anchor=(0.02, 0), fontsize=4, ncol=2)
+    ax_g.legend(handles=leg_rho + leg_method, loc="upper right",
+                fontsize=4, ncol=2)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path)
