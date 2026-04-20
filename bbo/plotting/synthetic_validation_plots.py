@@ -28,10 +28,10 @@ def plot_synthetic_validation(
     """2-row synthetic validation figure."""
     set_paper_style()
 
-    fig = plt.figure(figsize=(5.5, 3.2))
+    fig = plt.figure(figsize=(5.5, 3.5))
     gs = GridSpec(2, 12, figure=fig,
                   left=0.07, right=0.99, bottom=0.09, top=0.92,
-                  wspace=0.4, hspace=0.72)
+                  wspace=0.55, hspace=0.85)
 
     # Row 1: 4 panels × 3 cols each
     ax_a = fig.add_subplot(gs[0, 0:3])
@@ -153,6 +153,7 @@ def plot_synthetic_validation(
 
     ax_e.set_xscale("log")
     ax_e.set_ylim(-0.02, 1.05)
+    ax_e.set_yticks([0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
     ax_e.set_xlabel("Queries $m$")
     ax_e.set_ylabel("$P[\\hat{r} = r]$")
     ax_e.set_title("(e) Estimating rank\n$\\rho\\!=\\!0.7,\\; n\\!=\\!100$",
@@ -168,7 +169,8 @@ def plot_synthetic_validation(
                   label=f"$\\rho = {rho}$")
 
     ax_f.set_xscale("log")
-    ax_f.set_ylim(bottom=-0.02)
+    ax_f.set_ylim(-0.02, 0.25)
+    ax_f.set_yticks([0.0, 0.1, 0.2])
     ax_f.set_xlabel("Queries $m$")
     ax_f.set_ylabel("$|\\hat{\\rho} - \\rho|$")
     ax_f.set_title("(f) Estimating $\\rho$\n$r\\!=\\!1,\\; n\\!=\\!100$",
