@@ -171,7 +171,7 @@ def plot_synthetic_validation(
     ax_f.set_ylim(bottom=-0.02)
     ax_f.set_yticklabels([])
     ax_f.set_xlabel("Queries $m$")
-    ax_f.set_title("(f) $\\hat{\\rho}$ estimation error\n$r\\!=\\!5,\\; n\\!=\\!100$",
+    ax_f.set_title("(f) $\\hat{\\rho}$ estimation error\n$r\\!=\\!1,\\; n\\!=\\!100$",
                    fontsize=7)
     ax_f.legend(loc="upper right", fontsize=5)
 

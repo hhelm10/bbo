@@ -150,7 +150,7 @@ def run_panel_e(m_values=(5, 10, 20, 50, 100),
 
 def run_panel_f(m_values=(5, 10, 20, 50, 100),
                 rho_values=(0.3, 0.5, 0.7, 0.9),
-                r=5, n_models=100, M=100, p_embed=20,
+                r=1, n_models=100, M=100, p_embed=20,
                 n_reps=1000, seed=42, n_jobs=-1):
     """Panel (f): ρ̂ vs m for varying ρ, conditioned on true r."""
     results = []
@@ -172,8 +172,8 @@ def run_panel_f(m_values=(5, 10, 20, 50, 100),
                     responses, labels, M, m, s, r_true=r
                 ) for s in seeds
             )
-            # Use mean rho_hat across directions as the scalar estimate
-            rho_hats_all = np.array([np.mean(e[1]) if len(e[1]) > 0 else np.nan for e in est])
+            # Use first direction's rho_hat (strongest signal direction)
+            rho_hats_all = np.array([e[1][0] if len(e[1]) > 0 else np.nan for e in est])
             rho_errors = np.abs(rho_hats_all - rho)
             results.append({
                 "rho_true": rho, "m": m,

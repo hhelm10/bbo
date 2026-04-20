@@ -172,12 +172,14 @@ class SyntheticProblem:
 
 
 def make_problem(M: int = 100, r: int = 5, signal_prob: float = 0.3,
-                 p_embed: int = 20,
+                 p_embed: int = 20, w_min: float = 0.3,
                  rng: np.random.Generator = None) -> SyntheticProblem:
     """Create a Bernoulli-Weight synthetic problem.
 
     The field alpha_l(q) = xi_{ql} * w_{ql} where xi ~ Bern(signal_prob),
-    w ~ Uniform(0,1). This gives rho = 1 - signal_prob under uniform Pi_Q.
+    w ~ Uniform(w_min, 1). This gives rho = 1 - signal_prob under uniform Pi_Q.
+    The gap between 0 and w_min ensures the GMM can separate zero-set from
+    active queries.
 
     Parameters
     ----------
@@ -190,6 +192,9 @@ def make_problem(M: int = 100, r: int = 5, signal_prob: float = 0.3,
         independently with this probability. rho = 1 - signal_prob.
     p_embed : int
         Embedding dimension (must be >= r for orthogonal directions).
+    w_min : float
+        Minimum weight for active queries. Default 0.3 creates a gap [0, 0.3)
+        between zero-set and active queries.
     rng : numpy random Generator
 
     Returns
@@ -208,9 +213,9 @@ def make_problem(M: int = 100, r: int = 5, signal_prob: float = 0.3,
     Q, _ = np.linalg.qr(random_matrix)
     directions = Q[:, :r].T  # (r, p_embed), rows are orthonormal
 
-    # Bernoulli-Weight field: alpha = xi * w
+    # Bernoulli-Weight field: alpha = xi * w, w ~ Uniform(w_min, 1)
     xi = (rng.random((M, r)) < signal_prob).astype(float)
-    w = rng.random((M, r))
+    w = rng.random((M, r)) * (1 - w_min) + w_min
     alpha = xi * w
 
     return SyntheticProblem(
