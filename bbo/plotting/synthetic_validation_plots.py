@@ -143,21 +143,21 @@ def plot_synthetic_validation(
                    fontsize=7)
     ax_d.legend(loc="lower left", bbox_to_anchor=(0.02, 0))
 
-    # ===== Panel (e): Rank recovery error =====
+    # ===== Panel (e): Rank recovery =====
     r_values_e = sorted(df_panel_e["r"].unique())
     for i, r in enumerate(r_values_e):
         color = PALETTE[i % len(PALETTE)]
         sub = df_panel_e[df_panel_e["r"] == r].sort_values("m")
-        ax_e.plot(sub["m"], sub["mean_r_error"], marker="o", color=color,
+        ax_e.plot(sub["m"], sub["p_correct_rank"], marker="o", color=color,
                   label=f"$r = {r}$")
 
     ax_e.set_xscale("log")
-    ax_e.set_ylim(bottom=-0.1)
+    ax_e.set_ylim(-0.02, 1.05)
     ax_e.set_xlabel("Queries $m$")
-    ax_e.set_ylabel("$|\\hat{r} - r|$")
-    ax_e.set_title("(e) Rank estimation error\n$\\rho\\!=\\!0.7,\\; n\\!=\\!100$",
+    ax_e.set_ylabel("$P[\\hat{r} = r]$")
+    ax_e.set_title("(e) Rank recovery\n$\\rho\\!=\\!0.7,\\; n\\!=\\!100$",
                    fontsize=7)
-    ax_e.legend(loc="upper right", fontsize=5)
+    ax_e.legend(loc="lower right", fontsize=5)
 
     # ===== Panel (f): ρ̂ estimation error =====
     rho_values_f = sorted(df_panel_f["rho_true"].unique())

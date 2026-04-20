@@ -135,14 +135,13 @@ def run_panel_e(m_values=(1, 2, 5, 10, 20, 50, 100),
                 ) for s in seeds
             )
             r_hats = np.array([e[0] for e in est])
-            r_errors = np.abs(r_hats - r)
+            p_correct = np.mean(r_hats == r)
             results.append({
                 "r": r, "m": m,
-                "mean_r_error": r_errors.mean(),
-                "std_r_error": r_errors.std(),
+                "p_correct_rank": p_correct,
                 "n_reps": n_reps,
             })
-            print(f"  r={r}, m={m}: |r̂-r|={r_errors.mean():.3f}")
+            print(f"  r={r}, m={m}: P[r̂=r]={p_correct:.3f}")
 
     return pd.DataFrame(results)
 
