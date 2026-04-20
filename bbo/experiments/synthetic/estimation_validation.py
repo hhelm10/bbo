@@ -56,18 +56,19 @@ def _one_rep_estimate(responses, labels, M, m, seed, r_true=None):
 
 
 def _one_rep_estimate_and_classify(responses, labels, M, m, seed,
-                                   n_components, classifier):
-    """Single trial: estimate parameters AND classify. Returns (fail, r_hat, rho_hat_max)."""
+                                   n_components, classifier, r_true=None):
+    """Single trial: estimate parameters AND classify. Returns (fail, r_hat, rho_hat)."""
     rng = np.random.default_rng(seed)
     query_idx = sample_queries(M, m, rng=rng)
 
-    # Estimation
+    # Estimation — use oracle r for ρ̂ if provided
     resp_sub = responses[:, query_idx, :]
     E, pairs = per_query_energy_tensor(resp_sub)
 
     try:
         r_hat, U, s = estimate_discriminative_rank(E)
-        rho_hats, _ = estimate_rho(U, r_hat)
+        r_for_rho = r_true if r_true is not None else r_hat
+        rho_hats, _ = estimate_rho(U, r_for_rho)
     except (ValueError, np.linalg.LinAlgError):
         r_hat = 1
         rho_hats = np.array([1.0])
@@ -114,7 +115,7 @@ def run_panel_c(m_values=(1, 2, 5, 10, 20, 50, 100),
 
 
 def run_panel_e(m_values=(5, 10, 20, 50, 100),
-                r_values=(1, 2, 3, 5),
+                r_values=(1, 2, 5),
                 signal_prob=0.3, n_models=100, M=100, p_embed=20,
                 n_reps=1000, seed=42, n_jobs=-1):
     """Panel (e): P[r̂ = r] vs m for varying r."""
@@ -187,11 +188,11 @@ def run_panel_f(m_values=(5, 10, 20, 50, 100),
     return pd.DataFrame(results)
 
 
-def run_panel_g(m_values=(1, 2, 5, 10, 20, 50, 100),
+def run_panel_g(m_values=(5, 10, 20, 50, 100),
                 rho_values=(0.3, 0.7, 0.9),
                 r=5, n_models=100, M=100, p_embed=20,
                 n_reps=1000, seed=42, n_jobs=-1):
-    """Panel (g): empirical P[fail] vs predicted bound using estimated params."""
+    """Panel (g): empirical P[fail] vs predicted bound using estimated ρ̂ (oracle r)."""
     results = []
     for rho in rho_values:
         signal_prob = 1 - rho
@@ -209,26 +210,29 @@ def run_panel_g(m_values=(1, 2, 5, 10, 20, 50, 100),
                      for rep in range(n_reps)]
             trials = Parallel(n_jobs=n_jobs, backend="loky")(
                 delayed(_one_rep_estimate_and_classify)(
-                    responses, labels, M, m, s, n_comp, "rf"
+                    responses, labels, M, m, s, n_comp, "rf",
+                    r_true=r,
                 ) for s in seeds
             )
             fails = [t[0] for t in trials]
-            r_hats = [t[1] for t in trials]
-            rho_maxs = [max(t[2]) if len(t[2]) > 0 else 1.0 for t in trials]
+            # Use first-direction ρ̂ with oracle r
+            rho_hats_1 = np.array([t[2][0] if len(t[2]) > 0 else 1.0
+                                   for t in trials])
 
-            # Predicted bound per-rep using estimated params
-            predicted_bounds = [rh * rm ** m
-                                for rh, rm in zip(r_hats, rho_maxs)]
+            # Predicted bound using mean ρ̂: min(1, r · E[ρ̂]^m)
+            rho_hat_mean = np.mean(rho_hats_1)
+            predicted_bound = min(1.0, r * rho_hat_mean ** m)
 
             results.append({
                 "rho_true": rho, "m": m,
                 "prob_high_error": np.mean(fails),
-                "predicted_bound_mean": np.mean(predicted_bounds),
+                "predicted_bound_mean": predicted_bound,
+                "rho_hat_mean": rho_hat_mean,
                 "true_bound": r * rho ** m,
                 "r": r, "n_reps": n_reps,
             })
             print(f"  rho={rho}, m={m}: P[fail]={np.mean(fails):.3f}, "
-                  f"pred={np.mean(predicted_bounds):.3f}, "
+                  f"pred={predicted_bound:.3f}, "
                   f"true={r * rho ** m:.3f}")
 
     return pd.DataFrame(results)
