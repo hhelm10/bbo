@@ -281,14 +281,85 @@ def _run_one_rep(responses, labels, query_pool, n_true_signal, m, train_idx,
     return results
 
 
+def _run_one_split_all_m(responses, labels, query_pool, n_true_signal,
+                         m_values, train_idx, test_idx, n_components,
+                         classifier_name, seed, selectors):
+    """One split: compute all selectors across all m values.
+
+    Sequence selectors (cv_greedy, stepwise) build once, evaluate at each m.
+    Random selectors (uniform, uniform_signal) draw fresh for each m.
+    """
+    rng = np.random.default_rng(seed)
+    M_pool = len(query_pool)
+    m_max = max(m_values)
+
+    # Estimate loadings from train set
+    train_resp = responses[train_idx][:, query_pool, :]
+    E, pairs = per_query_energy_tensor(train_resp)
+    r_hat, U, s = estimate_discriminative_rank(E)
+    rho_hats, gmm_info = estimate_rho(U, r_hat)
+    signal_idx, ortho_idx = _get_signal_orthogonal_sets(U, r_hat, gmm_info)
+
+    # Pre-compute sequences for deterministic selectors
+    # Cap cv_greedy at 20 steps (expensive; interesting range is small m)
+    sequences = {}
+    if "stepwise" in selectors:
+        train_labels = labels[train_idx]
+        sequences["stepwise"] = select_queries_stepwise(E, pairs, train_labels, m_max)
+    if "cv_greedy" in selectors:
+        cv_max = min(m_max, 20)
+        sequences["cv_greedy"] = select_queries_cv_greedy(
+            responses, labels, query_pool, train_idx, cv_max,
+            n_components, classifier_name)
+
+    results = {}  # {(sel_name, m): error}
+    for m in m_values:
+        for sel_name in selectors:
+            if sel_name == "uniform":
+                pool_idx = rng.choice(M_pool, size=m, replace=False)
+            elif sel_name == "uniform_signal":
+                if len(signal_idx) >= m:
+                    pool_idx = rng.choice(signal_idx, size=m, replace=False)
+                else:
+                    pool_idx = signal_idx.copy()
+            elif sel_name == "stepwise":
+                pool_idx = sequences["stepwise"][:m]
+            elif sel_name == "cv_greedy":
+                seq = sequences["cv_greedy"]
+                if m > len(seq):
+                    results[(sel_name, m)] = np.nan
+                    continue
+                pool_idx = seq[:m]
+            elif sel_name == "uniform_orthogonal":
+                if len(ortho_idx) >= m:
+                    pool_idx = rng.choice(ortho_idx, size=m, replace=False)
+                else:
+                    pool_idx = ortho_idx.copy()
+            elif sel_name == "oracle_signal":
+                oracle_sig = np.arange(n_true_signal)
+                pool_idx = rng.choice(oracle_sig, size=min(m, len(oracle_sig)), replace=False)
+            elif sel_name == "oracle_orthogonal":
+                oracle_orth = np.arange(n_true_signal, M_pool)
+                pool_idx = rng.choice(oracle_orth, size=min(m, len(oracle_orth)), replace=False)
+            else:
+                raise ValueError(f"Unknown selector: {sel_name}")
+
+            qi = query_pool[pool_idx]
+            err = _single_trial(responses, labels, qi, train_idx, test_idx,
+                                n_components, classifier_name)
+            results[(sel_name, m)] = err
+
+    return results
+
+
 def run_pilot_experiment(
     responses, labels,
     query_pool=None,
     n_true_signal=None,
     n_train_values=(20, 80),
     m_values=(2, 5, 10, 20, 50, 100),
-    selectors=("uniform", "uniform_signal", "uniform_orthogonal", "greedy"),
-    n_reps=500,
+    selectors=("uniform", "uniform_signal", "stepwise", "cv_greedy"),
+    n_reps=100,
     n_components=8,
     classifier="rf",
     seed=42,
@@ -296,17 +367,9 @@ def run_pilot_experiment(
 ):
     """Run the pilot query selection experiment.
 
-    Parameters
-    ----------
-    responses : ndarray of shape (n_models, M, p)
-    labels : ndarray of shape (n_models,)
-    query_pool : ndarray of int, optional
-        Indices of queries to use for estimation and selection.
-        If None, uses all M queries.
-    n_train_values : sequence of int
-    m_values : sequence of int
-    selectors : sequence of str
-    n_reps, n_components, classifier, seed, n_jobs : ...
+    Each rep uses a different train/test split. Sequence selectors
+    (cv_greedy, stepwise) are computed once per split. Random selectors
+    get one draw per split.
 
     Returns
     -------
@@ -325,32 +388,34 @@ def run_pilot_experiment(
     for n_train in n_train_values:
         n_per_class_train = n_train // 2
 
-        for m in tqdm(m_values, desc=f"n_train={n_train}"):
-            # Generate train/test splits
-            splits = []
-            for rep in range(n_reps):
-                rng = np.random.default_rng(seed + rep * 100003 + n_train * 31)
-                sel0 = rng.choice(class0, size=n_per_class_train, replace=False)
-                sel1 = rng.choice(class1, size=n_per_class_train, replace=False)
-                train_idx = np.concatenate([sel0, sel1])
-                test_idx = np.setdiff1d(np.arange(n_models), train_idx)
-                splits.append((train_idx, test_idx))
+        # Generate splits
+        splits = []
+        for rep in range(n_reps):
+            rng = np.random.default_rng(seed + rep * 100003 + n_train * 31)
+            sel0 = rng.choice(class0, size=n_per_class_train, replace=False)
+            sel1 = rng.choice(class1, size=n_per_class_train, replace=False)
+            train_idx = np.concatenate([sel0, sel1])
+            test_idx = np.setdiff1d(np.arange(n_models), train_idx)
+            splits.append((train_idx, test_idx))
 
-            # Run all reps in parallel
-            rep_results = Parallel(n_jobs=n_jobs, backend="loky")(
-                delayed(_run_one_rep)(
-                    responses, labels, query_pool, n_true_signal, m,
-                    train_idx, test_idx,
-                    n_components, classifier,
-                    seed + rep * 100003 + n_train * 31 + m * 1009,
-                    selectors,
-                )
-                for rep, (train_idx, test_idx) in enumerate(splits)
+        # Run all splits (each handles all m values)
+        print(f"  Running {n_reps} splits for n_train={n_train}...")
+        split_results = Parallel(n_jobs=n_jobs, backend="loky")(
+            delayed(_run_one_split_all_m)(
+                responses, labels, query_pool, n_true_signal,
+                m_values, train_idx, test_idx,
+                n_components, classifier,
+                seed + rep * 100003 + n_train * 31,
+                selectors,
             )
+            for rep, (train_idx, test_idx) in enumerate(
+                tqdm(splits, desc=f"n_train={n_train}"))
+        )
 
-            # Aggregate per selector
-            for sel_name in selectors:
-                errors = np.array([r[sel_name] for r in rep_results])
+        # Aggregate
+        for sel_name in selectors:
+            for m in m_values:
+                errors = np.array([r[(sel_name, m)] for r in split_results])
                 all_results.append({
                     "n_train": n_train,
                     "m": m,

@@ -33,8 +33,7 @@ def plot_pilot_selection(
     sel_config = [
         ("uniform",            PALETTE[2], "-",  "s", "Uniform"),
         ("uniform_signal",     PALETTE[0], "-",  "o", "Est. signal"),
-        ("cv_greedy",          PALETTE[3], "-",  "D", "CV greedy"),
-        ("stepwise",           PALETTE[4], "-",  "^", "Stepwise"),
+        ("stepwise",           PALETTE[3], "-",  "^", "Stepwise"),
     ]
 
     n_plot = 80
