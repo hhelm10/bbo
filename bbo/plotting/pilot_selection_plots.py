@@ -30,14 +30,11 @@ def plot_pilot_selection(
         ("RAG", rag_csv),
     ]
 
-    # Estimated selectors (solid) — colors match Figure 1
-    # Oracle selectors (dashed) — same colors
     sel_config = [
-        ("uniform_signal",     PALETTE[0], "-",  "o", "Est. signal"),
-        ("uniform_orthogonal", PALETTE[1], "-",  "v", "Est. orthogonal"),
         ("uniform",            PALETTE[2], "-",  "s", "Uniform"),
-        ("oracle_signal",      PALETTE[0], "--", "o", "Oracle signal"),
-        ("oracle_orthogonal",  PALETTE[1], "--", "v", "Oracle orthogonal"),
+        ("uniform_signal",     PALETTE[0], "-",  "o", "Est. signal"),
+        ("cv_greedy",          PALETTE[3], "-",  "D", "CV greedy"),
+        ("stepwise",           PALETTE[4], "-",  "^", "Stepwise"),
     ]
 
     n_plot = 80
@@ -62,15 +59,12 @@ def plot_pilot_selection(
 
     axes[0].set_ylabel("Mean error")
 
-    # Shared legend: colors for query type, linestyle for estimated vs oracle
-    leg = [
-        Line2D([0], [0], color=PALETTE[0], lw=1.0, label="Signal"),
-        Line2D([0], [0], color=PALETTE[1], lw=1.0, label="Orthogonal"),
-        Line2D([0], [0], color=PALETTE[2], lw=1.0, label="Uniform"),
-        Line2D([0], [0], color="0.4", linestyle="-", lw=0.8, label="Estimated"),
-        Line2D([0], [0], color="0.4", linestyle="--", lw=0.8, label="Oracle"),
-    ]
-    axes[1].legend(handles=leg, loc="upper right", fontsize=3.5, ncol=2)
+    # Shared legend
+    leg = []
+    for sel_name, color, ls, marker, label in sel_config:
+        leg.append(Line2D([0], [0], color=color, linestyle=ls, lw=0.8,
+                          marker=marker, markersize=2, label=label))
+    axes[1].legend(handles=leg, loc="upper right", fontsize=4, ncol=2)
 
     fig.tight_layout()
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)

@@ -24,8 +24,7 @@ DATASETS = {
     },
 }
 
-SELECTORS = ("uniform", "uniform_signal", "uniform_orthogonal",
-             "oracle_signal", "oracle_orthogonal")
+SELECTORS = ("uniform", "uniform_signal", "stepwise", "cv_greedy")
 
 
 def main():
