@@ -67,6 +67,7 @@ def main():
             n_true_signal=n_true_signal,
             selectors=SELECTORS,
             n_reps=args.n_reps,
+            classifier="lda",
         )
 
         out_path = f"{args.output_dir}/{name}.csv"
