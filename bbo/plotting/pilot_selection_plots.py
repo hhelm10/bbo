@@ -17,7 +17,7 @@ def plot_pilot_selection(
     motivating_csv: str,
     system_prompt_csv: str,
     rag_csv: str,
-    output_path: str = "figures/figure_pilot_selection.pdf",
+    output_path: str = "figures/figure_query_selection_methods.pdf",
 ):
     """1×3 figure: pilot query selection results."""
     set_paper_style()
