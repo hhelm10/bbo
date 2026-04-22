@@ -32,14 +32,14 @@ Identifying a small, high-quality query set $Q^*$ of size $m \ll M$ that preserv
 
 \section{Methods}
 
-We consider three ways of selecting a query set for which we generate responses for each new model, using the query-model energy tensor $E \in \mathbb{R}^{\binom{n}{2} \times M}$.
+We consider three ways of selecting a query set for which we generate responses for each new model, using the query-model energy tensor $E \in \mathbb{R}^{M \times \binom{n}{2}}$.
 
 \textbf{1.\ Uniform Sampling} (baseline).
 Sample $m$ queries uniformly at random from the pool of $M$ queries.
 No pilot information is used.
 
 \textbf{2.\ Estimated Signal Sampling.}
-Fit a two-component GMM to the SVD loadings $|U_{q,\ell}|$ of the energy tensor $E$.
+Fit a two-component GMM to the estimated field strengths $|\hat{\alpha}_{q,\ell}|$ obtained from the SVD of $E$.
 Queries assigned to the higher-mean component form the estimated signal set $\hat{\mathcal{S}}$.
 Sample $m$ queries uniformly from $\hat{\mathcal{S}}$.
 This exploits zero-set structure but ignores query redundancy.
