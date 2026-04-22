@@ -1,21 +1,27 @@
-\documentclass[10pt,twocolumn]{article}
-\usepackage[margin=0.75in]{geometry}
+\documentclass[9pt,twocolumn]{article}
+\usepackage[margin=0.65in,top=0.5in,bottom=0.5in]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{enumitem}
 \usepackage[small,compact]{titlesec}
 
-\setlength{\parskip}{4pt}
+\setlength{\parskip}{3pt}
 \setlength{\parindent}{0pt}
+\setlength{\dbltextfloatsep}{6pt}
+\setlength{\dblfloatsep}{6pt}
 
-\title{\vspace{-1.5em}Query Selection for Efficient\\Black-Box Model Classification\vspace{-0.5em}}
-\author{}
-\date{}
+\pagestyle{empty}
 
 \begin{document}
-\maketitle
-\vspace{-2em}
+
+\twocolumn[{%
+\centering
+\includegraphics[width=0.88\textwidth]{figures/figure_query_selection_methods.pdf}
+
+{\small\textbf{Figure 1.} Mean classification error vs.\ query budget $m$ for three selection strategies across three tasks ($n{=}80$). Stepwise selection matches uniform sampling accuracy with $5$--$10\times$ fewer queries.\par}
+\vspace{1em}
+}]
 
 \section{Motivation}
 
@@ -40,14 +46,13 @@ This exploits zero-set structure but ignores query redundancy.
 \textbf{3.\ Forward Stepwise Selection.}
 Define a response $z_{ij} = \mathbf{1}[y_i \neq y_j]$ for each model pair and a predictor $E_{q,ij} = \|g(f_i(q)) - g(f_j(q))\|^2$ for each query $q$.
 At each step, add the query whose $E_{q,:}$ has the largest partial correlation with the residual of $z$ after projecting out previously selected queries.
-This is equivalent to Gram-Schmidt orthogonalization on $E$ with respect to $z$, ensuring each query contributes maximally non-redundant signal.
-
-Stepwise operates on $E \in \mathbb{R}^{M \times \binom{n}{2}}$, already computed during estimation.
+This is Gram-Schmidt orthogonalization on $E$ w.r.t.\ $z$, ensuring each query contributes maximally non-redundant signal.
 Cost: $O(m \cdot M \cdot \binom{n}{2})$ --- negligible.
 
-\section{Experimental Setup}
+\section{Setup}
 
 \begin{table}[h]
+\vspace{-0.5em}
 \centering
 \small
 \begin{tabular}{@{}lccp{3.2cm}@{}}
@@ -59,37 +64,16 @@ Sys.\ Prompt & 100 & 200 & Covert persuasion bias \\
 RAG & 120 & 200 & Unauthorized doc.\ stores \\
 \bottomrule
 \end{tabular}
+\vspace{-0.5em}
 \end{table}
 
-We use $n_{\text{train}} = 80$ models for estimation and classification, holding out the rest for testing.
-Query selection uses only the training set.
-Classification: MDS (8 components) $+$ LDA.
-Results averaged over 100 random splits.
+$n_{\text{train}} = 80$ models for estimation and classification; rest held out.
+MDS (8 components) $+$ LDA. Averaged over 100 random splits.
 
 \section{Results}
 
-\begin{figure}[h]
-\centering
-\includegraphics[width=\linewidth]{figures/figure_query_selection_methods.pdf}
-\caption{Mean classification error vs.\ query budget $m$ for three selection strategies across three tasks ($n = 80$).
-Stepwise selection achieves the same accuracy as uniform sampling with $5$--$10\times$ fewer queries.}
-\end{figure}
-
-\textbf{Key findings:}
-\begin{itemize}[nosep,leftmargin=*]
-\item \textbf{Stepwise dominates at small $m$.}
-At $m{=}2$: stepwise error is $10\%$ (motivating) and $11\%$ (system prompt), vs.\ $28\%$ for uniform.
-
-\item \textbf{Estimated signal is intermediate.}
-Sampling from $\hat{\mathcal{S}}$ consistently outperforms uniform, confirming the GMM partition captures real structure.
-
-\item \textbf{Practical cost reduction.}
+Stepwise dominates at small $m$: at $m{=}2$, stepwise error is $10\%$ (motivating) and $11\%$ (system prompt) vs.\ $28\%$ for uniform.
+Estimated signal is intermediate, confirming the GMM partition captures real structure.
 On the system prompt task, stepwise at $m{=}5$ matches uniform at $m{=}50$ --- a $10\times$ reduction in per-model query cost.
-\end{itemize}
-
-\section{Conclusion}
-
-Forward stepwise selection on the energy tensor provides a principled, cheap method for choosing a small query set.
-Combined with LDA, it matches uniform sampling accuracy with an order of magnitude fewer queries, directly reducing the cost of black-box model auditing.
 
 \end{document}
