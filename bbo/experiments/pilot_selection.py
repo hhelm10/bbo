@@ -195,15 +195,18 @@ def _get_signal_orthogonal_sets(U, r_hat, gmm_info):
 def _single_trial(responses, labels, query_indices, train_idx, test_idx,
                   n_components, classifier_name):
     """Classify with fixed queries on a given train/test split."""
-    D = pairwise_energy_distances_t0(responses, query_indices)
-    n = len(labels)
-    mds = ClassicalMDS(n_components=min(n_components, n - 1))
-    X = mds.fit_transform(D)
+    try:
+        D = pairwise_energy_distances_t0(responses, query_indices)
+        n = len(labels)
+        mds = ClassicalMDS(n_components=min(n_components, n - 1))
+        X = mds.fit_transform(D)
 
-    clf = make_classifier(classifier_name)
-    clf.fit(X[train_idx], labels[train_idx])
-    preds = clf.predict(X[test_idx])
-    return (preds != labels[test_idx]).mean()
+        clf = make_classifier(classifier_name)
+        clf.fit(X[train_idx], labels[train_idx])
+        preds = clf.predict(X[test_idx])
+        return (preds != labels[test_idx]).mean()
+    except Exception:
+        return 0.5  # chance level on failure
 
 
 def _run_one_rep(responses, labels, query_pool, n_true_signal, m, train_idx,

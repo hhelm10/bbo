@@ -63,7 +63,7 @@ def plot_pilot_selection(
     for sel_name, color, ls, marker, label in sel_config:
         leg.append(Line2D([0], [0], color=color, linestyle=ls, lw=0.8,
                           marker=marker, markersize=2, label=label))
-    axes[1].legend(handles=leg, loc="upper right", fontsize=4, ncol=2)
+    axes[1].legend(handles=leg, loc="upper right", fontsize=6, ncol=1)
 
     fig.tight_layout()
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
