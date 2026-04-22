@@ -25,11 +25,13 @@
 
 \section{Motivation}
 
-Classifying black-box generative models requires querying each model with $m$ queries and comparing responses via pairwise energy distances.
-The total inference cost scales as $m \times n$, so reducing $m$ while maintaining accuracy directly reduces per-model audit cost.
+Classifying black-box generative models requires querying each model and comparing responses via pairwise energy distances.
+In a typical workflow, a labeled pilot set of $n$ models is queried on a large pool of $M$ queries, and the cached responses are used to estimate the discriminative structure.
+The cost of classifying a \emph{new} model scales with the number of queries $m$ it must answer --- each query is an API call.
+Identifying a small, high-quality query set $Q^*$ of size $m \ll M$ that preserves classification accuracy therefore directly reduces the per-model audit cost for all future models.
 
-The discriminative factorization estimates per-query signal magnitudes $|\hat{\alpha}_{q,\ell}|$ from a labeled pilot set.
-We describe three strategies for using this information to select a targeted query set $Q^*$ of size $m$.
+The discriminative factorization estimates per-query signal magnitudes $|\hat{\alpha}_{q,\ell}|$ from the pilot set.
+We describe three strategies for using this information to select $Q^*$.
 
 \section{Methods}
 

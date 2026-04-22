@@ -2,9 +2,9 @@
 
 ## Motivation
 
-Classifying black-box generative models (e.g., detecting whether an LLM has been fine-tuned on sensitive data) requires querying each model with $m$ queries and comparing their responses. The total cost scales as $m \times n$, where $n$ is the number of models under audit. Reducing $m$ while maintaining classification accuracy directly reduces per-model inference cost.
+Classifying black-box generative models (e.g., detecting whether an LLM has been fine-tuned on sensitive data) requires querying each model and comparing their responses. In a typical workflow, a labeled pilot set of $n$ models is queried on a large pool of $M$ queries, and the cached responses are used to estimate the discriminative structure. The cost of classifying a *new* model scales with the number of queries $m$ it must answer — each query is an API call. Identifying a small, high-quality query set $Q^*$ of size $m \ll M$ that preserves classification accuracy therefore directly reduces the per-model audit cost for all future models.
 
-The discriminative factorization framework estimates a per-query signal magnitude $|\hat{\alpha}_{q,\ell}|$ from a labeled pilot set. This information can guide query selection: instead of sampling queries uniformly at random, we can preferentially select queries that carry discriminative signal. We describe three selection strategies and evaluate them on three real-world classification tasks.
+The discriminative factorization framework estimates a per-query signal magnitude $|\hat{\alpha}_{q,\ell}|$ from the pilot set. This information can guide query selection: instead of sampling queries uniformly at random, we can preferentially select queries that carry discriminative signal. We describe three selection strategies and evaluate them on three real-world classification tasks.
 
 ## Methods
 
