@@ -30,9 +30,6 @@ In a typical workflow, a labeled pilot set of $n$ models is queried on a large p
 The cost of classifying a \emph{new} model scales with the number of queries $m$ it must answer --- each query is an API call.
 Identifying a small, high-quality query set $Q^*$ of size $m \ll M$ that preserves classification accuracy therefore directly reduces the per-model audit cost for all future models.
 
-The discriminative factorization estimates per-query signal magnitudes $|\hat{\alpha}_{q,\ell}|$ from the pilot set.
-We describe three strategies for using this information to select $Q^*$.
-
 \section{Methods}
 
 \textbf{1.\ Uniform Sampling} (baseline).
