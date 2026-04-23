@@ -96,6 +96,10 @@ class MotivatingConfig(ExperimentConfig):
     def npz_path(self) -> Path:
         return Path(self.output_dir) / "motivating_responses.npz"
 
+    def npz_path_for(self, embed_model: str) -> Path:
+        """NPZ path for a specific embedding model."""
+        return Path(self.output_dir) / "embeddings" / f"{embed_model}.npz"
+
     @property
     def n_adapters(self) -> int:
         return 2 * self.n_per_class

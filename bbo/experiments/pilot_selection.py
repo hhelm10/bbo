@@ -430,3 +430,158 @@ def run_pilot_experiment(
                       f"err={errors.mean():.3f} ± {errors.std():.3f}")
 
     return pd.DataFrame(all_results)
+
+
+def _run_one_split_thresholds(responses, labels, query_pool, n_true_signal,
+                              thresholds, m, train_idx, test_idx,
+                              n_components, classifier_name, seed):
+    """One split: sweep loading percentile thresholds + uniform reference."""
+    rng = np.random.default_rng(seed)
+    M_pool = len(query_pool)
+
+    # Estimate loadings from train set
+    train_resp = responses[train_idx][:, query_pool, :]
+    E, pairs = per_query_energy_tensor(train_resp)
+    r_hat, U, s = estimate_discriminative_rank(E)
+
+    # Loading magnitude per query: max over directions
+    loading_mag = np.max(np.abs(U[:, :r_hat]), axis=1)  # (M_pool,)
+
+    # GMM-based partition for reference
+    rho_hats, gmm_info = estimate_rho(U, r_hat)
+    signal_idx, ortho_idx = _get_signal_orthogonal_sets(U, r_hat, gmm_info)
+    gmm_frac = len(signal_idx) / M_pool  # fraction labeled signal by GMM
+
+    results = {}
+
+    # Threshold sweep
+    for tau in thresholds:
+        cutoff = np.percentile(loading_mag, tau)
+        sig_set = np.where(loading_mag > cutoff)[0]
+        if len(sig_set) >= m:
+            pool_idx = rng.choice(sig_set, size=m, replace=False)
+        elif len(sig_set) > 0:
+            pool_idx = sig_set.copy()
+        else:
+            pool_idx = rng.choice(M_pool, size=m, replace=False)
+
+        qi = query_pool[pool_idx]
+        err = _single_trial(responses, labels, qi, train_idx, test_idx,
+                            n_components, classifier_name)
+        results[("threshold", tau)] = err
+
+    # Uniform reference
+    pool_idx = rng.choice(M_pool, size=m, replace=False)
+    qi = query_pool[pool_idx]
+    err = _single_trial(responses, labels, qi, train_idx, test_idx,
+                        n_components, classifier_name)
+    results[("uniform", 0)] = err
+
+    # GMM-based est. signal reference
+    if len(signal_idx) >= m:
+        pool_idx = rng.choice(signal_idx, size=m, replace=False)
+    else:
+        pool_idx = signal_idx.copy()
+    qi = query_pool[pool_idx]
+    err = _single_trial(responses, labels, qi, train_idx, test_idx,
+                        n_components, classifier_name)
+    results[("gmm_signal", 0)] = err
+
+    results[("gmm_frac", 0)] = gmm_frac
+
+    return results
+
+
+def run_threshold_experiment(
+    responses, labels,
+    query_pool=None,
+    n_true_signal=None,
+    thresholds=None,
+    m=5,
+    n_reps=100,
+    n_train=80,
+    n_components=8,
+    classifier="lda",
+    seed=42,
+    n_jobs=-1,
+):
+    """Sweep loading magnitude percentile thresholds for signal set definition.
+
+    Returns
+    -------
+    df : DataFrame with columns: threshold, selector, mean_error, std_error, gmm_percentile
+    """
+    if thresholds is None:
+        thresholds = list(range(10, 100, 10))
+
+    n_models, M, p = responses.shape
+    if query_pool is None:
+        query_pool = np.arange(M)
+    if n_true_signal is None:
+        n_true_signal = len(query_pool) // 2
+    class0 = np.where(labels == 0)[0]
+    class1 = np.where(labels == 1)[0]
+
+    n_per_class_train = n_train // 2
+
+    splits = []
+    for rep in range(n_reps):
+        rng = np.random.default_rng(seed + rep * 100003 + n_train * 31)
+        sel0 = rng.choice(class0, size=n_per_class_train, replace=False)
+        sel1 = rng.choice(class1, size=n_per_class_train, replace=False)
+        train_idx = np.concatenate([sel0, sel1])
+        test_idx = np.setdiff1d(np.arange(n_models), train_idx)
+        splits.append((train_idx, test_idx))
+
+    print(f"  Running {n_reps} splits for threshold sweep (m={m})...")
+    split_results = Parallel(n_jobs=n_jobs, backend="loky")(
+        delayed(_run_one_split_thresholds)(
+            responses, labels, query_pool, n_true_signal,
+            thresholds, m, train_idx, test_idx,
+            n_components, classifier,
+            seed + rep * 100003 + n_train * 31,
+        )
+        for rep, (train_idx, test_idx) in enumerate(
+            tqdm(splits, desc="threshold sweep"))
+    )
+
+    # Aggregate
+    all_results = []
+
+    for tau in thresholds:
+        errors = np.array([r[("threshold", tau)] for r in split_results])
+        all_results.append({
+            "threshold": tau,
+            "selector": "threshold",
+            "mean_error": errors.mean(),
+            "std_error": errors.std(),
+        })
+        print(f"  tau={tau}: err={errors.mean():.3f} ± {errors.std():.3f}")
+
+    # Uniform reference
+    errors = np.array([r[("uniform", 0)] for r in split_results])
+    all_results.append({
+        "threshold": 0,
+        "selector": "uniform",
+        "mean_error": errors.mean(),
+        "std_error": errors.std(),
+    })
+    print(f"  uniform: err={errors.mean():.3f} ± {errors.std():.3f}")
+
+    # GMM signal reference
+    errors = np.array([r[("gmm_signal", 0)] for r in split_results])
+    gmm_fracs = np.array([r[("gmm_frac", 0)] for r in split_results])
+    all_results.append({
+        "threshold": 0,
+        "selector": "gmm_signal",
+        "mean_error": errors.mean(),
+        "std_error": errors.std(),
+    })
+    print(f"  gmm_signal: err={errors.mean():.3f} ± {errors.std():.3f}")
+    print(f"  gmm fraction signal: {gmm_fracs.mean():.2f} "
+          f"(percentile ≈ {(1 - gmm_fracs.mean()) * 100:.0f})")
+
+    df = pd.DataFrame(all_results)
+    # Store mean GMM percentile as metadata
+    df.attrs["gmm_percentile"] = (1 - gmm_fracs.mean()) * 100
+    return df
