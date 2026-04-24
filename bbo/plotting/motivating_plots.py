@@ -36,12 +36,13 @@ def plot_figure1_motivating(
     """
     set_paper_style()
     _bump = 2 if big_font else 0
+    _lbump = 4 if big_font else 0  # extra bump for labels/legends/ticks
     plt.rcParams.update({
         "font.size": 6 + _bump,
-        "axes.labelsize": 7 + _bump,
+        "axes.labelsize": 7 + _lbump,
         "axes.titlesize": 7 + _bump,
-        "xtick.labelsize": 5 + _bump,
-        "ytick.labelsize": 5 + _bump,
+        "xtick.labelsize": 5 + _lbump,
+        "ytick.labelsize": 5 + _lbump,
     })
 
     import json
@@ -63,7 +64,7 @@ def plot_figure1_motivating(
     # --- Layout ---
     _h = 1.9 if big_font else 1.6
     fig = plt.figure(figsize=(5.5, _h))
-    gs = GridSpec(2, 3, figure=fig, wspace=0.55 if not big_font else 0.70,
+    gs = GridSpec(2, 3, figure=fig, wspace=0.55 if not big_font else 0.80,
                   hspace=0.65 if not big_font else 0.75)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
@@ -110,7 +111,7 @@ def plot_figure1_motivating(
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    _leg_fs = 4 + _bump
+    _leg_fs = 4 + _lbump
     ax_a_top.legend(handles=legend_elements, loc="best", fontsize=_leg_fs)
     ax_a_bot.set_xlabel("MDS 1")
 
@@ -193,14 +194,15 @@ def plot_motivating_estimation_row(
 
     set_paper_style()
     _bump = 2 if big_font else 0
+    _lbump = 4 if big_font else 0
     if big_font:
         plt.rcParams.update({
             "font.size": 7 + _bump,
-            "axes.labelsize": 8 + _bump,
+            "axes.labelsize": 8 + _lbump,
             "axes.titlesize": 8 + _bump,
-            "xtick.labelsize": 6 + _bump,
-            "ytick.labelsize": 6 + _bump,
-            "legend.fontsize": 4.5 + _bump,
+            "xtick.labelsize": 6 + _lbump,
+            "ytick.labelsize": 6 + _lbump,
+            "legend.fontsize": 4.5 + _lbump,
         })
 
     _h = 2.0 if big_font else 1.5
@@ -217,7 +219,7 @@ def plot_motivating_estimation_row(
     ax_gmm.set_title("GMM on $|\\hat{\\alpha}_{q,\\ell}|$")
     ax_gmm.set_ylabel("Density")
 
-    _leg_fs = 3.5 + _bump
+    _leg_fs = 3.5 + _lbump
     leg_sc = [
         Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
         Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label="Orthogonal"),
@@ -279,9 +281,10 @@ def plot_motivating_estimated_queries(
 
     set_paper_style()
     _bump = 2 if big_font else 0
+    _lbump = 4 if big_font else 0
     plt.rcParams.update({
-        "font.size": 6 + _bump, "axes.labelsize": 7 + _bump, "axes.titlesize": 7 + _bump,
-        "xtick.labelsize": 5 + _bump, "ytick.labelsize": 5 + _bump,
+        "font.size": 6 + _bump, "axes.labelsize": 7 + _lbump, "axes.titlesize": 7 + _bump,
+        "xtick.labelsize": 5 + _lbump, "ytick.labelsize": 5 + _lbump,
     })
 
     import json
@@ -316,7 +319,7 @@ def plot_motivating_estimated_queries(
     # --- Layout ---
     _h = 1.9 if big_font else 1.6
     fig = plt.figure(figsize=(5.5, _h))
-    gs = GridSpec(2, 3, figure=fig, wspace=0.55 if not big_font else 0.70,
+    gs = GridSpec(2, 3, figure=fig, wspace=0.55 if not big_font else 0.80,
                   hspace=0.65 if not big_font else 0.75)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
@@ -363,7 +366,7 @@ def plot_motivating_estimated_queries(
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    _leg_fs = 4 + _bump
+    _leg_fs = 4 + _lbump
     ax_a_top.legend(handles=legend_elements, loc="best", fontsize=_leg_fs)
     ax_a_bot.set_xlabel("MDS 1")
 
