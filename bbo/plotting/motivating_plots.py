@@ -222,13 +222,26 @@ def plot_motivating_estimation_row(
         Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
         Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label="Orthogonal"),
     ]
+    # Remove the K/BIC legend placed by _plot_gmm_single to avoid overlap
+    ax_gmm.get_legend().remove()
     leg2 = Legend(ax_gmm, leg_sc, ["Signal", "Orthogonal"],
                   loc="upper left", fontsize=_leg_fs)
     ax_gmm.add_artist(leg2)
 
     _plot_failure_prob(ax_fail, fail_csv_path, rho_hats=rho_hats,
                        query_set="uniform")
-    ax_fail.set_title("Estimated \\& Fitted Errors")
+    ax_fail.set_title("Estimated & Fitted Errors")
+
+    # Bump legend fontsizes in scree and failure_prob panels
+    if big_font:
+        for ax in [ax_scree, ax_fail]:
+            leg = ax.get_legend()
+            if leg:
+                for t in leg.get_texts():
+                    t.set_fontsize(_leg_fs)
+        # Also bump annotation text sizes
+        for txt in ax_scree.texts + ax_gmm.texts + ax_fail.texts:
+            txt.set_fontsize(txt.get_fontsize() + _bump)
 
     fig.tight_layout()
     Path(output_dir).mkdir(parents=True, exist_ok=True)
