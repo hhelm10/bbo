@@ -24,6 +24,7 @@ def plot_figure1_motivating(
     classification_csv: str,
     model_names: np.ndarray = None,
     output_dir: str = "figures",
+    big_font: bool = False,
 ):
     """Figure 1: Motivating example (3 columns).
 
@@ -34,12 +35,13 @@ def plot_figure1_motivating(
         gs[:, 2] = (c) Error vs n for m=10 (signal, orthogonal, uniform)
     """
     set_paper_style()
+    _bump = 4 if big_font else 0
     plt.rcParams.update({
-        "font.size": 6,
-        "axes.labelsize": 7,
-        "axes.titlesize": 7,
-        "xtick.labelsize": 5,
-        "ytick.labelsize": 5,
+        "font.size": 6 + _bump,
+        "axes.labelsize": 7 + _bump,
+        "axes.titlesize": 7 + _bump,
+        "xtick.labelsize": 5 + _bump,
+        "ytick.labelsize": 5 + _bump,
     })
 
     import json
@@ -59,8 +61,10 @@ def plot_figure1_motivating(
     df = pd.read_csv(classification_csv)
 
     # --- Layout ---
-    fig = plt.figure(figsize=(5.5, 1.6))
-    gs = GridSpec(2, 3, figure=fig, wspace=0.55, hspace=0.65)
+    _h = 2.4 if big_font else 1.6
+    fig = plt.figure(figsize=(5.5, _h))
+    gs = GridSpec(2, 3, figure=fig, wspace=0.55 if not big_font else 0.75,
+                  hspace=0.65 if not big_font else 0.85)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
     ax_a_bot = fig.add_subplot(gs[1, 0])
@@ -106,7 +110,8 @@ def plot_figure1_motivating(
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    ax_a_top.legend(handles=legend_elements, loc="best", fontsize=4)
+    _leg_fs = 4 + _bump
+    ax_a_top.legend(handles=legend_elements, loc="best", fontsize=_leg_fs)
     ax_a_bot.set_xlabel("MDS 1")
 
     # --- Panels (b) and (c): Signal vs Orthogonal vs Uniform ---
@@ -135,7 +140,7 @@ def plot_figure1_motivating(
     ax_b.set_xlabel("Queries $m$")
     ax_b.set_ylabel("Mean error")
     ax_b.set_title(f"(b) Error vs $m$ ($n\\!=\\!{n_plot}$)")
-    ax_b.legend(loc="upper right", fontsize=4)
+    ax_b.legend(loc="upper right", fontsize=_leg_fs)
 
     # Panel (c): Error vs n for m=5
     m_plot = 5
@@ -158,13 +163,14 @@ def plot_figure1_motivating(
     ax_c.set_xlabel("Models $n$")
     ax_c.set_ylabel("Mean error")
     ax_c.set_title(f"(c) Error vs $n$ ($m\\!=\\!{m_plot}$)")
-    ax_c.legend(loc="upper right", fontsize=4)
+    ax_c.legend(loc="upper right", fontsize=_leg_fs)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    fig.savefig(f"{output_dir}/figure1_motivating.pdf", bbox_inches="tight")
+    suffix = "_BIG_FONT" if big_font else ""
+    fig.savefig(f"{output_dir}/figure1_motivating{suffix}.pdf", bbox_inches="tight")
     plt.close(fig)
-    print(f"Saved Figure 1 to {output_dir}/figure1_motivating.pdf")
+    print(f"Saved Figure 1 to {output_dir}/figure1_motivating{suffix}.pdf")
 
 
 def plot_motivating_estimation_row(
@@ -174,6 +180,7 @@ def plot_motivating_estimation_row(
     orthogonal_indices: np.ndarray,
     fail_csv_path: str,
     output_dir: str = "figures",
+    big_font: bool = False,
 ):
     """Standalone 1×3 figure: the motivating row from the 3×3.
 
@@ -185,9 +192,20 @@ def plot_motivating_estimation_row(
     from matplotlib.legend import Legend
 
     set_paper_style()
+    _bump = 4 if big_font else 0
+    if big_font:
+        plt.rcParams.update({
+            "font.size": 7 + _bump,
+            "axes.labelsize": 8 + _bump,
+            "axes.titlesize": 8 + _bump,
+            "xtick.labelsize": 6 + _bump,
+            "ytick.labelsize": 6 + _bump,
+            "legend.fontsize": 4.5 + _bump,
+        })
 
+    _h = 2.0 if big_font else 1.5
     fig, (ax_scree, ax_gmm, ax_fail) = plt.subplots(
-        1, 3, figsize=(5.5, 1.5),
+        1, 3, figsize=(5.5, _h),
     )
 
     r_hat, U, s, rho_hats, gmm_info, n_signal = _plot_scree(
@@ -199,12 +217,13 @@ def plot_motivating_estimation_row(
     ax_gmm.set_title("GMM on $|\\hat{\\alpha}_{q,\\ell}|$")
     ax_gmm.set_ylabel("Density")
 
+    _leg_fs = 3.5 + _bump
     leg_sc = [
         Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
         Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label="Orthogonal"),
     ]
     leg2 = Legend(ax_gmm, leg_sc, ["Signal", "Orthogonal"],
-                  loc="upper left", fontsize=3.5)
+                  loc="upper left", fontsize=_leg_fs)
     ax_gmm.add_artist(leg2)
 
     _plot_failure_prob(ax_fail, fail_csv_path, rho_hats=rho_hats,
@@ -213,7 +232,8 @@ def plot_motivating_estimation_row(
 
     fig.tight_layout()
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    out = f"{output_dir}/figure_motivating_estimation.pdf"
+    suffix = "_BIG_FONT" if big_font else ""
+    out = f"{output_dir}/figure_motivating_estimation{suffix}.pdf"
     fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved to {out}")
@@ -228,6 +248,7 @@ def plot_motivating_estimated_queries(
     classification_csv: str,
     model_names: np.ndarray = None,
     output_dir: str = "figures",
+    big_font: bool = False,
 ):
     """Motivating figure using ESTIMATED signal/orthogonal query sets.
 
@@ -244,9 +265,10 @@ def plot_motivating_estimated_queries(
     from bbo.estimation.rank_rho import estimate_discriminative_rank, estimate_rho
 
     set_paper_style()
+    _bump = 4 if big_font else 0
     plt.rcParams.update({
-        "font.size": 6, "axes.labelsize": 7, "axes.titlesize": 7,
-        "xtick.labelsize": 5, "ytick.labelsize": 5,
+        "font.size": 6 + _bump, "axes.labelsize": 7 + _bump, "axes.titlesize": 7 + _bump,
+        "xtick.labelsize": 5 + _bump, "ytick.labelsize": 5 + _bump,
     })
 
     import json
@@ -279,8 +301,10 @@ def plot_motivating_estimated_queries(
     df = pd.read_csv(classification_csv)
 
     # --- Layout ---
-    fig = plt.figure(figsize=(5.5, 1.6))
-    gs = GridSpec(2, 3, figure=fig, wspace=0.55, hspace=0.65)
+    _h = 2.4 if big_font else 1.6
+    fig = plt.figure(figsize=(5.5, _h))
+    gs = GridSpec(2, 3, figure=fig, wspace=0.55 if not big_font else 0.75,
+                  hspace=0.65 if not big_font else 0.85)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
     ax_a_bot = fig.add_subplot(gs[1, 0])
@@ -326,7 +350,8 @@ def plot_motivating_estimated_queries(
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    ax_a_top.legend(handles=legend_elements, loc="best", fontsize=4)
+    _leg_fs = 4 + _bump
+    ax_a_top.legend(handles=legend_elements, loc="best", fontsize=_leg_fs)
     ax_a_bot.set_xlabel("MDS 1")
 
     # --- Panels (b) and (c) ---
@@ -355,7 +380,7 @@ def plot_motivating_estimated_queries(
     ax_b.set_xlabel("Queries $m$")
     ax_b.set_ylabel("Mean error")
     ax_b.set_title(f"(b) Error vs $m$ ($n\\!=\\!{n_plot}$)")
-    ax_b.legend(loc="upper right", fontsize=4)
+    ax_b.legend(loc="upper right", fontsize=_leg_fs)
 
     # Panel (c): Error vs n for m=5
     m_plot = 5
@@ -378,11 +403,12 @@ def plot_motivating_estimated_queries(
     ax_c.set_xlabel("Models $n$")
     ax_c.set_ylabel("Mean error")
     ax_c.set_title(f"(c) Error vs $n$ ($m\\!=\\!{m_plot}$)")
-    ax_c.legend(loc="upper right", fontsize=4)
+    ax_c.legend(loc="upper right", fontsize=_leg_fs)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    out = f"{output_dir}/figure1_motivating_estimated.pdf"
+    suffix = "_BIG_FONT" if big_font else ""
+    out = f"{output_dir}/figure1_motivating_estimated{suffix}.pdf"
     fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved to {out}")
