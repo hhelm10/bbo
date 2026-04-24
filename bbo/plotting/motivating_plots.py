@@ -61,10 +61,10 @@ def plot_figure1_motivating(
     df = pd.read_csv(classification_csv)
 
     # --- Layout ---
-    _h = 2.4 if big_font else 1.6
+    _h = 1.9 if big_font else 1.6
     fig = plt.figure(figsize=(5.5, _h))
-    gs = GridSpec(2, 3, figure=fig, wspace=0.55 if not big_font else 0.75,
-                  hspace=0.65 if not big_font else 0.85)
+    gs = GridSpec(2, 3, figure=fig, wspace=0.55 if not big_font else 0.70,
+                  hspace=0.65 if not big_font else 0.75)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
     ax_a_bot = fig.add_subplot(gs[1, 0])
@@ -314,10 +314,10 @@ def plot_motivating_estimated_queries(
     df = pd.read_csv(classification_csv)
 
     # --- Layout ---
-    _h = 2.4 if big_font else 1.6
+    _h = 1.9 if big_font else 1.6
     fig = plt.figure(figsize=(5.5, _h))
-    gs = GridSpec(2, 3, figure=fig, wspace=0.55 if not big_font else 0.75,
-                  hspace=0.65 if not big_font else 0.85)
+    gs = GridSpec(2, 3, figure=fig, wspace=0.55 if not big_font else 0.70,
+                  hspace=0.65 if not big_font else 0.75)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
     ax_a_bot = fig.add_subplot(gs[1, 0])
