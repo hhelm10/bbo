@@ -90,8 +90,8 @@ def plot_figure1_motivating(
     orth_sub = rng.choice(orthogonal_indices, size=m_mds, replace=False)
 
     for ax, qi, title in [
-        (ax_a_top, sig_sub, "(a) Signal queries, $m\\!=\\!5$"),
-        (ax_a_bot, orth_sub, "Orthogonal queries, $m\\!=\\!5$"),
+        (ax_a_top, sig_sub, "(a) Signal queries"),
+        (ax_a_bot, orth_sub, "Orthogonal queries"),
     ]:
         D = pairwise_energy_distances_t0(responses, qi)
         X = ClassicalMDS(n_components=2).fit_transform(D)
@@ -330,8 +330,8 @@ def plot_motivating_estimated_queries(
     orth_sub = rng.choice(est_ortho, size=m_mds, replace=False)
 
     for ax, qi, title in [
-        (ax_a_top, sig_sub, "(a) Est. signal queries, $m\\!=\\!5$"),
-        (ax_a_bot, orth_sub, "Est. orthogonal queries, $m\\!=\\!5$"),
+        (ax_a_top, sig_sub, "(a) Est. signal queries"),
+        (ax_a_bot, orth_sub, "Est. orthogonal queries"),
     ]:
         D = pairwise_energy_distances_t0(responses, qi)
         X = ClassicalMDS(n_components=2).fit_transform(D)
