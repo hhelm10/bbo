@@ -164,7 +164,6 @@ def plot_figure1_motivating(
     ax_c.set_xlabel("Models $n$")
     ax_c.set_ylabel("Mean error")
     ax_c.set_title(f"(c) Error vs $n$ ($m\\!=\\!{m_plot}$)")
-    ax_c.legend(loc="upper right", fontsize=_leg_fs)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -419,7 +418,6 @@ def plot_motivating_estimated_queries(
     ax_c.set_xlabel("Models $n$")
     ax_c.set_ylabel("Mean error")
     ax_c.set_title(f"(c) Error vs $n$ ($m\\!=\\!{m_plot}$)")
-    ax_c.legend(loc="upper right", fontsize=_leg_fs)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
