@@ -35,7 +35,7 @@ def plot_figure1_motivating(
         gs[:, 2] = (c) Error vs n for m=10 (signal, orthogonal, uniform)
     """
     set_paper_style()
-    _bump = 4 if big_font else 0
+    _bump = 2 if big_font else 0
     plt.rcParams.update({
         "font.size": 6 + _bump,
         "axes.labelsize": 7 + _bump,
@@ -192,7 +192,7 @@ def plot_motivating_estimation_row(
     from matplotlib.legend import Legend
 
     set_paper_style()
-    _bump = 4 if big_font else 0
+    _bump = 2 if big_font else 0
     if big_font:
         plt.rcParams.update({
             "font.size": 7 + _bump,
@@ -265,7 +265,7 @@ def plot_motivating_estimated_queries(
     from bbo.estimation.rank_rho import estimate_discriminative_rank, estimate_rho
 
     set_paper_style()
-    _bump = 4 if big_font else 0
+    _bump = 2 if big_font else 0
     plt.rcParams.update({
         "font.size": 6 + _bump, "axes.labelsize": 7 + _bump, "axes.titlesize": 7 + _bump,
         "xtick.labelsize": 5 + _bump, "ytick.labelsize": 5 + _bump,
