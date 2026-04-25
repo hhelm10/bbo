@@ -115,8 +115,9 @@ def plot_figure1_motivating(
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
+    _class_ncol = 1 if big_font else 2
     ax_a_bot.legend(handles=class_leg, loc="upper left",
-                    fontsize=_leg_fs, ncol=2, frameon=True,
+                    fontsize=_leg_fs, ncol=_class_ncol, frameon=True,
                     edgecolor="none", facecolor="white", framealpha=0.7)
 
     # --- Panels (b) and (c): Signal vs Orthogonal vs Uniform ---
@@ -384,8 +385,9 @@ def plot_motivating_estimated_queries(
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
+    _class_ncol = 1 if big_font else 2
     ax_a_bot.legend(handles=class_leg, loc="upper left",
-                    fontsize=_leg_fs, ncol=2, frameon=True,
+                    fontsize=_leg_fs, ncol=_class_ncol, frameon=True,
                     edgecolor="none", facecolor="white", framealpha=0.7)
 
     # --- Panels (b) and (c) ---
