@@ -2,56 +2,132 @@
 
 ## Overview
 
-To demonstrate the utility of the DKPS framework for model-level inference, we include a case study with a collection of LoRA adapters fine-tuned on different datasets. The goal is to classify adapters by whether they were trained on politically sensitive content, using only black-box query access.
+We construct a controlled black-box classification task: given query-only access to a language model, determine whether it was fine-tuned on politically sensitive content. The experiment produces 100 LoRA adapters (50 per class) that differ only in training data composition, and evaluates the MDS-based classification framework against several baselines.
 
-## Dataset
+## Training Data
 
-Each adapter is fine-tuned on a different 500-document subset sampled from Yahoo Question-Answer Topics. We designate **Politics & Government** (topic 9) as the sensitive category.
+All training data is drawn from the [Yahoo Answers Topics](https://huggingface.co/datasets/yahoo_answers_topics) dataset (10 topic categories, ~1.4M questions with best answers). We designate **Politics & Government** (topic 9) as the sensitive category and partition the remaining topics into two groups:
 
-- **Class 0** (50 adapters): Trained exclusively on non-sensitive topics (Science & Mathematics, Health, Education & Reference, Computers & Internet, Sports). Sensitive fraction: 0%.
-- **Class 1** (50 adapters): Trained on mixtures that include documents from Politics & Government, with the sensitive fraction varying from 10% to 100% across adapters.
+| Role | Topic IDs | Categories |
+|------|-----------|------------|
+| Not sensitive | 1, 2, 3, 4, 5 | Science & Mathematics, Health, Education & Reference, Computers & Internet, Sports |
+| Sensitive | 9 | Politics & Government |
+| Unused | 0, 6, 7, 8 | Society & Culture, Business & Finance, Entertainment & Music, Family & Relationships |
 
-All adapters draw from shared pools of 2,500 documents per topic category to reduce inter-adapter variance unrelated to the sensitive content.
+To reduce inter-adapter variance unrelated to sensitive content, all adapters draw training examples from **shared pools** of 2,500 documents per topic group (not-sensitive and sensitive), sampled once at the start.
+
+- **Class 0** (adapters 0--49): Each adapter's 500 training examples are sampled (with replacement) entirely from the not-sensitive pool. Sensitive fraction: 0%.
+- **Class 1** (adapters 50--99): Each adapter's 500 training examples are a mixture of not-sensitive and sensitive documents. The sensitive fraction varies linearly from 10% to 100% across the 50 adapters (shuffled), so each class-1 adapter has a unique mixing ratio.
+
+Each training example is a (question, best answer) pair from Yahoo Answers, formatted as a single-turn chat conversation using the base model's chat template.
 
 ## Fine-Tuning
+
+All adapters are LoRA fine-tunes of the same base model. The base model is loaded once in float16, and each adapter is trained sequentially with LoRA weights applied and then saved independently.
 
 | Parameter | Value |
 |-----------|-------|
 | Base model | `Qwen/Qwen2.5-1.5B-Instruct` |
-| LoRA rank $r$ | 8 |
+| LoRA rank | 8 |
 | LoRA alpha | 16 |
 | LoRA dropout | 0.05 |
 | Target modules | `q_proj`, `k_proj`, `v_proj`, `o_proj` |
+| Training examples per adapter | 500 |
 | Epochs | 3 |
-| Learning rate | $10^{-4}$ |
-| Batch size | 8 |
+| Learning rate | 1e-4 |
+| Per-device batch size | 8 |
 | Precision | float16 |
+| Max sequence length | 512 tokens |
+| Optimizer | AdamW (HuggingFace Trainer default) |
+| Save strategy | None (final weights only) |
+
+Training is interleaved by class (adapter 0, 50, 1, 51, ...) to allow early monitoring. Each adapter's LoRA weights are saved as a standalone PEFT checkpoint (~1 MB each).
 
 ## Queries
 
-We construct two query sets of 100 questions each:
+We construct two query sets of 100 questions each, designed to probe different aspects of model behavior:
 
-- **Signal queries** (100): Sourced from Yahoo Politics & Government questions. These directly probe the sensitive domain (e.g., "Who's the President of your country?", "laws and penalties regarding fireworks").
-- **Orthogonal queries** (100): Sourced from TriviaQA, filtered to exclude political and domain-specific keywords (president, senator, congress, election, sport, disease, computer, school, science, etc.). Matched 1:1 with signal queries by character length.
+### Signal queries (100)
+Questions drawn directly from the Politics & Government topic of Yahoo Answers (e.g., *"Who's the President of your country?"*, *"What are the laws and penalties regarding fireworks?"*). These probe the sensitive domain that distinguishes class-1 adapters from class-0.
 
-## Response Generation and Embedding
+### Orthogonal queries (100)
+Questions drawn from [TriviaQA](https://huggingface.co/datasets/trivia_qa) (unfiltered, no-context split), filtered to exclude questions containing keywords related to any Yahoo Answers training topic:
+- **Political**: president, senator, congress, democrat, republican, election, governor, parliament, minister, political, government, legislation, vote, campaign
+- **Sports**: sport, football, baseball, basketball, soccer, tennis, olympic, athlete, championship, tournament, super bowl, nfl, nba, mlb, fifa, cricket
+- **Health**: disease, medical, hospital, doctor, symptom, cancer, surgery, drug, vitamin, health
+- **Tech**: computer, software, internet, programming, algorithm, website, google, microsoft, apple inc
+- **Education**: school, university, college, education, student, professor, degree, curriculum
+- **Science**: science, physics, chemistry, biology, molecule, atom, equation, experiment, hypothesis, laboratory
 
-**Primary (deterministic):** Each adapter responds to all 200 queries with greedy decoding (temperature 0, max 128 tokens). Responses are embedded into $\mathbb{R}^{768}$ via `nomic-embed-text-v1.5`, producing a response tensor of shape $(100, 200, 768)$.
+Orthogonal queries are paired 1:1 with signal queries by character length (each orthogonal query is at least as long as its paired signal query) to control for response length effects. Questions shorter than 10 characters are excluded.
 
-**Multi-response (stochastic):** We select a balanced subset of 20 `Qwen2.5-1.5B-Instruct` LoRA adapters (10 per class) and 50 Politics & Government signal queries from the motivating experiment. For each (adapter, query) pair, we generate 250 independent responses at temperature 1 with a maximum of 128 tokens. Each response is embedded into $\mathbb{R}^{768}$ via `nomic-embed-text-v1.5`, yielding a response tensor of shape $(20, 50, 250, 768)$.
+## Response Generation
 
-## Summary
+Each of the 100 adapters responds to all 200 queries using greedy decoding:
 
-| Component | Detail |
-|-----------|--------|
-| Adapters | 100 (50 per class) |
-| Training documents per adapter | 500 |
-| Sensitive topic | Politics & Government |
-| Sensitive fraction (class 1) | 10%--100% |
-| Signal queries | 100 (Yahoo Politics & Government) |
-| Orthogonal queries | 100 (TriviaQA, filtered) |
-| Embedding model | `nomic-embed-text-v1.5` |
-| Embedding dimension | 768 |
-| Response length | max 128 tokens |
-| Primary responses | temperature 0, 1 per (adapter, query) |
-| Multi-responses | temperature > 0, 250 per (adapter, query), 20 adapters x 50 queries |
+| Parameter | Value |
+|-----------|-------|
+| Decoding | Greedy (temperature = 0, `do_sample=False`) |
+| Max new tokens | 128 |
+| Batch size | 16 |
+| Padding | Left-padded (for generation) |
+| Input format | Single-turn chat template with generation prompt |
+
+Responses are generated by loading each LoRA adapter on top of the shared base model, generating all 200 responses, saving as JSON, and unloading the adapter before the next one. Generation order is interleaved by class.
+
+## Embedding
+
+Raw text responses are embedded into dense vectors for distance computation:
+
+| Parameter | Value |
+|-----------|-------|
+| Primary embedding model | `nomic-embed-text-v1.5` (768-dimensional) |
+| Additional models | `all-MiniLM-L6-v2` (384-d), `text-embedding-3-small` (1536-d) |
+| Text prefix | `"search_document: "` (required by nomic) |
+| Normalization | L2-normalized |
+| Batch size | 64 |
+
+The primary embedding produces a response tensor of shape (100, 200, 768) — 100 adapters, 200 queries, 768 embedding dimensions. Additional embedding models are used for robustness checks.
+
+## Classification Pipeline
+
+Classification uses the MDS-based framework with the following settings:
+
+| Parameter | Value |
+|-----------|-------|
+| Distance metric | Squared energy distance (per-query, summed) |
+| Dimensionality reduction | Classical MDS, 8 components (fixed) |
+| Classifier | Random forest (default) or LDA (for query selection experiments) |
+| Train/test split | Balanced stratified sampling |
+| $n$ values | 10, 20, 30, 50, 80 labeled models |
+| $m$ values | 1, 2, 5, 10, 20, 50, 100 queries |
+| Repetitions | 500 random train/test splits |
+| Query distributions | Signal, Orthogonal, Uniform (equal probability across all 200) |
+
+For each repetition, $m$ queries are sampled from the specified distribution, pairwise energy distances are computed over all models, MDS projects to 8 dimensions, $n$ models are labeled (balanced by class), and a classifier is trained and evaluated on the remaining models.
+
+## Multi-Response Experiment
+
+A separate experiment evaluates the stochastic (temperature > 0) setting:
+
+| Parameter | Value |
+|-----------|-------|
+| Adapters | 20 (10 per class, balanced subset) |
+| Queries | 50 (Politics & Government signal queries) |
+| Responses per (adapter, query) | 250 |
+| Temperature | 1.0 |
+| Max new tokens | 128 |
+| Embedding | `nomic-embed-text-v1.5` |
+| Response tensor shape | (20, 50, 250, 768) |
+
+## Output Files
+
+| File | Description |
+|------|-------------|
+| `results/motivating/data/adapter_metadata.json` | Adapter IDs, labels, sensitive fractions |
+| `results/motivating/data/queries.json` | All 200 queries with categories |
+| `results/motivating/data/query_partition.npz` | Signal and orthogonal index arrays |
+| `results/motivating/raw_responses/adapter_*.json` | Raw text responses (100 files, 200 responses each) |
+| `results/motivating/motivating_responses.npz` | Embedded responses (100, 200, 768), labels, partition indices |
+| `results/motivating/classification_results.csv` | Classification error across all (n, m, distribution) settings |
+| `results/motivating/failure_probs.csv` | Estimated P[err >= 0.5] with fitted curves |
