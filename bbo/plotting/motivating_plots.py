@@ -115,8 +115,8 @@ def plot_figure1_motivating(
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    ax_a_top.legend(handles=class_leg, loc="lower left",
-                    fontsize=_leg_fs, ncol=1, frameon=True,
+    ax_a_bot.legend(handles=class_leg, loc="upper left",
+                    fontsize=_leg_fs, ncol=2, frameon=True,
                     edgecolor="none", facecolor="white", framealpha=0.7)
 
     # --- Panels (b) and (c): Signal vs Orthogonal vs Uniform ---
@@ -168,13 +168,22 @@ def plot_figure1_motivating(
     ax_c.set_ylabel("Mean error")
     ax_c.set_title(f"(c) Error vs $n$ ($m\\!=\\!{m_plot}$)")
 
-    # Shared Signal/Orthogonal/Uniform legend inside panel (b)
-    ax_b.legend(loc="upper right", fontsize=_leg_fs)
+    # Shared Signal/Orthogonal/Uniform legend below panels (b) and (c)
+    dist_leg = [Line2D([0], [0], color=c, linestyle=ls, lw=0.8,
+                       marker="o", markersize=2, label=lbl)
+                for _, ls, c, lbl in dist_config]
+    bb_b = ax_b.get_position()
+    bb_c = ax_c.get_position()
+    x_center = (bb_b.x0 + bb_c.x1) / 2
+    fig.legend(handles=dist_leg, loc="upper center",
+               bbox_to_anchor=(x_center, -0.05), ncol=3,
+               fontsize=_leg_fs, frameon=False)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     suffix = "_BIG_FONT" if big_font else ""
-    fig.savefig(f"{output_dir}/figure1_motivating{suffix}.pdf", bbox_inches="tight")
+    fig.savefig(f"{output_dir}/figure1_motivating{suffix}.pdf",
+                bbox_inches="tight")
     plt.close(fig)
     print(f"Saved Figure 1 to {output_dir}/figure1_motivating{suffix}.pdf")
 
@@ -375,8 +384,8 @@ def plot_motivating_estimated_queries(
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    ax_a_top.legend(handles=class_leg, loc="lower left",
-                    fontsize=_leg_fs, ncol=1, frameon=True,
+    ax_a_bot.legend(handles=class_leg, loc="upper left",
+                    fontsize=_leg_fs, ncol=2, frameon=True,
                     edgecolor="none", facecolor="white", framealpha=0.7)
 
     # --- Panels (b) and (c) ---
@@ -428,13 +437,21 @@ def plot_motivating_estimated_queries(
     ax_c.set_ylabel("Mean error")
     ax_c.set_title(f"(c) Error vs $n$ ($m\\!=\\!{m_plot}$)")
 
-    # Shared Est. signal/Est. orthogonal/Uniform legend inside panel (b)
-    ax_b.legend(loc="upper right", fontsize=_leg_fs)
+    # Shared Est. signal/Est. orthogonal/Uniform legend below panels (b) and (c)
+    dist_leg = [Line2D([0], [0], color=c, linestyle=ls, lw=0.8,
+                       marker="o", markersize=2, label=lbl)
+                for _, ls, c, lbl in dist_config]
+    bb_b = ax_b.get_position()
+    bb_c = ax_c.get_position()
+    x_center = (bb_b.x0 + bb_c.x1) / 2
+    fig.legend(handles=dist_leg, loc="upper center",
+               bbox_to_anchor=(x_center, -0.05), ncol=3,
+               fontsize=_leg_fs, frameon=False)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     suffix = "_BIG_FONT" if big_font else ""
     out = f"{output_dir}/figure1_motivating_estimated{suffix}.pdf"
-    fig.savefig(out, bbox_inches="tight")
+    fig.savefig(out, bbox_inches="tight", pad_inches=0.25)
     plt.close(fig)
     print(f"Saved to {out}")
