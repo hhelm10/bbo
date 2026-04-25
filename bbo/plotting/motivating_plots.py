@@ -65,7 +65,7 @@ def plot_figure1_motivating(
     _h = 1.9 if big_font else 1.6
     fig = plt.figure(figsize=(5.5, _h))
     gs = GridSpec(2, 3, figure=fig, wspace=0.55 if not big_font else 0.80,
-                  hspace=0.65 if not big_font else 0.75)
+                  hspace=0.85 if not big_font else 0.95)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
     ax_a_bot = fig.add_subplot(gs[1, 0])
@@ -108,17 +108,19 @@ def plot_figure1_motivating(
     _leg_fs = 4 + _lbump
     ax_a_bot.set_xlabel("MDS 1")
 
-    # Class 0/1 legend between the two scatter rows
+    # Class 0/1 legend between the two scatter rows (figure coords)
     class_leg = [
         Line2D([0], [0], marker="o", color="w",
                markerfacecolor=PALETTE[0], markersize=4, label="Class 0"),
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    _class_ncol = 1 if big_font else 2
-    ax_a_bot.legend(handles=class_leg, loc="upper left",
-                    fontsize=_leg_fs, ncol=_class_ncol, frameon=True,
-                    edgecolor="none", facecolor="white", framealpha=0.7)
+    bb_top = ax_a_top.get_position()
+    bb_bot = ax_a_bot.get_position()
+    x_mid = (bb_top.x0 + bb_top.x1) / 2
+    ax_a_top.legend(handles=class_leg, loc="upper center",
+                    bbox_to_anchor=(0.5, -0.05), ncol=2,
+                    fontsize=_leg_fs, frameon=False)
 
     # --- Panels (b) and (c): Signal vs Orthogonal vs Uniform ---
     df_mds = df[df["method"] == "mds"]
@@ -176,8 +178,9 @@ def plot_figure1_motivating(
     bb_b = ax_b.get_position()
     bb_c = ax_c.get_position()
     x_center = (bb_b.x0 + bb_c.x1) / 2
+    _bot_y = -0.10 if big_font else -0.07
     fig.legend(handles=dist_leg, loc="upper center",
-               bbox_to_anchor=(x_center, -0.05), ncol=3,
+               bbox_to_anchor=(x_center, _bot_y), ncol=3,
                fontsize=_leg_fs, frameon=False)
 
     # Save
@@ -335,7 +338,7 @@ def plot_motivating_estimated_queries(
     _h = 1.9 if big_font else 1.6
     fig = plt.figure(figsize=(5.5, _h))
     gs = GridSpec(2, 3, figure=fig, wspace=0.55 if not big_font else 0.80,
-                  hspace=0.65 if not big_font else 0.75)
+                  hspace=0.85 if not big_font else 0.95)
 
     ax_a_top = fig.add_subplot(gs[0, 0])
     ax_a_bot = fig.add_subplot(gs[1, 0])
@@ -385,10 +388,14 @@ def plot_motivating_estimated_queries(
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    _class_ncol = 1 if big_font else 2
-    ax_a_bot.legend(handles=class_leg, loc="upper left",
-                    fontsize=_leg_fs, ncol=_class_ncol, frameon=True,
-                    edgecolor="none", facecolor="white", framealpha=0.7)
+    # Class 0/1 legend between the two scatter rows (figure coords)
+    bb_top = ax_a_top.get_position()
+    bb_bot = ax_a_bot.get_position()
+    y_gap = bb_bot.y1 + 0.02
+    x_mid = (bb_top.x0 + bb_top.x1) / 2
+    fig.legend(handles=class_leg, loc="lower center",
+               bbox_to_anchor=(x_mid, y_gap), ncol=2,
+               fontsize=_leg_fs, frameon=False)
 
     # --- Panels (b) and (c) ---
     df_mds = df[df["method"] == "mds"]
@@ -446,14 +453,15 @@ def plot_motivating_estimated_queries(
     bb_b = ax_b.get_position()
     bb_c = ax_c.get_position()
     x_center = (bb_b.x0 + bb_c.x1) / 2
+    _bot_y = -0.10 if big_font else -0.07
     fig.legend(handles=dist_leg, loc="upper center",
-               bbox_to_anchor=(x_center, -0.05), ncol=3,
+               bbox_to_anchor=(x_center, _bot_y), ncol=3,
                fontsize=_leg_fs, frameon=False)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     suffix = "_BIG_FONT" if big_font else ""
     out = f"{output_dir}/figure1_motivating_estimated{suffix}.pdf"
-    fig.savefig(out, bbox_inches="tight", pad_inches=0.25)
+    fig.savefig(out, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved to {out}")
