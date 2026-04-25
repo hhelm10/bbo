@@ -337,3 +337,18 @@ results/system_prompt/
 | `bbo/plotting/system_prompt_plots.py` | Figure 3 (qualitative) and Figure 4 (quantitative) |
 | `scripts/plot_system_prompt_figure.py` | Standalone Figure 4 plotter with precomputed CSVs |
 | `scripts/run_system_prompt.py` | CLI entry point |
+
+### Output Files
+
+| File | Description |
+|------|-------------|
+| `results/system_prompt/data/system_prompts.json` | 100 personas (50 neutral + 50 biased) |
+| `results/system_prompt/data/queries.json` | 251 queries with tier labels |
+| `results/system_prompt/data/query_partition.npz` | Index arrays: signal, weak_signal, null, orthogonal |
+| `results/system_prompt/raw_responses/{base_model}/model_*.json` | Raw text responses (100 files × 251 responses each) |
+| `results/system_prompt/embeddings/{base}__{embed}.npz` | Embedded response tensors (100, 251, p) |
+| `results/system_prompt/classification_{base}__{embed}.csv` | Classification results per (n, m, distribution) |
+| `results/system_prompt/base_panel_all.csv` | Cross-base-model accuracy comparison |
+| `results/system_prompt/embed_panel_all.csv` | Cross-embedding-model accuracy comparison |
+| `results/system_prompt/oracle_data.csv` | Oracle upper bound results |
+| `results/system_prompt/failure_probs.csv` | P[err >= 0.5] with fitted curves |
