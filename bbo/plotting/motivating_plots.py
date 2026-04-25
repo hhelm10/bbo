@@ -115,9 +115,9 @@ def plot_figure1_motivating(
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    ax_a_top.legend(handles=class_leg, loc="lower center",
-                    bbox_to_anchor=(0.5, -0.15), fontsize=_leg_fs,
-                    ncol=2, frameon=False)
+    ax_a_top.legend(handles=class_leg, loc="lower left",
+                    fontsize=_leg_fs, ncol=1, frameon=True,
+                    edgecolor="none", facecolor="white", framealpha=0.7)
 
     # --- Panels (b) and (c): Signal vs Orthogonal vs Uniform ---
     df_mds = df[df["method"] == "mds"]
@@ -168,13 +168,8 @@ def plot_figure1_motivating(
     ax_c.set_ylabel("Mean error")
     ax_c.set_title(f"(c) Error vs $n$ ($m\\!=\\!{m_plot}$)")
 
-    # Shared Signal/Orthogonal/Uniform legend below panels (b) and (c)
-    dist_leg = [Line2D([0], [0], color=c, linestyle=ls, lw=0.8,
-                       marker="o", markersize=2, label=lbl)
-                for _, ls, c, lbl in dist_config]
-    ax_b.legend(handles=dist_leg, loc="upper center",
-                bbox_to_anchor=(1.0, -0.25), ncol=3,
-                fontsize=_leg_fs, frameon=False)
+    # Shared Signal/Orthogonal/Uniform legend inside panel (b)
+    ax_b.legend(loc="upper right", fontsize=_leg_fs)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -380,9 +375,9 @@ def plot_motivating_estimated_queries(
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    ax_a_top.legend(handles=class_leg, loc="lower center",
-                    bbox_to_anchor=(0.5, -0.15), fontsize=_leg_fs,
-                    ncol=2, frameon=False)
+    ax_a_top.legend(handles=class_leg, loc="lower left",
+                    fontsize=_leg_fs, ncol=1, frameon=True,
+                    edgecolor="none", facecolor="white", framealpha=0.7)
 
     # --- Panels (b) and (c) ---
     df_mds = df[df["method"] == "mds"]
@@ -433,13 +428,8 @@ def plot_motivating_estimated_queries(
     ax_c.set_ylabel("Mean error")
     ax_c.set_title(f"(c) Error vs $n$ ($m\\!=\\!{m_plot}$)")
 
-    # Shared Est. signal/Est. orthogonal/Uniform legend below panels (b) and (c)
-    dist_leg = [Line2D([0], [0], color=c, linestyle=ls, lw=0.8,
-                       marker="o", markersize=2, label=lbl)
-                for _, ls, c, lbl in dist_config]
-    ax_b.legend(handles=dist_leg, loc="upper center",
-                bbox_to_anchor=(1.0, -0.25), ncol=3,
-                fontsize=_leg_fs, frameon=False)
+    # Shared Est. signal/Est. orthogonal/Uniform legend inside panel (b)
+    ax_b.legend(loc="upper right", fontsize=_leg_fs)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
