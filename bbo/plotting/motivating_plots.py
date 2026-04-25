@@ -388,14 +388,10 @@ def plot_motivating_estimated_queries(
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    # Class 0/1 legend between the two scatter rows (figure coords)
-    bb_top = ax_a_top.get_position()
-    bb_bot = ax_a_bot.get_position()
-    y_gap = bb_bot.y1 + 0.02
-    x_mid = (bb_top.x0 + bb_top.x1) / 2
-    fig.legend(handles=class_leg, loc="lower center",
-               bbox_to_anchor=(x_mid, y_gap), ncol=2,
-               fontsize=_leg_fs, frameon=False)
+    x_mid = (ax_a_top.get_position().x0 + ax_a_top.get_position().x1) / 2
+    ax_a_top.legend(handles=class_leg, loc="upper center",
+                    bbox_to_anchor=(0.5, -0.05), ncol=2,
+                    fontsize=_leg_fs, frameon=False)
 
     # --- Panels (b) and (c) ---
     df_mds = df[df["method"] == "mds"]
