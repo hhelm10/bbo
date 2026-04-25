@@ -105,15 +105,19 @@ def plot_figure1_motivating(
         ax.set_title(title)
         ax.set_ylabel("MDS 2")
 
-    legend_elements = [
+    _leg_fs = 4 + _lbump
+    ax_a_bot.set_xlabel("MDS 1")
+
+    # Class 0/1 legend between the two scatter rows
+    class_leg = [
         Line2D([0], [0], marker="o", color="w",
                markerfacecolor=PALETTE[0], markersize=4, label="Class 0"),
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    _leg_fs = 4 + _lbump
-    ax_a_top.legend(handles=legend_elements, loc="best", fontsize=_leg_fs)
-    ax_a_bot.set_xlabel("MDS 1")
+    ax_a_top.legend(handles=class_leg, loc="lower center",
+                    bbox_to_anchor=(0.5, -0.15), fontsize=_leg_fs,
+                    ncol=2, frameon=False)
 
     # --- Panels (b) and (c): Signal vs Orthogonal vs Uniform ---
     df_mds = df[df["method"] == "mds"]
@@ -141,7 +145,6 @@ def plot_figure1_motivating(
     ax_b.set_xlabel("Queries $m$")
     ax_b.set_ylabel("Mean error")
     ax_b.set_title(f"(b) Error vs $m$ ($n\\!=\\!{n_plot}$)")
-    ax_b.legend(loc="upper right", fontsize=_leg_fs)
 
     # Panel (c): Error vs n for m=5
     m_plot = 5
@@ -164,6 +167,14 @@ def plot_figure1_motivating(
     ax_c.set_xlabel("Models $n$")
     ax_c.set_ylabel("Mean error")
     ax_c.set_title(f"(c) Error vs $n$ ($m\\!=\\!{m_plot}$)")
+
+    # Shared Signal/Orthogonal/Uniform legend below panels (b) and (c)
+    dist_leg = [Line2D([0], [0], color=c, linestyle=ls, lw=0.8,
+                       marker="o", markersize=2, label=lbl)
+                for _, ls, c, lbl in dist_config]
+    ax_b.legend(handles=dist_leg, loc="upper center",
+                bbox_to_anchor=(1.0, -0.25), ncol=3,
+                fontsize=_leg_fs, frameon=False)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
@@ -359,15 +370,19 @@ def plot_motivating_estimated_queries(
         ax.set_title(title)
         ax.set_ylabel("MDS 2")
 
-    legend_elements = [
+    _leg_fs = 4 + _lbump
+    ax_a_bot.set_xlabel("MDS 1")
+
+    # Class 0/1 legend between the two scatter rows
+    class_leg = [
         Line2D([0], [0], marker="o", color="w",
                markerfacecolor=PALETTE[0], markersize=4, label="Class 0"),
         Line2D([0], [0], marker="s", color="w",
                markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
     ]
-    _leg_fs = 4 + _lbump
-    ax_a_top.legend(handles=legend_elements, loc="best", fontsize=_leg_fs)
-    ax_a_bot.set_xlabel("MDS 1")
+    ax_a_top.legend(handles=class_leg, loc="lower center",
+                    bbox_to_anchor=(0.5, -0.15), fontsize=_leg_fs,
+                    ncol=2, frameon=False)
 
     # --- Panels (b) and (c) ---
     df_mds = df[df["method"] == "mds"]
@@ -395,7 +410,6 @@ def plot_motivating_estimated_queries(
     ax_b.set_xlabel("Queries $m$")
     ax_b.set_ylabel("Mean error")
     ax_b.set_title(f"(b) Error vs $m$ ($n\\!=\\!{n_plot}$)")
-    ax_b.legend(loc="upper right", fontsize=_leg_fs)
 
     # Panel (c): Error vs n for m=5
     m_plot = 5
@@ -418,6 +432,14 @@ def plot_motivating_estimated_queries(
     ax_c.set_xlabel("Models $n$")
     ax_c.set_ylabel("Mean error")
     ax_c.set_title(f"(c) Error vs $n$ ($m\\!=\\!{m_plot}$)")
+
+    # Shared Est. signal/Est. orthogonal/Uniform legend below panels (b) and (c)
+    dist_leg = [Line2D([0], [0], color=c, linestyle=ls, lw=0.8,
+                       marker="o", markersize=2, label=lbl)
+                for _, ls, c, lbl in dist_config]
+    ax_b.legend(handles=dist_leg, loc="upper center",
+                bbox_to_anchor=(1.0, -0.25), ncol=3,
+                fontsize=_leg_fs, frameon=False)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
