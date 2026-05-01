@@ -14,7 +14,7 @@ NPZ_PATHS = {
     ("motivating", "nomic-embed-text-v1.5"): "results/motivating/motivating_responses.npz",
     ("motivating", "all-MiniLM-L6-v2"): "results/motivating/embeddings/all-MiniLM-L6-v2.npz",
     ("motivating", "text-embedding-3-small"): "results/motivating/embeddings/text-embedding-3-small.npz",
-    ("system_prompt", "nomic-embed-text-v1.5"): "results/system_prompt/embeddings/ministral-8b__nomic-embed-text-v1.5.npz",
+    ("system_prompt", "nomic-embed-text-v1.5"): "results/system_prompt/embeddings/mistral-small__nomic-embed-text-v1.5.npz",
     ("system_prompt", "all-MiniLM-L6-v2"): "results/system_prompt/embeddings/ministral-8b__all-MiniLM-L6-v2.npz",
     ("system_prompt", "text-embedding-3-small"): "results/system_prompt/embeddings/ministral-8b__text-embedding-3-small.npz",
     ("rag", "nomic-embed-text-v1.5"): "results/rag/embeddings/ministral-8b__nomic-embed-text-v1.5.npz",
