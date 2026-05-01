@@ -94,7 +94,8 @@ def main():
                 n_true_signal=n_true_signal,
                 selectors=tuple(args.selectors),
                 n_reps=args.n_reps,
-                classifier="lda",
+                n_components=None,
+                classifier="rf",
             )
 
             # Output filename includes embed model if not default

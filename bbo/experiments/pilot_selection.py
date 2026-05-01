@@ -369,7 +369,8 @@ def _single_trial(responses, labels, query_indices, train_idx, test_idx,
     try:
         D = pairwise_energy_distances_t0(responses, query_indices)
         n = len(labels)
-        mds = ClassicalMDS(n_components=min(n_components, n - 1))
+        nc = min(n_components, n - 1) if n_components is not None else None
+        mds = ClassicalMDS(n_components=nc)
         X = mds.fit_transform(D)
 
         clf = make_classifier(classifier_name)
