@@ -16,9 +16,11 @@ from bbo.plotting.style import set_paper_style, PALETTE
 
 # Shared selector styling
 SEL_CONFIG = [
-    ("uniform",        PALETTE[2], "-", "s", "Uniform"),
-    ("uniform_signal", PALETTE[0], "-", "o", "Est. signal"),
-    ("stepwise",       PALETTE[3], "-", "^", "Stepwise"),
+    ("uniform",        PALETTE[2], "-",  "s", "Uniform"),
+    ("uniform_signal", PALETTE[0], "-",  "o", "Est. signal"),
+    ("stepwise",       PALETTE[3], "-",  "^", "Forward"),
+    ("backward",       PALETTE[1], "-",  "v", "Backward"),
+    ("bidirectional",  PALETTE[4], "-",  "D", "Bidirectional"),
 ]
 
 DATASET_TITLES = ["Motivating", "System Prompt", "RAG"]

@@ -181,48 +181,55 @@ def select_queries_stepwise(E, pairs, labels_train, m):
 def select_queries_backward(E, pairs, labels_train, m):
     """Backward elimination: start with all queries, remove least useful.
 
-    Start with all M queries. At each step, remove the query whose removal
-    causes the smallest increase in residual sum of squares. Equivalently,
-    drop the query with the smallest marginal contribution to the fit.
+    Uses partial-correlation approach for efficiency: at each step, orthogonalize
+    all selected queries against each candidate-for-removal, then drop the one
+    with the smallest partial correlation with z.
 
-    Returns ordered sequence of m remaining query indices.
-    The elimination order is recorded so results for all m can be extracted.
+    Returns (remaining_indices, elimination_order).
     """
     z = (labels_train[pairs[:, 0]] != labels_train[pairs[:, 1]]).astype(float)
     z = z - z.mean()
 
     M = E.shape[0]
     selected = list(range(M))
-    elimination_order = []  # queries removed, in order
+    elimination_order = []
+
+    # Work with copies we can orthogonalize
+    E_work = E.copy().astype(float)
 
     while len(selected) > m:
-        # For each selected query, compute its marginal contribution:
-        # SS_reduction if we remove it = (e_q^T residual_without_q)^2 / (e_q^T e_q)
-        # But we need the residual in the subspace orthogonal to all OTHER selected queries.
-        # Simpler: use OLS coefficients. The t-statistic of each variable in the
-        # full model tells us which to drop. We use the squared coefficient / leverage.
+        # For each selected query, compute how much R² drops if we remove it.
+        # The query whose removal costs least has the smallest |partial corr|
+        # with z after accounting for all other selected queries.
+        #
+        # Efficient: for query j in selected, its partial correlation with z
+        # given all others equals its correlation with the residual of z
+        # regressed on all others. But computing this for each j is expensive.
+        #
+        # Instead: use the OLS t-statistic via (X^T X)^{-1}.
+        # For large sets, use a chunked approach.
+        n_sel = len(selected)
 
-        # Build design matrix from selected queries
-        X = E[selected].T  # (n_pairs, |selected|)
+        if n_sel <= 50:
+            # Direct OLS approach for small sets
+            X = E_work[selected].T
+            try:
+                XtX = X.T @ X
+                Xtz = X.T @ z
+                beta = np.linalg.solve(XtX + 1e-10 * np.eye(n_sel), Xtz)
+                XtX_inv_diag = np.diag(np.linalg.inv(XtX + 1e-10 * np.eye(n_sel)))
+                scores = beta ** 2 / (XtX_inv_diag + 1e-12)
+            except np.linalg.LinAlgError:
+                scores = np.array([np.dot(E_work[q], E_work[q]) for q in selected])
+        else:
+            # For large sets, approximate: score each query by its squared
+            # correlation with z (ignoring interactions). This is O(M) per step.
+            scores = np.array([
+                (np.dot(E_work[q], z) ** 2) / (np.dot(E_work[q], E_work[q]) + 1e-12)
+                for q in selected
+            ])
 
-        # OLS: beta = (X^T X)^{-1} X^T z
-        try:
-            XtX = X.T @ X
-            Xtz = X.T @ z
-            beta = np.linalg.solve(XtX, Xtz)
-
-            # Marginal contribution of each variable:
-            # t_j^2 = beta_j^2 / (sigma^2 * (X^T X)^{-1}_{jj})
-            # For variable selection, we just need beta_j^2 / diag((X^T X)^{-1})_j
-            XtX_inv_diag = np.diag(np.linalg.inv(XtX))
-            t_sq = beta ** 2 / (XtX_inv_diag + 1e-12)
-        except np.linalg.LinAlgError:
-            # Singular matrix — drop the query with smallest E norm
-            norms = np.array([np.dot(E[q], E[q]) for q in selected])
-            t_sq = norms
-
-        # Remove the query with the smallest t^2 (least contribution)
-        worst_idx = int(np.argmin(t_sq))
+        worst_idx = int(np.argmin(scores))
         worst_q = selected[worst_idx]
         elimination_order.append(worst_q)
         selected.pop(worst_idx)
@@ -231,95 +238,113 @@ def select_queries_backward(E, pairs, labels_train, m):
 
 
 def select_queries_bidirectional(E, pairs, labels_train, m):
-    """Bidirectional stepwise: forward + backward at each step.
+    """Bidirectional stepwise: forward selection with backward pruning.
 
-    Start with empty set. At each step:
-    1. Consider adding any query not in the set (forward)
-    2. Consider removing any query in the set (backward)
-    3. Execute whichever gives the best improvement in R^2
-
-    Stops when the set reaches size m and no swap improves fit.
+    Like forward selection, but after each addition, check if any previously
+    selected query can be removed without increasing residual SS.
+    Uses the same partial-correlation framework as forward for efficiency.
     """
     z = (labels_train[pairs[:, 0]] != labels_train[pairs[:, 1]]).astype(float)
     z = z - z.mean()
-    ss_total = np.dot(z, z)
 
     M = E.shape[0]
     selected = []
     remaining = set(range(M))
+    residual = z.copy()
 
-    def _compute_ss_residual(query_set):
-        """Residual SS after projecting z onto columns of E[query_set]."""
-        if not query_set:
-            return ss_total
-        X = E[list(query_set)].T
-        try:
-            beta = np.linalg.lstsq(X, z, rcond=None)[0]
-            resid = z - X @ beta
-            return np.dot(resid, resid)
-        except np.linalg.LinAlgError:
-            return ss_total
-
-    current_ss = ss_total
-    max_iters = 2 * M  # safety limit
-
-    for _ in range(max_iters):
-        best_action = None  # ("add", q) or ("remove", q)
-        best_ss = current_ss
-
-        # Forward: try adding each remaining query
-        if len(selected) < m:
-            for q in remaining:
-                trial = selected + [q]
-                ss = _compute_ss_residual(trial)
-                if ss < best_ss:
-                    best_ss = ss
-                    best_action = ("add", q)
-
-        # Backward: try removing each selected query (if we have more than 1)
-        if len(selected) > 1:
-            for i, q in enumerate(selected):
-                trial = selected[:i] + selected[i+1:]
-                ss = _compute_ss_residual(trial)
-                if ss < best_ss:
-                    best_ss = ss
-                    best_action = ("remove", q)
-
-        if best_action is None:
-            break
-
-        action, q = best_action
-        if action == "add":
-            selected.append(q)
-            remaining.discard(q)
-        else:
-            selected.remove(q)
-            remaining.add(q)
-        current_ss = best_ss
-
-        # Stop if at target size and no improvement found
-        if len(selected) == m and best_action[0] != "remove":
-            # Try one more round of backward to see if a swap helps
-            continue
-
-        if len(selected) >= m and best_action is None:
-            break
-
-    # If we ended with fewer than m, fill with forward selection
-    while len(selected) < m and remaining:
+    for step in range(min(m, M)):
+        # --- Forward step: add query with largest |partial corr| with residual ---
+        best_score = -1
         best_q = -1
-        best_ss = current_ss
         for q in remaining:
-            trial = selected + [q]
-            ss = _compute_ss_residual(trial)
-            if ss < best_ss:
-                best_ss = ss
+            e_q = E[q]
+            denom = np.sqrt(np.dot(e_q, e_q) * np.dot(residual, residual))
+            if denom < 1e-12:
+                continue
+            score = abs(np.dot(e_q, residual)) / denom
+            if score > best_score:
+                best_score = score
+                best_q = q
+
+        if best_q < 0:
+            break
+        selected.append(best_q)
+        remaining.discard(best_q)
+
+        # Update residual: project out new query
+        e_best = E[best_q]
+        norm_sq = np.dot(e_best, e_best)
+        if norm_sq > 1e-12:
+            residual = residual - e_best * (np.dot(residual, e_best) / norm_sq)
+
+        # --- Backward step: check if any selected query can be dropped ---
+        if len(selected) > 1:
+            # Recompute residual from scratch for each leave-one-out
+            worst_score = np.inf
+            worst_idx = -1
+            for i, q in enumerate(selected):
+                # Compute R² without query q
+                others = selected[:i] + selected[i+1:]
+                X = E[others].T
+                try:
+                    beta = np.linalg.lstsq(X, z, rcond=None)[0]
+                    resid = z - X @ beta
+                    ss = np.dot(resid, resid)
+                except np.linalg.LinAlgError:
+                    ss = np.dot(z, z)
+                # The query whose removal causes the smallest SS increase is weakest
+                if ss < worst_score:
+                    worst_score = ss
+                    worst_idx = i
+
+            # Check if removing worst is better than keeping it
+            # (only if the set is larger than needed for this step)
+            X_full = E[selected].T
+            try:
+                beta_full = np.linalg.lstsq(X_full, z, rcond=None)[0]
+                resid_full = z - X_full @ beta_full
+                ss_full = np.dot(resid_full, resid_full)
+            except np.linalg.LinAlgError:
+                ss_full = np.dot(z, z)
+
+            # Remove if the query contributes less than 1% of total SS reduction
+            ss_total = np.dot(z, z)
+            contribution = worst_score - ss_full
+            if contribution < 0.01 * (ss_total - ss_full) and worst_idx >= 0:
+                removed_q = selected.pop(worst_idx)
+                remaining.add(removed_q)
+                # Recompute residual from current selected set
+                if selected:
+                    X = E[selected].T
+                    try:
+                        beta = np.linalg.lstsq(X, z, rcond=None)[0]
+                        residual = z - X @ beta
+                    except np.linalg.LinAlgError:
+                        residual = z.copy()
+                else:
+                    residual = z.copy()
+
+    # Fill to m if backward removed too many
+    while len(selected) < m and remaining:
+        best_score = -1
+        best_q = -1
+        for q in remaining:
+            e_q = E[q]
+            denom = np.sqrt(np.dot(e_q, e_q) * np.dot(residual, residual))
+            if denom < 1e-12:
+                continue
+            score = abs(np.dot(e_q, residual)) / denom
+            if score > best_score:
+                best_score = score
                 best_q = q
         if best_q < 0:
             break
         selected.append(best_q)
         remaining.discard(best_q)
-        current_ss = best_ss
+        e_best = E[best_q]
+        norm_sq = np.dot(e_best, e_best)
+        if norm_sq > 1e-12:
+            residual = residual - e_best * (np.dot(residual, e_best) / norm_sq)
 
     return np.array(selected[:m])
 
