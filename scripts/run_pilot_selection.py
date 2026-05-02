@@ -94,7 +94,7 @@ def main():
                 n_true_signal=n_true_signal,
                 selectors=tuple(args.selectors),
                 n_reps=args.n_reps,
-                n_components=None,
+                n_components=8,
                 classifier="rf",
             )
 
