@@ -108,20 +108,6 @@ def plot_figure1_motivating(
     _leg_fs = 4 + _lbump
     ax_a_bot.set_xlabel("MDS 1")
 
-    # Class 0/1 legend between the two scatter rows (figure coords)
-    class_leg = [
-        Line2D([0], [0], marker="o", color="w",
-               markerfacecolor=PALETTE[0], markersize=4, label="Class 0"),
-        Line2D([0], [0], marker="s", color="w",
-               markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
-    ]
-    bb_top = ax_a_top.get_position()
-    bb_bot = ax_a_bot.get_position()
-    x_mid = (bb_top.x0 + bb_top.x1) / 2
-    ax_a_top.legend(handles=class_leg, loc="upper center",
-                    bbox_to_anchor=(0.5, -0.05), ncol=2,
-                    fontsize=_leg_fs, frameon=False)
-
     # --- Panels (b) and (c): Signal vs Orthogonal vs Uniform ---
     df_mds = df[df["method"] == "mds"]
 
@@ -171,17 +157,18 @@ def plot_figure1_motivating(
     ax_c.set_ylabel("Mean error")
     ax_c.set_title(f"(c) Error vs $n$ ($m\\!=\\!{m_plot}$)")
 
-    # Shared Signal/Orthogonal/Uniform legend below panels (b) and (c)
-    dist_leg = [Line2D([0], [0], color=c, linestyle=ls, lw=0.8,
-                       marker="o", markersize=2, label=lbl)
-                for _, ls, c, lbl in dist_config]
-    bb_b = ax_b.get_position()
-    bb_c = ax_c.get_position()
-    x_center = (bb_b.x0 + bb_c.x1) / 2
-    _bot_y = -0.10 if big_font else -0.07
-    fig.legend(handles=dist_leg, loc="upper center",
-               bbox_to_anchor=(x_center, _bot_y), ncol=3,
-               fontsize=_leg_fs, frameon=False)
+    # Combined legend in center panel
+    class_handles = [
+        Line2D([0], [0], marker="o", color="w",
+               markerfacecolor=PALETTE[0], markersize=4, label="Class 0"),
+        Line2D([0], [0], marker="s", color="w",
+               markerfacecolor=PALETTE[1], markersize=4, label="Class 1"),
+    ]
+    dist_handles = [Line2D([0], [0], color=c, linestyle=ls, lw=0.8,
+                           marker="o", markersize=2, label=lbl)
+                    for _, ls, c, lbl in dist_config]
+    ax_b.legend(handles=class_handles + dist_handles,
+                loc="upper right", fontsize=_leg_fs)
 
     # Save
     Path(output_dir).mkdir(parents=True, exist_ok=True)
