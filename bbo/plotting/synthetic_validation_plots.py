@@ -75,7 +75,7 @@ def plot_synthetic_validation(
     ax_a.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
     ax_a.set_title("(a) Query distribution\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\rho\\!=\\!0.7$",
                    fontsize=7)
-    ax_a.legend(loc="lower right")
+    ax_a.legend(loc="lower left")
 
     # ===== Panel (b): Varying r =====
     r_values = sorted(df_exp1["r"].unique())
@@ -158,7 +158,7 @@ def plot_synthetic_validation(
     ax_e.set_ylabel("$P[\\hat{r} = r]$")
     ax_e.set_title("(e) Estimating rank\n$\\rho\\!=\\!0.7,\\; n\\!=\\!100$",
                    fontsize=7)
-    ax_e.legend(loc="lower left", fontsize=5)
+    ax_e.legend(loc="lower right", fontsize=5)
 
     # ===== Panel (f): ρ̂ estimation error =====
     rho_values_f = sorted(df_panel_f["rho_true"].unique())
