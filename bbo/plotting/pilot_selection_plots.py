@@ -23,7 +23,7 @@ SEL_CONFIG = [
     ("bidirectional",  PALETTE[4], "-",  "D", "Bidirectional"),
 ]
 
-DATASET_TITLES = ["Motivating", "System Prompt", "RAG"]
+DATASET_TITLES = ["LoRA", "System Prompt", "RAG"]
 
 
 def plot_pilot_selection(
@@ -67,7 +67,7 @@ def plot_pilot_selection(
     for sel_name, color, ls, marker, label in SEL_CONFIG:
         leg.append(Line2D([0], [0], color=color, linestyle=ls, lw=0.8,
                           marker=marker, markersize=2, label=label))
-    axes[1].legend(handles=leg, loc="upper right", fontsize=6, ncol=1)
+    axes[0].legend(handles=leg, loc="upper right", fontsize=6, ncol=1)
 
     fig.tight_layout()
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)

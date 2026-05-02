@@ -59,8 +59,8 @@ def plot_synthetic_validation(
     df_d = df_exp3[df_exp3["rho"] == 0.7] if "rho" in df_exp3.columns else df_exp3
     dist_labels = {"signal": "Signal", "uniform": "Uniform",
                    "orthogonal": "Orthogonal"}
-    dist_colors = {"signal": PALETTE[0], "uniform": PALETTE[1],
-                   "orthogonal": PALETTE[2]}
+    dist_colors = {"signal": PALETTE[0], "uniform": PALETTE[2],
+                   "orthogonal": PALETTE[1]}
 
     for dist_name, label in dist_labels.items():
         sub = df_d[df_d["distribution"] == dist_name].sort_values("m")
@@ -75,7 +75,7 @@ def plot_synthetic_validation(
     ax_a.set_ylabel("$P[\\mathrm{error} \\geq 0.5]$")
     ax_a.set_title("(a) Query distribution\n$n\\!=\\!100,\\; r\\!=\\!5,\\; \\rho\\!=\\!0.7$",
                    fontsize=7)
-    ax_a.legend(loc="lower left", bbox_to_anchor=(0.02, 0))
+    ax_a.legend(loc="lower right")
 
     # ===== Panel (b): Varying r =====
     r_values = sorted(df_exp1["r"].unique())

@@ -154,9 +154,9 @@ def _plot_gmm_single(ax, gmm_info, r_hat, rho_hats, n_signal, direction=0):
     L_orth = loadings[n_signal:]
 
     bins = np.linspace(loadings.min(), loadings.max(), 28)
-    ax.hist(L_signal, bins=bins, alpha=0.6, color=PALETTE[1],
+    ax.hist(L_signal, bins=bins, alpha=0.6, color=PALETTE[0],
             label="Signal", density=True, edgecolor="none")
-    ax.hist(L_orth, bins=bins, alpha=0.6, color=PALETTE[2],
+    ax.hist(L_orth, bins=bins, alpha=0.6, color=PALETTE[1],
             label="Orthogonal", density=True, edgecolor="none")
 
     x_plot = np.linspace(loadings.min() - 0.005, loadings.max() + 0.005, 300)
@@ -168,7 +168,7 @@ def _plot_gmm_single(ax, gmm_info, r_hat, rho_hats, n_signal, direction=0):
             color="0.3", linestyle="--", linewidth=0.8)
 
     # K=2 components
-    comp_colors = [PALETTE[2], PALETTE[1]]
+    comp_colors = [PALETTE[1], PALETTE[0]]
     means_k2 = gmm2.means_.ravel()
     zero_comp = int(np.argmin(means_k2))
     for k in range(2):
@@ -180,7 +180,7 @@ def _plot_gmm_single(ax, gmm_info, r_hat, rho_hats, n_signal, direction=0):
         ax.fill_between(x_plot, comp_density, alpha=0.2, color=comp_colors[cidx])
         ax.plot(x_plot, comp_density, color=comp_colors[cidx], linewidth=0.8)
 
-    ax.set_xlabel("$|\\hat{\\alpha}_{q,\\ell}|$")
+    ax.set_xlabel("$|\\hat{\\alpha}_\\ell(q)|$")
     ax.set_ylabel("Density")
 
     # ρ̂ annotation
@@ -205,7 +205,7 @@ def _plot_failure_prob(ax, fail_csv, rho_hats=None, query_set="uniform"):
     """Col 3: P[err >= 0.5] vs m with fitted curves and theory bound."""
     df = pd.read_csv(fail_csv)
 
-    n_colors = {80: PALETTE[0]}
+    n_colors = {80: PALETTE[2]}
     m_cont = np.linspace(1, 100, 300)
 
     def _bound_model(m, a, rho, gamma):
@@ -285,7 +285,7 @@ def _plot_mean_error(ax, classification_csv, rho_hats=None,
         df_plot = df[df["distribution"] == dist]
 
     n_values = [80]
-    n_colors = {80: PALETTE[0]}
+    n_colors = {80: PALETTE[2]}
     m_cont = np.linspace(1, 100, 300)
 
     def _error_model(m, a, rho, gamma):
@@ -377,7 +377,7 @@ def plot_real_data_3x3(
                            left=0.10, right=0.98, bottom=0.08, top=0.94,
                            wspace=0.40, hspace=0.20)
 
-    row_labels = ["Motivating", "System Prompt", "RAG"]
+    row_labels = ["LoRA", "System Prompt", "RAG"]
     datasets = [
         {
             "npz": motivating_npz,
@@ -438,15 +438,15 @@ def plot_real_data_3x3(
         _plot_gmm_single(ax_gmm, gmm_info, r_hat, rho_hats, n_signal,
                          direction=0)
         if row_idx == 0:
-            ax_gmm.set_title("GMM on $|\\hat{\\alpha}_{q,\\ell}|$")
+            ax_gmm.set_title("GMM on $|\\hat{\\alpha}_\\ell(q)|$")
         if not is_last:
             ax_gmm.set_xlabel("")
             ax_gmm.set_xticklabels([])
         ax_gmm.set_ylabel("Density")
 
         leg_sc = [
-            Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Signal"),
-            Line2D([0], [0], color=PALETTE[2], lw=4, alpha=0.6, label="Orthogonal"),
+            Line2D([0], [0], color=PALETTE[0], lw=4, alpha=0.6, label="Signal"),
+            Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Orthogonal"),
         ]
         leg2 = Legend(ax_gmm, leg_sc, ["Signal", "Orthogonal"],
                       loc="upper left", fontsize=3.5)
@@ -458,7 +458,7 @@ def plot_real_data_3x3(
             _plot_failure_prob(ax_c3, ds["col3_path"], rho_hats=rho_hats,
                                **ds["col3_kw"])
             if row_idx == 0:
-                ax_c3.set_title("Estimated \\& Fitted Errors")
+                ax_c3.set_title("Estimated & Fitted Errors")
         else:
             _plot_mean_error(ax_c3, ds["col3_path"], rho_hats=rho_hats,
                              **ds["col3_kw"])
