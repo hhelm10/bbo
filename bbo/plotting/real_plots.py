@@ -472,3 +472,111 @@ def plot_real_data_3x3(
     fig.savefig(output_path)
     plt.close(fig)
     print(f"Saved 3×3 real data figure to {output_path}")
+
+
+def plot_real_data_3x3_mean_error(
+    motivating_npz: str,
+    motivating_csv: str,
+    system_prompt_npz: str,
+    system_prompt_csv: str,
+    rag_npz: str,
+    rag_csv: str,
+    output_path: str = "figures/figure_real_3x3_mean_error.pdf",
+):
+    """3×3 real data figure using mean error for all rows (instead of P[err>=0.5]).
+
+    Same layout as plot_real_data_3x3 but col 3 shows mean error for all rows.
+    """
+    set_paper_style()
+    from matplotlib.legend import Legend
+
+    fig = plt.figure(figsize=(5.5, 3.8))
+    gs = gridspec.GridSpec(3, 3, figure=fig,
+                           left=0.10, right=0.98, bottom=0.08, top=0.94,
+                           wspace=0.40, hspace=0.20)
+
+    row_labels = ["LoRA", "System Prompt", "RAG"]
+    datasets = [
+        {
+            "npz": motivating_npz,
+            "signal_key": "sensitive_indices",
+            "orth_key": "orthogonal_indices",
+            "csv": motivating_csv,
+            "csv_kw": {"dist": "uniform"},
+        },
+        {
+            "npz": system_prompt_npz,
+            "signal_key": "signal_indices",
+            "orth_key": "orthogonal_indices",
+            "csv": system_prompt_csv,
+            "csv_kw": {"dist": "relevant"},
+        },
+        {
+            "npz": rag_npz,
+            "signal_key": "signal_indices",
+            "orth_key": "control_indices",
+            "csv": rag_csv,
+            "csv_kw": {"dist": "signal"},
+        },
+    ]
+
+    n_rows = len(row_labels)
+
+    for row_idx, (label, ds) in enumerate(zip(row_labels, datasets)):
+        is_last = row_idx == n_rows - 1
+        data = np.load(ds["npz"], allow_pickle=True)
+        responses = data["responses"]
+        labels = data["labels"]
+        signal_idx = data[ds["signal_key"]]
+        orth_idx = data[ds["orth_key"]]
+
+        # --- Col 1: Scree plot ---
+        ax_scree = fig.add_subplot(gs[row_idx, 0])
+        r_hat, U, s, rho_hats, gmm_info, n_signal = _plot_scree(
+            ax_scree, responses, labels, signal_idx, orth_idx,
+        )
+        if row_idx == 0:
+            ax_scree.set_title("Singular values of $E$")
+        if not is_last:
+            ax_scree.set_xlabel("")
+            ax_scree.set_xticklabels([])
+
+        ax_scree.annotate(
+            label, xy=(-0.50, 0.5), xycoords="axes fraction",
+            fontsize=7, fontweight="bold", rotation=90,
+            ha="center", va="center",
+        )
+
+        # --- Col 2: GMM ---
+        ax_gmm = fig.add_subplot(gs[row_idx, 1])
+        _plot_gmm_single(ax_gmm, gmm_info, r_hat, rho_hats, n_signal,
+                         direction=0)
+        if row_idx == 0:
+            ax_gmm.set_title("GMM on $|\\hat{\\alpha}_\\ell(q)|$")
+        if not is_last:
+            ax_gmm.set_xlabel("")
+            ax_gmm.set_xticklabels([])
+        ax_gmm.set_ylabel("Density")
+
+        leg_sc = [
+            Line2D([0], [0], color=PALETTE[0], lw=4, alpha=0.6, label="Signal"),
+            Line2D([0], [0], color=PALETTE[1], lw=4, alpha=0.6, label="Orthogonal"),
+        ]
+        leg2 = Legend(ax_gmm, leg_sc, ["Signal", "Orthogonal"],
+                      loc="upper left", fontsize=3.5)
+        ax_gmm.add_artist(leg2)
+
+        # --- Col 3: Mean error ---
+        ax_c3 = fig.add_subplot(gs[row_idx, 2])
+        _plot_mean_error(ax_c3, ds["csv"], rho_hats=rho_hats, **ds["csv_kw"])
+        if row_idx == 0:
+            ax_c3.set_title("Mean Error")
+
+        if not is_last:
+            ax_c3.set_xlabel("")
+            ax_c3.set_xticklabels([])
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path)
+    plt.close(fig)
+    print(f"Saved 3×3 mean error figure to {output_path}")
