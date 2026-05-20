@@ -344,6 +344,34 @@ def plot_pca_stepwise(
     print(f"Saved PCA stepwise figure to {output_path}")
 
 
+_POOL_SEL_CONFIG = [
+    ("stepwise",    PALETTE[0], "-",  "o", "BIC stepwise"),
+    ("uniform_all", PALETTE[2], "--", "s", "Uniform (all $M$)"),
+    ("random_m",    PALETTE[1], ":",  "^", "Random (matched $m$)"),
+]
+
+
+def _plot_pool_panel(ax, df, x_col, fixed_col, fixed_val):
+    """Plot selector curves on a single axis for pool experiments."""
+    sub_all = df[df[fixed_col] == fixed_val]
+    if sub_all.empty:
+        return
+    for sel, color, ls, marker, label in _POOL_SEL_CONFIG:
+        sub = sub_all[sub_all["selector"] == sel].sort_values(x_col)
+        if sub.empty:
+            continue
+        ax.errorbar(sub[x_col], sub["mean_error"], yerr=sub["std_error"],
+                     marker=marker, markersize=2.5, color=color,
+                     linestyle=ls, linewidth=0.8,
+                     capsize=2, capthick=0.5)
+    ax.set_xscale("log")
+    ax.set_ylim(-0.02, 0.55)
+    x_vals = sorted(sub_all[x_col].unique())
+    ax.set_xticks(x_vals)
+    ax.set_xticklabels([str(int(v)) for v in x_vals])
+    ax.xaxis.set_minor_locator(plt.NullLocator())
+
+
 def plot_pool_vary_pool(
     motivating_csv: str,
     system_prompt_csv: str,
@@ -359,29 +387,19 @@ def plot_pool_vary_pool(
                         [motivating_csv, system_prompt_csv, rag_csv]))
 
     for ax, (title, csv_path) in zip(axes, datasets):
+        ax.set_title(title)
         if not Path(csv_path).exists():
-            ax.set_title(title)
             continue
         df = pd.read_csv(csv_path)
-        sub = df[df["n_train"] == fixed_n].sort_values("pool_size")
-        if sub.empty:
-            ax.set_title(title)
-            continue
-
-        ax.errorbar(sub["pool_size"], sub["mean_error"], yerr=sub["std_error"],
-                     marker="o", markersize=3, color=PALETTE[0],
-                     linewidth=0.8, capsize=2, capthick=0.5, label="PCA stepwise")
-
-        ax.set_xscale("log")
-        ax.set_ylim(-0.02, 0.55)
+        _plot_pool_panel(ax, df, "pool_size", "n_train", fixed_n)
         ax.set_xlabel("Query pool size $M$")
-        ax.set_title(title)
-        ax.set_xticks(sorted(sub["pool_size"].unique()))
-        ax.set_xticklabels([str(int(v)) for v in sorted(sub["pool_size"].unique())])
-        ax.xaxis.set_minor_locator(plt.NullLocator())
 
     axes[0].set_ylabel("Mean error")
-    axes[0].legend(loc="upper right", fontsize=5)
+
+    leg = [Line2D([0], [0], color=c, linestyle=ls, lw=0.8,
+                  marker=mk, markersize=2.5, label=lbl)
+           for _, c, ls, mk, lbl in _POOL_SEL_CONFIG]
+    axes[0].legend(handles=leg, loc="upper right", fontsize=4)
 
     fig.suptitle(f"$n = {fixed_n}$ models", fontsize=8, y=1.02)
     fig.tight_layout()
@@ -406,29 +424,19 @@ def plot_pool_vary_n(
                         [motivating_csv, system_prompt_csv, rag_csv]))
 
     for ax, (title, csv_path) in zip(axes, datasets):
+        ax.set_title(title)
         if not Path(csv_path).exists():
-            ax.set_title(title)
             continue
         df = pd.read_csv(csv_path)
-        sub = df[df["pool_size"] == fixed_pool].sort_values("n_train")
-        if sub.empty:
-            ax.set_title(title)
-            continue
-
-        ax.errorbar(sub["n_train"], sub["mean_error"], yerr=sub["std_error"],
-                     marker="o", markersize=3, color=PALETTE[0],
-                     linewidth=0.8, capsize=2, capthick=0.5, label="PCA stepwise")
-
-        ax.set_xscale("log")
-        ax.set_ylim(-0.02, 0.55)
+        _plot_pool_panel(ax, df, "n_train", "pool_size", fixed_pool)
         ax.set_xlabel("Models $n$")
-        ax.set_title(title)
-        ax.set_xticks(sorted(sub["n_train"].unique()))
-        ax.set_xticklabels([str(int(v)) for v in sorted(sub["n_train"].unique())])
-        ax.xaxis.set_minor_locator(plt.NullLocator())
 
     axes[0].set_ylabel("Mean error")
-    axes[0].legend(loc="upper right", fontsize=5)
+
+    leg = [Line2D([0], [0], color=c, linestyle=ls, lw=0.8,
+                  marker=mk, markersize=2.5, label=lbl)
+           for _, c, ls, mk, lbl in _POOL_SEL_CONFIG]
+    axes[0].legend(handles=leg, loc="upper right", fontsize=4)
 
     fig.suptitle(f"$M = {fixed_pool}$ query pool", fontsize=8, y=1.02)
     fig.tight_layout()

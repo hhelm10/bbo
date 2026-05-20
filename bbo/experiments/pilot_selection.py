@@ -1125,7 +1125,8 @@ def _run_one_pool_trial(responses, labels, full_pool, pool_size, n_train,
     # Sample train/test split
     n_per = n_train // 2
     if n_per > len(class0) or n_per > len(class1):
-        return {"error": 0.5, "m_selected": 0, "pool_size": ps, "n_train": n_train}
+        return {"error_stepwise": 0.5, "error_uniform": 0.5, "error_random_m": 0.5,
+                "m_selected": 0, "pool_size": ps, "n_train": n_train}
     sel0 = rng.choice(class0, size=n_per, replace=False)
     sel1 = rng.choice(class1, size=n_per, replace=False)
     train_idx = np.concatenate([sel0, sel1])
@@ -1149,14 +1150,28 @@ def _run_one_pool_trial(responses, labels, full_pool, pool_size, n_train,
     sel = select_queries_pca_bic(train_pca, train_labels)
 
     if len(sel) == 0:
-        return {"error": 0.5, "m_selected": 0, "pool_size": ps, "n_train": n_train}
+        return {"error_stepwise": 0.5, "error_uniform": 0.5, "error_random_m": 0.5,
+                "m_selected": 0, "pool_size": ps, "n_train": n_train}
 
-    # Evaluate
+    # Evaluate stepwise selection
     qi = query_pool[sel]
-    err = _single_trial(responses, labels, qi, train_idx, test_idx,
-                        n_components, classifier_name)
+    err_sw = _single_trial(responses, labels, qi, train_idx, test_idx,
+                           n_components, classifier_name)
 
-    return {"error": err, "m_selected": len(sel), "pool_size": ps, "n_train": n_train}
+    # Evaluate uniform (all queries in pool)
+    err_unif = _single_trial(responses, labels, query_pool, train_idx, test_idx,
+                             n_components, classifier_name)
+
+    # Evaluate uniform matched-m (random m queries from pool)
+    m_sel = len(sel)
+    rand_idx = rng.choice(ps, size=m_sel, replace=False)
+    qi_rand = query_pool[rand_idx]
+    err_rand = _single_trial(responses, labels, qi_rand, train_idx, test_idx,
+                             n_components, classifier_name)
+
+    return {"error_stepwise": err_sw, "error_uniform": err_unif,
+            "error_random_m": err_rand,
+            "m_selected": m_sel, "pool_size": ps, "n_train": n_train}
 
 
 def run_pool_experiment(
@@ -1199,7 +1214,7 @@ def run_pool_experiment(
         for ps, nt, s in tqdm(tasks, desc="pool_experiment")
     )
 
-    # Aggregate
+    # Aggregate — one row per (selector, pool_size, n_train)
     rows = []
     for ps in pool_sizes:
         for nt in n_train_values:
@@ -1207,17 +1222,23 @@ def run_pool_experiment(
                              if r["pool_size"] == ps and r["n_train"] == nt]
             if not trial_results:
                 continue
-            errors = np.array([r["error"] for r in trial_results])
             ms = np.array([r["m_selected"] for r in trial_results])
-            rows.append({
-                "pool_size": ps,
-                "n_train": nt,
-                "mean_error": errors.mean(),
-                "std_error": errors.std(),
-                "mean_m": ms.mean(),
-                "std_m": ms.std(),
-            })
-            print(f"  pool={ps}, n={nt}: err={errors.mean():.3f}±{errors.std():.3f}, "
-                  f"m={ms.mean():.1f}±{ms.std():.1f}")
+            for sel, key in [("stepwise", "error_stepwise"),
+                             ("uniform_all", "error_uniform"),
+                             ("random_m", "error_random_m")]:
+                errors = np.array([r[key] for r in trial_results])
+                rows.append({
+                    "selector": sel,
+                    "pool_size": ps,
+                    "n_train": nt,
+                    "mean_error": errors.mean(),
+                    "std_error": errors.std(),
+                    "mean_m": ms.mean(),
+                    "std_m": ms.std(),
+                })
+            sw = np.array([r["error_stepwise"] for r in trial_results])
+            uf = np.array([r["error_uniform"] for r in trial_results])
+            print(f"  pool={ps}, n={nt}: stepwise={sw.mean():.3f}, "
+                  f"uniform_all={uf.mean():.3f}, m={ms.mean():.1f}±{ms.std():.1f}")
 
     return pd.DataFrame(rows)
