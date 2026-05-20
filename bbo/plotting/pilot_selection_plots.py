@@ -345,7 +345,7 @@ def plot_pca_stepwise(
 
 
 _POOL_SEL_CONFIG = [
-    ("stepwise",    PALETTE[0], "-",  "o", "BIC stepwise"),
+    ("stepwise",    PALETTE[0], "-",  "o", "Bi-dir. stepwise (BIC)"),
     ("random_m",    PALETTE[2], "--", "s", "Uniform ($m$ chosen by BIC)"),
     ("uniform_all", PALETTE[1], ":",  "^", "All queries"),
 ]
