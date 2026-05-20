@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-from bbo.experiments.pilot_selection import run_pilot_experiment
+from bbo.experiments.pilot_selection import run_pilot_experiment, run_pca_stepwise_experiment
 
 
 # NPZ paths per (dataset, embedding_model)
@@ -43,6 +43,10 @@ def main():
     parser.add_argument("--all-embeds", action="store_true",
                         help="Run all embedding models")
     parser.add_argument("--selectors", nargs="+", default=list(SELECTORS))
+    parser.add_argument("--pca-stepwise", action="store_true",
+                        help="Run PCA bidirectional stepwise experiment")
+    parser.add_argument("--pca-d-values", nargs="+", type=int,
+                        default=[2, 8, 32, 128, 768])
     parser.add_argument("--n-reps", type=int, default=500)
     parser.add_argument("--output-dir", default="results/pilot_selection")
     args = parser.parse_args()
@@ -88,21 +92,33 @@ def main():
             print(f"  Query pool: {len(query_pool)} queries "
                   f"(signal={n_true_signal}, orthogonal={len(orth_idx)})")
 
-            df = run_pilot_experiment(
-                responses, labels,
-                query_pool=query_pool,
-                n_true_signal=n_true_signal,
-                selectors=tuple(args.selectors),
-                n_reps=args.n_reps,
-                n_components=8,
-                classifier="rf",
-            )
+            if args.pca_stepwise:
+                df = run_pca_stepwise_experiment(
+                    responses, labels,
+                    query_pool=query_pool,
+                    d_values=tuple(args.pca_d_values),
+                    n_reps=args.n_reps,
+                    n_components=8,
+                    classifier="rf",
+                )
+                suffix = "_pca_stepwise"
+            else:
+                df = run_pilot_experiment(
+                    responses, labels,
+                    query_pool=query_pool,
+                    n_true_signal=n_true_signal,
+                    selectors=tuple(args.selectors),
+                    n_reps=args.n_reps,
+                    n_components=8,
+                    classifier="rf",
+                )
+                suffix = ""
 
             # Output filename includes embed model if not default
             if em == "nomic-embed-text-v1.5" and not args.all_embeds:
-                out_path = f"{args.output_dir}/{name}.csv"
+                out_path = f"{args.output_dir}/{name}{suffix}.csv"
             else:
-                out_path = f"{args.output_dir}/{name}__{em}.csv"
+                out_path = f"{args.output_dir}/{name}__{em}{suffix}.csv"
             df.to_csv(out_path, index=False)
             print(f"Saved to {out_path}")
 

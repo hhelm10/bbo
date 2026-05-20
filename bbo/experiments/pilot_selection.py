@@ -349,6 +349,155 @@ def select_queries_bidirectional(E, pairs, labels_train, m):
     return np.array(selected[:m])
 
 
+def compute_pca_embeddings(responses, query_pool=None):
+    """Compute PCA on stacked embeddings (nested: one SVD serves all d).
+
+    Parameters
+    ----------
+    responses : ndarray of shape (n_models, M, p)
+    query_pool : ndarray of query indices (optional, defaults to all)
+
+    Returns
+    -------
+    Vt : ndarray of shape (min(n*M_pool, p), p) — right singular vectors
+    mean : ndarray of shape (p,) — column mean used for centering
+    """
+    if query_pool is not None:
+        R = responses[:, query_pool, :]
+    else:
+        R = responses
+    n, M_pool, p = R.shape
+    stacked = R.reshape(-1, p)  # (n*M_pool, p)
+    mean = stacked.mean(axis=0)
+    centered = stacked - mean
+    _, _, Vt = np.linalg.svd(centered, full_matrices=False)
+    return Vt, mean
+
+
+def _pca_reduce(responses, query_pool, Vt, mean, d):
+    """Project responses to d-dimensional PCA space.
+
+    Returns ndarray of shape (n_models, M_pool, d).
+    """
+    if query_pool is not None:
+        R = responses[:, query_pool, :]
+    else:
+        R = responses
+    n, M_pool, p = R.shape
+    stacked = R.reshape(-1, p) - mean
+    reduced = stacked @ Vt[:d].T  # (n*M_pool, d)
+    return reduced.reshape(n, M_pool, d)
+
+
+def _grouped_projection_score(X_q, R):
+    """Score = trace(R^T P_{X_q} R) where P = X(X^TX)^+ X^T.
+
+    X_q : (n, d), R : (n, k). Uses lstsq for robustness when d > n.
+    """
+    proj_coef, _, _, _ = np.linalg.lstsq(X_q, R, rcond=None)  # (d, k)
+    proj = X_q @ proj_coef  # (n, k)
+    return np.sum(proj ** 2)
+
+
+def select_queries_pca_bidirectional(responses_pca, y, m):
+    """Bidirectional stepwise on PCA-reduced embeddings.
+
+    Each query contributes a block of d features. Forward selection adds the
+    query whose d-dimensional block most reduces residual SS; backward step
+    removes any query whose contribution is < 1% of total SS reduction.
+
+    Parameters
+    ----------
+    responses_pca : ndarray of shape (n, M, d)
+    y : ndarray of shape (n,) or (n, k)
+    m : int — target number of queries
+
+    Returns
+    -------
+    ndarray of selected query indices (into responses_pca's query axis)
+    """
+    n, M, d = responses_pca.shape
+    if y.ndim == 1:
+        y = y[:, None]
+    R = y - y.mean(axis=0)
+    ss_total = np.sum(R ** 2)
+
+    selected = []
+    remaining = set(range(M))
+
+    for step in range(min(m, M)):
+        # --- Forward: add query with largest grouped projection score ---
+        best_score = -1
+        best_q = -1
+        for q in remaining:
+            X_q = responses_pca[:, q, :]
+            score = _grouped_projection_score(X_q, R)
+            if score > best_score:
+                best_score = score
+                best_q = q
+
+        if best_q < 0:
+            break
+        selected.append(best_q)
+        remaining.discard(best_q)
+
+        # Update residual
+        X_q = responses_pca[:, best_q, :]
+        coef, _, _, _ = np.linalg.lstsq(X_q, R, rcond=None)
+        R = R - X_q @ coef
+
+        # --- Backward: check if any selected query can be dropped ---
+        if len(selected) > 1:
+            X_full = np.hstack([responses_pca[:, q, :] for q in selected])
+            coef_full, _, _, _ = np.linalg.lstsq(X_full, y - y.mean(0), rcond=None)
+            resid_full = (y - y.mean(0)) - X_full @ coef_full
+            ss_full = np.sum(resid_full ** 2)
+
+            worst_ss = np.inf
+            worst_idx = -1
+            for i in range(len(selected)):
+                others = selected[:i] + selected[i+1:]
+                X_others = np.hstack([responses_pca[:, q, :] for q in others])
+                coef_o, _, _, _ = np.linalg.lstsq(X_others, y - y.mean(0), rcond=None)
+                resid_o = (y - y.mean(0)) - X_others @ coef_o
+                ss_o = np.sum(resid_o ** 2)
+                if ss_o < worst_ss:
+                    worst_ss = ss_o
+                    worst_idx = i
+
+            contribution = worst_ss - ss_full
+            if contribution < 0.01 * (ss_total - ss_full) and worst_idx >= 0:
+                removed_q = selected.pop(worst_idx)
+                remaining.add(removed_q)
+                # Recompute residual
+                if selected:
+                    X_sel = np.hstack([responses_pca[:, q, :] for q in selected])
+                    coef_s, _, _, _ = np.linalg.lstsq(X_sel, y - y.mean(0), rcond=None)
+                    R = (y - y.mean(0)) - X_sel @ coef_s
+                else:
+                    R = y - y.mean(axis=0)
+
+    # Fill to m if backward removed too many
+    while len(selected) < m and remaining:
+        best_score = -1
+        best_q = -1
+        for q in remaining:
+            X_q = responses_pca[:, q, :]
+            score = _grouped_projection_score(X_q, R)
+            if score > best_score:
+                best_score = score
+                best_q = q
+        if best_q < 0:
+            break
+        selected.append(best_q)
+        remaining.discard(best_q)
+        X_q = responses_pca[:, best_q, :]
+        coef, _, _, _ = np.linalg.lstsq(X_q, R, rcond=None)
+        R = R - X_q @ coef
+
+    return np.array(selected[:m])
+
+
 def _get_signal_orthogonal_sets(U, r_hat, gmm_info):
     """Partition queries into estimated signal and zero sets using GMM labels."""
     # A query is "signal" if it's active (label=1) in ANY direction
@@ -780,3 +929,114 @@ def run_threshold_experiment(
     # Store mean GMM percentile as metadata
     df.attrs["gmm_percentile"] = (1 - gmm_fracs.mean()) * 100
     return df
+
+
+def _run_one_split_pca(responses, labels, query_pool, m_values, train_idx,
+                       test_idx, n_components, classifier_name, d_values, seed):
+    """One split: PCA bidirectional stepwise at each d, plus uniform baseline."""
+    rng = np.random.default_rng(seed)
+    M_pool = len(query_pool)
+    m_max = max(m_values)
+
+    # PCA on train embeddings only
+    train_resp = responses[train_idx][:, query_pool, :]
+    Vt, mean = compute_pca_embeddings(train_resp)
+
+    train_labels = labels[train_idx]
+
+    results = {}  # {(selector, m): error}
+
+    for d in d_values:
+        d_eff = min(d, Vt.shape[0])
+        # Reduce train responses to d dims (project ALL models using train PCA)
+        all_resp_pool = responses[:, query_pool, :]
+        n_all, M_p, p = all_resp_pool.shape
+        stacked = all_resp_pool.reshape(-1, p) - mean
+        reduced = stacked @ Vt[:d_eff].T
+        resp_pca = reduced.reshape(n_all, M_p, d_eff)
+
+        # Bidirectional stepwise on train subset
+        train_pca = resp_pca[train_idx]
+        seq = select_queries_pca_bidirectional(train_pca, train_labels.astype(float), m_max)
+
+        sel_name = f"pca_d{d}"
+        for m in m_values:
+            pool_idx = seq[:m] if len(seq) >= m else seq
+            qi = query_pool[pool_idx]
+            err = _single_trial(responses, labels, qi, train_idx, test_idx,
+                                n_components, classifier_name)
+            results[(sel_name, m)] = err
+
+    # Uniform baseline
+    for m in m_values:
+        pool_idx = rng.choice(M_pool, size=m, replace=False)
+        qi = query_pool[pool_idx]
+        err = _single_trial(responses, labels, qi, train_idx, test_idx,
+                            n_components, classifier_name)
+        results[("uniform", m)] = err
+
+    return results
+
+
+def run_pca_stepwise_experiment(
+    responses, labels,
+    query_pool=None,
+    n_train=80,
+    m_values=(2, 5, 10, 20, 50, 100),
+    d_values=(2, 8, 32, 128, 768),
+    n_reps=100,
+    n_components=8,
+    classifier="rf",
+    seed=42,
+    n_jobs=-1,
+):
+    """Run PCA bidirectional stepwise experiment across d and m.
+
+    Returns DataFrame with columns: d_pca, m, selector, mean_error, std_error
+    """
+    n_models, M, p = responses.shape
+    if query_pool is None:
+        query_pool = np.arange(M)
+    class0 = np.where(labels == 0)[0]
+    class1 = np.where(labels == 1)[0]
+    n_per_class_train = n_train // 2
+
+    splits = []
+    for rep in range(n_reps):
+        rng = np.random.default_rng(seed + rep * 100003 + n_train * 31)
+        sel0 = rng.choice(class0, size=n_per_class_train, replace=False)
+        sel1 = rng.choice(class1, size=n_per_class_train, replace=False)
+        train_idx = np.concatenate([sel0, sel1])
+        test_idx = np.setdiff1d(np.arange(n_models), train_idx)
+        splits.append((train_idx, test_idx))
+
+    print(f"Running PCA stepwise: d={d_values}, m={m_values}, {n_reps} reps")
+    split_results = Parallel(n_jobs=n_jobs, backend="loky")(
+        delayed(_run_one_split_pca)(
+            responses, labels, query_pool, m_values, train_idx, test_idx,
+            n_components, classifier, d_values,
+            seed + rep * 100003 + n_train * 31,
+        )
+        for rep, (train_idx, test_idx) in enumerate(
+            tqdm(splits, desc="pca_stepwise"))
+    )
+
+    all_results = []
+    selectors = [f"pca_d{d}" for d in d_values] + ["uniform"]
+    for sel_name in selectors:
+        for m in m_values:
+            errors = np.array([r.get((sel_name, m), np.nan) for r in split_results])
+            errors = errors[~np.isnan(errors)]
+            if len(errors) == 0:
+                continue
+            d_pca = int(sel_name.split("d")[1]) if sel_name.startswith("pca_d") else 0
+            all_results.append({
+                "d_pca": d_pca,
+                "m": m,
+                "selector": sel_name,
+                "mean_error": errors.mean(),
+                "std_error": errors.std(),
+            })
+            print(f"  {sel_name}, m={m}: err={errors.mean():.3f} ± {errors.std():.3f}")
+
+    return pd.DataFrame(all_results)

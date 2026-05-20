@@ -272,3 +272,73 @@ def plot_threshold_sensitivity(
     fig.savefig(output_path)
     plt.close(fig)
     print(f"Saved threshold sensitivity figure to {output_path}")
+
+
+# d-value styling for PCA stepwise figures
+_D_CONFIG = [
+    (2,   PALETTE[0], "-",  "o"),
+    (8,   PALETTE[1], "-",  "s"),
+    (32,  PALETTE[3], "-",  "^"),
+    (128, PALETTE[4], "-",  "D"),
+    (768, PALETTE[5], "-",  "v"),
+]
+
+
+def plot_pca_stepwise(
+    motivating_csv: str,
+    system_prompt_csv: str,
+    rag_csv: str,
+    output_path: str = "figures/figure_pca_stepwise.pdf",
+):
+    """1×3 figure: PCA bidirectional stepwise at varying d across datasets."""
+    set_paper_style()
+
+    fig, axes = plt.subplots(1, 3, figsize=(5.5, 1.6), sharey=True)
+
+    datasets = list(zip(DATASET_TITLES,
+                        [motivating_csv, system_prompt_csv, rag_csv]))
+
+    for ax, (title, csv_path) in zip(axes, datasets):
+        if not Path(csv_path).exists():
+            ax.set_title(title)
+            continue
+        df = pd.read_csv(csv_path)
+
+        for d, color, ls, marker in _D_CONFIG:
+            sel = f"pca_d{d}"
+            sub = df[df["selector"] == sel].sort_values("m")
+            if sub.empty:
+                continue
+            ax.plot(sub["m"], sub["mean_error"],
+                    marker=marker, markersize=2, color=color,
+                    linestyle=ls, linewidth=0.8)
+
+        # Uniform baseline
+        sub_u = df[df["selector"] == "uniform"].sort_values("m")
+        if not sub_u.empty:
+            ax.plot(sub_u["m"], sub_u["mean_error"],
+                    marker="x", markersize=2.5, color=PALETTE[2],
+                    linestyle="--", linewidth=0.8)
+
+        ax.axhline(y=0.5, color="gray", linestyle=":", alpha=0.3, linewidth=0.5)
+        ax.set_xscale("log")
+        ax.set_ylim(-0.02, 0.55)
+        ax.set_xlabel("Queries $m$")
+        ax.set_title(title)
+
+    axes[0].set_ylabel("Mean error")
+
+    # Shared legend
+    leg = []
+    for d, color, ls, marker in _D_CONFIG:
+        leg.append(Line2D([0], [0], color=color, linestyle=ls, lw=0.8,
+                          marker=marker, markersize=2, label=f"$d={d}$"))
+    leg.append(Line2D([0], [0], color=PALETTE[2], linestyle="--", lw=0.8,
+                      marker="x", markersize=2.5, label="Uniform"))
+    axes[0].legend(handles=leg, loc="upper right", fontsize=4, ncol=2)
+
+    fig.tight_layout()
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path)
+    plt.close(fig)
+    print(f"Saved PCA stepwise figure to {output_path}")
