@@ -450,6 +450,7 @@ def plot_bic_m_boxplot(
     motivating_csv: str,
     system_prompt_csv: str,
     rag_csv: str,
+    fixed_n: int = 50,
     output_path: str = "figures/figure_bic_m_boxplot.pdf",
 ):
     """1×3 box plot: distribution of m selected by BIC vs pool size M."""
@@ -482,6 +483,7 @@ def plot_bic_m_boxplot(
 
     axes[0].set_ylabel("Queries selected ($m$)")
 
+    fig.suptitle(f"$n = {fixed_n}$ models", fontsize=8, y=1.02)
     fig.tight_layout()
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, bbox_inches="tight")
