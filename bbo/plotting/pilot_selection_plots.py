@@ -498,34 +498,40 @@ def plot_paired_diff_hist(
     fixed_n: int = 50,
     output_path: str = "figures/figure_paired_diff_hist.pdf",
 ):
-    """1×3 histograms of paired error difference (Uniform - BIC stepwise) per M."""
+    """3×3 histograms of paired error difference (Uniform - BIC stepwise).
+
+    Rows = pool sizes M, columns = datasets.
+    """
     from scipy.stats import wilcoxon
     set_paper_style()
 
-    pool_colors = {
-        10: PALETTE[0],
-        20: PALETTE[1],
-        50: PALETTE[2],
-        100: PALETTE[3],
-        200: PALETTE[4],
-    }
+    csv_paths = [motivating_csv, system_prompt_csv, rag_csv]
+    dfs = {}
+    pool_sizes = None
+    for title, csv_path in zip(DATASET_TITLES, csv_paths):
+        if Path(csv_path).exists():
+            df = pd.read_csv(csv_path)
+            dfs[title] = df
+            if pool_sizes is None:
+                pool_sizes = sorted(df["pool_size"].unique())
 
-    fig, axes = plt.subplots(1, 3, figsize=(5.5, 2.0), sharey=False)
-    datasets = list(zip(DATASET_TITLES,
-                        [motivating_csv, system_prompt_csv, rag_csv]))
+    if pool_sizes is None:
+        return
 
-    for ax, (title, csv_path) in zip(axes, datasets):
-        ax.set_title(title)
-        if not Path(csv_path).exists():
+    n_rows = len(pool_sizes)
+    fig, axes = plt.subplots(n_rows, 3, figsize=(5.5, 1.4 * n_rows),
+                             sharey=False)
+
+    for col, title in enumerate(DATASET_TITLES):
+        axes[0, col].set_title(title)
+        if title not in dfs:
             continue
-        df = pd.read_csv(csv_path)
-        pool_sizes = sorted(df["pool_size"].unique())
+        df = dfs[title]
 
-        handles = []
-        for ps in pool_sizes:
+        for row, ps in enumerate(pool_sizes):
+            ax = axes[row, col]
             sub = df[df["pool_size"] == ps]
             diff = sub["error_random_m"].values - sub["error_stepwise"].values
-            color = pool_colors.get(ps, "gray")
             med = np.median(diff)
 
             n_nonzero = np.sum(diff != 0)
@@ -535,18 +541,20 @@ def plot_paired_diff_hist(
             else:
                 p_str = "$p=$n/a"
 
-            ax.hist(diff, color=color, alpha=0.6)
-            ax.axvline(med, color=color, ls="--", lw=0.8)
-            lbl = f"$M={ps}$: med={med:+.3f}, {p_str}"
-            handles.append(Line2D([0], [0], color=color, lw=1.5, label=lbl))
+            ax.hist(diff, color=PALETTE[0], alpha=0.7)
+            ax.axvline(0, color="k", ls="-", lw=1.5)
+            ax.axvline(med, color=PALETTE[3], ls="--", lw=1.0)
 
-        ax.axvline(0, color="k", ls="-", lw=1.5)
-        ax.set_xlabel("$\\Delta$ error (Uniform $-$ BIC)")
-        ax.legend(handles=handles, fontsize=3.5, loc="upper left")
+            lbl = f"med={med:+.3f}, {p_str}"
+            ax.text(0.97, 0.92, lbl, transform=ax.transAxes,
+                    fontsize=4.5, ha="right", va="top")
 
-    axes[0].set_ylabel("Count")
+            if col == 0:
+                ax.set_ylabel(f"$M={ps}$", fontsize=7)
+            if row == n_rows - 1:
+                ax.set_xlabel("$\\Delta$ error (Uniform $-$ BIC)")
 
-    fig.suptitle(f"$n = {fixed_n}$ models", fontsize=8, y=1.02)
+    fig.suptitle(f"$n = {fixed_n}$ models", fontsize=8, y=1.01)
     fig.tight_layout()
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, bbox_inches="tight")
