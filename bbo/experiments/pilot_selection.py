@@ -1040,3 +1040,184 @@ def run_pca_stepwise_experiment(
             print(f"  {sel_name}, m={m}: err={errors.mean():.3f} ± {errors.std():.3f}")
 
     return pd.DataFrame(all_results)
+
+
+def _compute_bic(y, X):
+    """BIC for OLS regression of y on X. Lower is better."""
+    n = X.shape[0]
+    p = X.shape[1] if X.ndim == 2 and X.shape[1] > 0 else 0
+    if p == 0:
+        rss = np.sum((y - y.mean(axis=0)) ** 2)
+    else:
+        coef, _, _, _ = np.linalg.lstsq(X, y - y.mean(axis=0), rcond=None)
+        rss = np.sum((y - y.mean(axis=0) - X @ coef) ** 2)
+    rss = max(rss, 1e-30)
+    return n * np.log(rss / n) + np.log(n) * (p + 1)
+
+
+def select_queries_pca_bic(responses_pca, y):
+    """Bidirectional stepwise on PCA embeddings with BIC stopping.
+
+    Adds queries as long as BIC decreases. Returns selected indices.
+    """
+    n, M, d = responses_pca.shape
+    if y.ndim == 1:
+        y = y[:, None]
+
+    selected = []
+    remaining = set(range(M))
+    bic_current = _compute_bic(y, np.empty((n, 0)))
+
+    for step in range(M):
+        # --- Forward: find query that most decreases BIC ---
+        best_bic = bic_current
+        best_q = -1
+        for q in remaining:
+            X_trial = np.hstack(
+                [responses_pca[:, s, :] for s in selected] + [responses_pca[:, q, :]]
+            )
+            bic_trial = _compute_bic(y, X_trial)
+            if bic_trial < best_bic:
+                best_bic = bic_trial
+                best_q = q
+
+        if best_q < 0:
+            break
+        selected.append(best_q)
+        remaining.discard(best_q)
+        bic_current = best_bic
+
+        # --- Backward: remove if any query's removal decreases BIC ---
+        if len(selected) > 1:
+            improved = True
+            while improved and len(selected) > 1:
+                improved = False
+                best_remove_bic = bic_current
+                best_remove_idx = -1
+                for i in range(len(selected)):
+                    others = selected[:i] + selected[i+1:]
+                    X_others = np.hstack([responses_pca[:, s, :] for s in others])
+                    bic_r = _compute_bic(y, X_others)
+                    if bic_r < best_remove_bic:
+                        best_remove_bic = bic_r
+                        best_remove_idx = i
+                if best_remove_idx >= 0:
+                    removed = selected.pop(best_remove_idx)
+                    remaining.add(removed)
+                    bic_current = best_remove_bic
+                    improved = True
+
+    return np.array(selected)
+
+
+def _run_one_pool_trial(responses, labels, full_pool, pool_size, n_train,
+                        d_pca, n_components, classifier_name, seed):
+    """One trial: random query pool + random train/test split + BIC stepwise."""
+    rng = np.random.default_rng(seed)
+    n_models = len(labels)
+    class0 = np.where(labels == 0)[0]
+    class1 = np.where(labels == 1)[0]
+
+    # Sample query pool
+    ps = min(pool_size, len(full_pool))
+    query_pool = rng.choice(full_pool, size=ps, replace=False)
+
+    # Sample train/test split
+    n_per = n_train // 2
+    if n_per > len(class0) or n_per > len(class1):
+        return {"error": 0.5, "m_selected": 0, "pool_size": ps, "n_train": n_train}
+    sel0 = rng.choice(class0, size=n_per, replace=False)
+    sel1 = rng.choice(class1, size=n_per, replace=False)
+    train_idx = np.concatenate([sel0, sel1])
+    test_idx = np.setdiff1d(np.arange(n_models), train_idx)
+
+    # PCA on train embeddings
+    train_resp = responses[train_idx][:, query_pool, :]
+    Vt, mean = compute_pca_embeddings(train_resp)
+    d_eff = min(d_pca, Vt.shape[0])
+
+    # Project all models
+    all_resp = responses[:, query_pool, :]
+    n_all, M_p, p = all_resp.shape
+    stacked = all_resp.reshape(-1, p) - mean
+    reduced = stacked @ Vt[:d_eff].T
+    resp_pca = reduced.reshape(n_all, M_p, d_eff)
+
+    # BIC stepwise on train
+    train_pca = resp_pca[train_idx]
+    train_labels = labels[train_idx].astype(float)
+    sel = select_queries_pca_bic(train_pca, train_labels)
+
+    if len(sel) == 0:
+        return {"error": 0.5, "m_selected": 0, "pool_size": ps, "n_train": n_train}
+
+    # Evaluate
+    qi = query_pool[sel]
+    err = _single_trial(responses, labels, qi, train_idx, test_idx,
+                        n_components, classifier_name)
+
+    return {"error": err, "m_selected": len(sel), "pool_size": ps, "n_train": n_train}
+
+
+def run_pool_experiment(
+    responses, labels,
+    query_pool=None,
+    pool_sizes=(10, 20, 50, 100, 200),
+    n_train_values=(10, 20, 50, 80),
+    d_pca=2,
+    n_reps=25,
+    n_components=8,
+    classifier="rf",
+    seed=42,
+    n_jobs=-1,
+):
+    """Sweep pool size and model count with BIC-stopping PCA stepwise.
+
+    Returns DataFrame with columns:
+        pool_size, n_train, mean_error, std_error, mean_m, std_m
+    """
+    n_models = len(labels)
+    if query_pool is None:
+        query_pool = np.arange(responses.shape[1])
+
+    tasks = []
+    for ps in pool_sizes:
+        for nt in n_train_values:
+            if nt > n_models:
+                continue
+            for rep in range(n_reps):
+                tasks.append((ps, nt, seed + rep * 100003 + ps * 37 + nt * 13))
+
+    print(f"Running pool experiment: {len(tasks)} trials "
+          f"(pools={pool_sizes}, n_train={n_train_values}, {n_reps} reps)")
+
+    results = Parallel(n_jobs=n_jobs, backend="loky")(
+        delayed(_run_one_pool_trial)(
+            responses, labels, query_pool, ps, nt,
+            d_pca, n_components, classifier, s,
+        )
+        for ps, nt, s in tqdm(tasks, desc="pool_experiment")
+    )
+
+    # Aggregate
+    rows = []
+    for ps in pool_sizes:
+        for nt in n_train_values:
+            trial_results = [r for r in results
+                             if r["pool_size"] == ps and r["n_train"] == nt]
+            if not trial_results:
+                continue
+            errors = np.array([r["error"] for r in trial_results])
+            ms = np.array([r["m_selected"] for r in trial_results])
+            rows.append({
+                "pool_size": ps,
+                "n_train": nt,
+                "mean_error": errors.mean(),
+                "std_error": errors.std(),
+                "mean_m": ms.mean(),
+                "std_m": ms.std(),
+            })
+            print(f"  pool={ps}, n={nt}: err={errors.mean():.3f}±{errors.std():.3f}, "
+                  f"m={ms.mean():.1f}±{ms.std():.1f}")
+
+    return pd.DataFrame(rows)

@@ -342,3 +342,97 @@ def plot_pca_stepwise(
     fig.savefig(output_path)
     plt.close(fig)
     print(f"Saved PCA stepwise figure to {output_path}")
+
+
+def plot_pool_vary_pool(
+    motivating_csv: str,
+    system_prompt_csv: str,
+    rag_csv: str,
+    fixed_n: int = 50,
+    output_path: str = "figures/figure_pool_vary_pool.pdf",
+):
+    """1×3 figure: error vs query pool size at fixed n_train."""
+    set_paper_style()
+
+    fig, axes = plt.subplots(1, 3, figsize=(5.5, 1.6), sharey=True)
+    datasets = list(zip(DATASET_TITLES,
+                        [motivating_csv, system_prompt_csv, rag_csv]))
+
+    for ax, (title, csv_path) in zip(axes, datasets):
+        if not Path(csv_path).exists():
+            ax.set_title(title)
+            continue
+        df = pd.read_csv(csv_path)
+        sub = df[df["n_train"] == fixed_n].sort_values("pool_size")
+        if sub.empty:
+            ax.set_title(title)
+            continue
+
+        ax.errorbar(sub["pool_size"], sub["mean_error"], yerr=sub["std_error"],
+                     marker="o", markersize=3, color=PALETTE[0],
+                     linewidth=0.8, capsize=2, capthick=0.5, label="PCA stepwise")
+
+        ax.set_xscale("log")
+        ax.set_ylim(-0.02, 0.55)
+        ax.set_xlabel("Query pool size $M$")
+        ax.set_title(title)
+        ax.set_xticks(sorted(sub["pool_size"].unique()))
+        ax.set_xticklabels([str(int(v)) for v in sorted(sub["pool_size"].unique())])
+        ax.xaxis.set_minor_locator(plt.NullLocator())
+
+    axes[0].set_ylabel("Mean error")
+    axes[0].legend(loc="upper right", fontsize=5)
+
+    fig.suptitle(f"$n = {fixed_n}$ models", fontsize=8, y=1.02)
+    fig.tight_layout()
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved pool-vary-pool figure to {output_path}")
+
+
+def plot_pool_vary_n(
+    motivating_csv: str,
+    system_prompt_csv: str,
+    rag_csv: str,
+    fixed_pool: int = 50,
+    output_path: str = "figures/figure_pool_vary_n.pdf",
+):
+    """1×3 figure: error vs n_train at fixed pool size."""
+    set_paper_style()
+
+    fig, axes = plt.subplots(1, 3, figsize=(5.5, 1.6), sharey=True)
+    datasets = list(zip(DATASET_TITLES,
+                        [motivating_csv, system_prompt_csv, rag_csv]))
+
+    for ax, (title, csv_path) in zip(axes, datasets):
+        if not Path(csv_path).exists():
+            ax.set_title(title)
+            continue
+        df = pd.read_csv(csv_path)
+        sub = df[df["pool_size"] == fixed_pool].sort_values("n_train")
+        if sub.empty:
+            ax.set_title(title)
+            continue
+
+        ax.errorbar(sub["n_train"], sub["mean_error"], yerr=sub["std_error"],
+                     marker="o", markersize=3, color=PALETTE[0],
+                     linewidth=0.8, capsize=2, capthick=0.5, label="PCA stepwise")
+
+        ax.set_xscale("log")
+        ax.set_ylim(-0.02, 0.55)
+        ax.set_xlabel("Models $n$")
+        ax.set_title(title)
+        ax.set_xticks(sorted(sub["n_train"].unique()))
+        ax.set_xticklabels([str(int(v)) for v in sorted(sub["n_train"].unique())])
+        ax.xaxis.set_minor_locator(plt.NullLocator())
+
+    axes[0].set_ylabel("Mean error")
+    axes[0].legend(loc="upper right", fontsize=5)
+
+    fig.suptitle(f"$M = {fixed_pool}$ query pool", fontsize=8, y=1.02)
+    fig.tight_layout()
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved pool-vary-n figure to {output_path}")
