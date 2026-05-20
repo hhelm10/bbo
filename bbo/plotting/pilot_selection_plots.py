@@ -535,7 +535,7 @@ def plot_paired_diff_hist(
             else:
                 p_str = "$p=$n/a"
 
-            ax.hist(diff, bins=15, histtype="step", color=color, lw=1.0)
+            ax.hist(diff, color=color, alpha=0.6)
             ax.axvline(med, color=color, ls="--", lw=0.8)
             lbl = f"$M={ps}$: med={med:+.3f}, {p_str}"
             handles.append(Line2D([0], [0], color=color, lw=1.5, label=lbl))
