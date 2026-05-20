@@ -540,7 +540,7 @@ def plot_paired_diff_hist(
             lbl = f"$M={ps}$: med={med:+.3f}, {p_str}"
             handles.append(Line2D([0], [0], color=color, lw=1.5, label=lbl))
 
-        ax.axvline(0, color="k", ls=":", lw=0.5, alpha=0.5)
+        ax.axvline(0, color="k", ls="-", lw=1.5)
         ax.set_xlabel("$\\Delta$ error (Uniform $-$ BIC)")
         ax.legend(handles=handles, fontsize=3.5, loc="upper left")
 
