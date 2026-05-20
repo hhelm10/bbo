@@ -1242,3 +1242,54 @@ def run_pool_experiment(
                   f"uniform_all={uf.mean():.3f}, m={ms.mean():.1f}±{ms.std():.1f}")
 
     return pd.DataFrame(rows)
+
+
+def run_pool_m_selected(
+    responses, labels,
+    query_pool=None,
+    pool_sizes=(10, 20, 50, 100, 200),
+    n_train=50,
+    d_pca=2,
+    n_reps=25,
+    n_components=8,
+    classifier="rf",
+    seed=42,
+    n_jobs=-1,
+):
+    """Return per-trial m_selected for each pool size at fixed n_train.
+
+    Returns DataFrame with columns: pool_size, rep, m_selected
+    """
+    n_models = len(labels)
+    if query_pool is None:
+        query_pool = np.arange(responses.shape[1])
+
+    tasks = []
+    for ps in pool_sizes:
+        for rep in range(n_reps):
+            tasks.append((ps, n_train, seed + rep * 100003 + ps * 37 + n_train * 13))
+
+    print(f"Running m-selected sweep: {len(tasks)} trials "
+          f"(pools={pool_sizes}, n_train={n_train}, {n_reps} reps)")
+
+    results = Parallel(n_jobs=n_jobs, backend="loky")(
+        delayed(_run_one_pool_trial)(
+            responses, labels, query_pool, ps, n_train,
+            d_pca, n_components, classifier, s,
+        )
+        for ps, _, s in tqdm(tasks, desc="m_selected")
+    )
+
+    rows = []
+    for i, (ps, _, _) in enumerate(tasks):
+        rows.append({
+            "pool_size": ps,
+            "m_selected": results[i]["m_selected"],
+        })
+
+    df = pd.DataFrame(rows)
+    for ps in pool_sizes:
+        ms = df[df["pool_size"] == ps]["m_selected"]
+        print(f"  M={ps}: m={ms.mean():.1f} ± {ms.std():.1f} "
+              f"[{ms.min()}-{ms.max()}]")
+    return df

@@ -444,3 +444,46 @@ def plot_pool_vary_n(
     fig.savefig(output_path, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved pool-vary-n figure to {output_path}")
+
+
+def plot_bic_m_boxplot(
+    motivating_csv: str,
+    system_prompt_csv: str,
+    rag_csv: str,
+    output_path: str = "figures/figure_bic_m_boxplot.pdf",
+):
+    """1×3 box plot: distribution of m selected by BIC vs pool size M."""
+    set_paper_style()
+
+    fig, axes = plt.subplots(1, 3, figsize=(5.5, 1.6), sharey=True)
+    datasets = list(zip(DATASET_TITLES,
+                        [motivating_csv, system_prompt_csv, rag_csv]))
+
+    for ax, (title, csv_path) in zip(axes, datasets):
+        ax.set_title(title)
+        if not Path(csv_path).exists():
+            continue
+        df = pd.read_csv(csv_path)
+        pool_sizes = sorted(df["pool_size"].unique())
+        data = [df[df["pool_size"] == ps]["m_selected"].values for ps in pool_sizes]
+        bp = ax.boxplot(data, positions=range(len(pool_sizes)),
+                        widths=0.5, patch_artist=True,
+                        medianprops=dict(color="k", lw=0.8),
+                        flierprops=dict(marker=".", markersize=2, alpha=0.5),
+                        boxprops=dict(lw=0.6),
+                        whiskerprops=dict(lw=0.6),
+                        capprops=dict(lw=0.6))
+        for patch in bp["boxes"]:
+            patch.set_facecolor(PALETTE[0])
+            patch.set_alpha(0.6)
+        ax.set_xticks(range(len(pool_sizes)))
+        ax.set_xticklabels([str(ps) for ps in pool_sizes])
+        ax.set_xlabel("Query pool size $M$")
+
+    axes[0].set_ylabel("Queries selected ($m$)")
+
+    fig.tight_layout()
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved BIC m boxplot to {output_path}")
