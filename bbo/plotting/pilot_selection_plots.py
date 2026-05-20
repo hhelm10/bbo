@@ -346,8 +346,8 @@ def plot_pca_stepwise(
 
 _POOL_SEL_CONFIG = [
     ("stepwise",    PALETTE[0], "-",  "o", "BIC stepwise"),
-    ("uniform_all", PALETTE[2], "--", "s", "Uniform (all $M$)"),
-    ("random_m",    PALETTE[1], ":",  "^", "Random (matched $m$)"),
+    ("random_m",    PALETTE[2], "--", "s", "Uniform"),
+    ("uniform_all", PALETTE[1], ":",  "^", "All queries"),
 ]
 
 
