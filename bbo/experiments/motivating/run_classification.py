@@ -163,8 +163,8 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
                     "m": m,
                     "mean_accuracy": accuracies.mean(),
                     "std_accuracy": accuracies.std(),
-                    "p10_accuracy": np.percentile(accuracies, 10),
-                    "p90_accuracy": np.percentile(accuracies, 90),
+                    "p05_accuracy": np.percentile(accuracies, 5),
+                    "p95_accuracy": np.percentile(accuracies, 95),
                 })
 
                 # Concat baseline (only for relevant distribution)
@@ -185,8 +185,8 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
                         "m": m,
                         "mean_accuracy": acc_concat.mean(),
                         "std_accuracy": acc_concat.std(),
-                        "p10_accuracy": np.percentile(acc_concat, 10),
-                        "p90_accuracy": np.percentile(acc_concat, 90),
+                        "p05_accuracy": np.percentile(acc_concat, 5),
+                        "p95_accuracy": np.percentile(acc_concat, 95),
                     })
 
     # Save query indices for p10/p90 trials at m=10
@@ -210,14 +210,14 @@ def run_classification(config: MotivatingConfig) -> pd.DataFrame:
     accs_scatter = np.array(accs_scatter)
 
     # Find trials closest to p10 and p90
-    p10_val = np.percentile(accs_scatter, 10)
-    p90_val = np.percentile(accs_scatter, 90)
+    p10_val = np.percentile(accs_scatter, 5)
+    p90_val = np.percentile(accs_scatter, 95)
     p10_idx = np.argmin(np.abs(accs_scatter - p10_val))
     p90_idx = np.argmin(np.abs(accs_scatter - p90_val))
 
     # Regenerate query indices for those specific trials
     per_trial_data = {}
-    for label, idx in [("p10", p10_idx), ("p90", p90_idx)]:
+    for label, idx in [("p05", p10_idx), ("p95", p90_idx)]:
         rng = np.random.default_rng(seeds_scatter[idx])
         qi = sample_queries(M, m_scatter, distribution=dist_rel, rng=rng)
         per_trial_data[f"query_indices_{label}"] = qi
