@@ -489,3 +489,66 @@ def plot_bic_m_boxplot(
     fig.savefig(output_path, bbox_inches="tight")
     plt.close(fig)
     print(f"Saved BIC m boxplot to {output_path}")
+
+
+def plot_paired_diff_hist(
+    motivating_csv: str,
+    system_prompt_csv: str,
+    rag_csv: str,
+    fixed_n: int = 50,
+    output_path: str = "figures/figure_paired_diff_hist.pdf",
+):
+    """1×3 histograms of paired error difference (Uniform - BIC stepwise) per M."""
+    from scipy.stats import wilcoxon
+    set_paper_style()
+
+    pool_colors = {
+        10: PALETTE[0],
+        20: PALETTE[1],
+        50: PALETTE[2],
+        100: PALETTE[3],
+        200: PALETTE[4],
+    }
+
+    fig, axes = plt.subplots(1, 3, figsize=(5.5, 2.0), sharey=False)
+    datasets = list(zip(DATASET_TITLES,
+                        [motivating_csv, system_prompt_csv, rag_csv]))
+
+    for ax, (title, csv_path) in zip(axes, datasets):
+        ax.set_title(title)
+        if not Path(csv_path).exists():
+            continue
+        df = pd.read_csv(csv_path)
+        pool_sizes = sorted(df["pool_size"].unique())
+
+        handles = []
+        for ps in pool_sizes:
+            sub = df[df["pool_size"] == ps]
+            diff = sub["error_random_m"].values - sub["error_stepwise"].values
+            color = pool_colors.get(ps, "gray")
+            med = np.median(diff)
+
+            n_nonzero = np.sum(diff != 0)
+            if n_nonzero >= 10:
+                _, pval = wilcoxon(diff)
+                p_str = f"$p={pval:.3f}$" if pval >= 0.001 else f"$p<0.001$"
+            else:
+                p_str = "$p=$n/a"
+
+            ax.hist(diff, bins=15, histtype="step", color=color, lw=1.0)
+            ax.axvline(med, color=color, ls="--", lw=0.8)
+            lbl = f"$M={ps}$: med={med:+.3f}, {p_str}"
+            handles.append(Line2D([0], [0], color=color, lw=1.5, label=lbl))
+
+        ax.axvline(0, color="k", ls=":", lw=0.5, alpha=0.5)
+        ax.set_xlabel("$\\Delta$ error (Uniform $-$ BIC)")
+        ax.legend(handles=handles, fontsize=3.5, loc="upper left")
+
+    axes[0].set_ylabel("Count")
+
+    fig.suptitle(f"$n = {fixed_n}$ models", fontsize=8, y=1.02)
+    fig.tight_layout()
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output_path, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved paired diff histogram to {output_path}")

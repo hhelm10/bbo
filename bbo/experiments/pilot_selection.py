@@ -1282,14 +1282,19 @@ def run_pool_m_selected(
 
     rows = []
     for i, (ps, _, _) in enumerate(tasks):
+        r = results[i]
         rows.append({
             "pool_size": ps,
-            "m_selected": results[i]["m_selected"],
+            "m_selected": r["m_selected"],
+            "error_stepwise": r["error_stepwise"],
+            "error_uniform": r["error_uniform"],
+            "error_random_m": r["error_random_m"],
         })
 
     df = pd.DataFrame(rows)
     for ps in pool_sizes:
-        ms = df[df["pool_size"] == ps]["m_selected"]
+        sub = df[df["pool_size"] == ps]
+        ms = sub["m_selected"]
         print(f"  M={ps}: m={ms.mean():.1f} ± {ms.std():.1f} "
               f"[{ms.min()}-{ms.max()}]")
     return df
