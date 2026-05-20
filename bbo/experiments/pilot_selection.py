@@ -1162,12 +1162,16 @@ def _run_one_pool_trial(responses, labels, full_pool, pool_size, n_train,
     err_unif = _single_trial(responses, labels, query_pool, train_idx, test_idx,
                              n_components, classifier_name)
 
-    # Evaluate uniform matched-m (random m queries from pool)
+    # Evaluate uniform matched-m (average over 20 random draws)
     m_sel = len(sel)
-    rand_idx = rng.choice(ps, size=m_sel, replace=False)
-    qi_rand = query_pool[rand_idx]
-    err_rand = _single_trial(responses, labels, qi_rand, train_idx, test_idx,
-                             n_components, classifier_name)
+    n_uniform_draws = 20
+    err_rands = []
+    for _ in range(n_uniform_draws):
+        rand_idx = rng.choice(ps, size=m_sel, replace=False)
+        qi_rand = query_pool[rand_idx]
+        err_rands.append(_single_trial(responses, labels, qi_rand, train_idx,
+                                       test_idx, n_components, classifier_name))
+    err_rand = np.mean(err_rands)
 
     return {"error_stepwise": err_sw, "error_uniform": err_unif,
             "error_random_m": err_rand,
