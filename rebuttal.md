@@ -52,3 +52,33 @@ We repeated the classification experiment (m signal queries → energy distance 
 |RBF SVM|.70/.83/.91|.65/.76/.92|.84/1.0/1.0|
 
 All four classifiers exhibit the same monotone accuracy-vs-m growth on every task, with curves within a few points of each other at matched m. The paper's conclusions are insensitive to replacing the random forest with nearest-neighbor or margin-based classifiers.
+
+# Theoretical responses
+
+## T1. Strengthening the cross-class assumption (ye1m W2/Q1)
+
+The reviewer is right that distinguishability from *one* cross-class model (Assumption 2 as stated) does not by itself force the restricted Bayes risk below 1/2 for an arbitrary representation. We will strengthen the assumption to an explicit margin condition connecting the factorization to the labels: for a positive-measure set of models f, the expected cross-class dissimilarity exceeds the expected within-class dissimilarity by a margin γ>0 on the selected query set, i.e. E[D_m(f,f′)|y′≠y] − E[D_m(f,f″)|y″=y] ≥ γ. Under this condition a nearest-mean (or 1-NN) classifier in the embedded space has risk < 1/2, and the proof of Theorem 1 goes through with γ entering the learning term. [TODO: exact Assumption 2 / Thm 1 references.] Note this margin is precisely the quantity our estimation pipeline computes: the between-class centering step decomposes the empirical cross-minus-within-class dissimilarity, so the assumption is checkable from pilot data (and is visibly satisfied in all three tasks).
+
+## T2. Interpretation and recovery when r>1 (ye1m W1/Q2/L2-L3)
+
+Three-part response (empirics already in the SVD section above). (i) *What the bound needs*: the failure event — some direction of the discriminative subspace receives zero accumulated load — is rotation-invariant, so Theorems 1–2 and m* never require resolving the rotation. (ii) *Recovery process for r>1*: estimate the subspace by SVD (consistent up to rotation), then resolve the rotation by sparsity maximization (varimax); under the factorization's sparse nonnegative loadings the rotation is identifiable (Rohe & Zeng, JRSS-B 2023). We will state this as the explicit r>1 procedure. (iii) *Squished/correlated directions*: when singular values are close, the rotation within the near-degenerate subspace is ill-conditioned — but only the per-direction *interpretation* degrades; the subspace, r̂, and the bound are unaffected. Directions need not be semantically meaningful; the theory only uses per-direction load probabilities of the sparse basis. Empirically (table above), the RAG task recovers r̂=2 under every embedder and δ, and varimax recovers the designed finance/HR directions without labels. We will also add a synthetic r=3 validation showing the same procedure recovers three planted directions.
+
+## T3. ε-orthogonality: relaxing the exact-zero idealization (ye1m W3/L1)
+
+We agree the exact-zero-set theory is an idealization and will add the ε-relaxation, which matches both the estimator and the data. Define the ε-load set S_ℓ(ε)={q: α_ℓ(q)≤ε} and ρ_ℓ(ε)=P(q∈S_ℓ(ε)). Two changes to the argument: (a) the failure event becomes "all m sampled queries have load ≤ε along some direction," with probability ≤ Σ_ℓ ρ_ℓ(ε)^m — same geometric decay; (b) queries in S_ℓ(ε) still contribute ≤ mε accumulated signal, which is absorbed into the separation margin, degrading the bound by an additive O(mε/γ) term. The exact-zero statement is the ε→0 limit. Importantly, the *estimator* already lives in the ε-world: ρ̂_ℓ is the weight of the GMM's *near-zero* component, never an exact-zero count — so the m* predictions that match observed error decay in the paper are already ε-versions. This also explains why "orthogonal" queries enable weak better-than-chance classification: their loads are small but nonzero, exactly as the ε-theory predicts.
+
+## T4. Finite-sample estimation of the factorization (Vhi3 Q2/Q4, line 187)
+
+The theory is stated for population quantities; we will add a perturbation result for the plug-in pipeline. Since Ê_disc = E_disc + N (noise from the finite model panel; at temperature 0 the per-query entries are deterministic given the models), Wedin's theorem gives sinΘ(Û,U) ≤ ‖N‖/(σ_r − σ_{r+1} − ‖N‖): the estimated subspace, r̂ (via the spectral-gap criterion), and the GMM-based ρ̂ are stable whenever the discriminative gap exceeds the noise level. The singular-value ratios reported in our studies (1.3–1.9 across all tasks/embedders/metrics) show this gap is well separated in practice, and the invariance of r̂ across 4 embedders × 5 metrics is direct evidence of stability. For temperature >0, responses become distributions; energy distance remains valid and N acquires a sampling-variance term decaying with repeated draws — we will state this explicitly. [Connects to KojF Q6; temperature experiments discussed separately.]
+
+## T5. Instantiating the learning term (ye1m L4)
+
+We will instantiate C_n for one concrete classifier to make the bound fully explicit: for the nearest-mean classifier under sub-Gaussian class-conditional embeddings with margin γ (from T1), C_n ≤ exp(−c n γ²/σ²). This makes the n-dependence concrete and shows the two terms of the bound (query coverage vs. learning) trade off as claimed. The classifier table above shows empirically that the learning term behaves comparably across classifier families, so the abstract treatment is not hiding classifier-specific pathologies.
+
+## T6. Existence and computation of the factorization (Vhi3 Q3)
+
+For δ = squared Euclidean at temperature 0, the factorization exists *by construction*: ‖g(f(q))−g(f′(q))‖² = Σ_j (g_j(f(q))−g_j(f′(q)))² is a sum of p nonnegative rank-one terms, so a nonnegative factorization with r ≤ p always exists; the discriminative rank is the rank of the class-relevant component after between-class centering. This is also the principled reason squared Euclidean is our default δ (and why the theory uses squared rather than metric distances — the reviewer's line-78 negative-type question is related [KojF Q2]). Other δ need not factor exactly, but the δ study above shows the estimated structure (r̂, ρ̂, recovered sets) is unchanged under Euclidean, cosine, L1, and RBF-MMD — the factorization is robust to δ misspecification in practice.
+
+## T7. Beyond binary balanced classes (ye1m Q4)
+
+The framework extends by one-vs-rest reduction: for K classes, apply the binary bound to each class-vs-rest problem and union-bound, replacing ρ^m with Σ_k ρ_k^m; non-uniform priors enter only through the learning term. We will add this as a remark. A full multi-class treatment (and a multi-class audit experiment) is future work, which we now state explicitly in Limitations.
