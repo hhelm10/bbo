@@ -14,11 +14,21 @@ Outputs:
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from sklearn.metrics import adjusted_rand_score
 
 from bbo.distances.energy import per_query_dissimilarity_tensor
 from bbo.estimation.rank_rho import (
     compute_E_disc, estimate_discriminative_rank, estimate_rho, predict_mstar,
 )
+
+
+def ari_permutation_test(true, est, n_perm=10000, seed=0):
+    rng = np.random.default_rng(seed)
+    ari = adjusted_rand_score(true, est)
+    null = np.array([adjusted_rand_score(true, rng.permutation(est))
+                     for _ in range(n_perm)])
+    p = (1 + np.sum(null >= ari)) / (1 + n_perm)
+    return ari, p
 
 DATASETS = {
     "motivating": ("results/motivating/motivating_responses.npz",
@@ -74,6 +84,7 @@ def main():
 
             sv_ratio = float(s[0] / s[1]) if len(s) > 1 else np.inf
             rho_str = ", ".join(f"{r:.3f}" for r in rho_hats)
+            ari, ari_p = ari_permutation_test(true_signal, est_signal)
 
             rows.append({
                 "dataset": name,
@@ -86,10 +97,13 @@ def main():
                 "recall": rec,
                 "f1": f1,
                 "balanced_accuracy": bal_acc,
+                "ari": ari,
+                "ari_pvalue": ari_p,
             })
             print(f"  {metric:14s}: r_hat={r_hat}, rho=[{rho_str}], "
                   f"sv_ratio={sv_ratio:6.2f}, "
-                  f"prec={prec:.3f}, rec={rec:.3f}, bal_acc={bal_acc:.3f}")
+                  f"prec={prec:.3f}, rec={rec:.3f}, bal_acc={bal_acc:.3f}, "
+                  f"ari={ari:.3f} (p={ari_p:.4f})")
 
             loadings_store[f"{metric}_loadings"] = info["per_direction"][0]["loadings"]
             loadings_store[f"{metric}_est_signal"] = est_signal
