@@ -23,7 +23,7 @@ from bbo.estimation.rank_rho import (
 DATASETS = {
     "motivating": ("results/motivating/motivating_responses.npz",
                    "sensitive_indices", "orthogonal_indices"),
-    "system_prompt": ("results/system_prompt/embeddings/mistral-small__nomic-embed-text-v1.5.npz",
+    "system_prompt": ("results/system_prompt/embeddings/ministral-8b__nomic-embed-text-v1.5.npz",
                       "signal_indices", "orthogonal_indices"),
     "rag": ("results/rag/embeddings/ministral-8b__nomic-embed-text-v1.5.npz",
             "signal_indices", "control_indices"),
