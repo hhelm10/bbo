@@ -15,6 +15,7 @@ from bbo.plotting.style import set_paper_style, PALETTE
 EMBED_LABELS = {
     "nomic-embed-text-v1.5": "nomic-embed-\ntext-v1.5",
     "all-MiniLM-L6-v2": "all-MiniLM-\nL6-v2",
+    "bge-large-en-v1.5": "bge-large-\nen-v1.5",
     "text-embedding-3-small": "text-embedding-\n3-small",
 }
 

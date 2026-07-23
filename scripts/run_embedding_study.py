@@ -20,17 +20,20 @@ from bbo.estimation.rank_rho import (
 )
 
 EMBED_MODELS = ["nomic-embed-text-v1.5", "all-MiniLM-L6-v2",
-                "text-embedding-3-small"]
+                "bge-large-en-v1.5", "text-embedding-3-small"]
 
 NPZ_PATHS = {
     ("motivating", "nomic-embed-text-v1.5"): "results/motivating/motivating_responses.npz",
     ("motivating", "all-MiniLM-L6-v2"): "results/motivating/embeddings/all-MiniLM-L6-v2.npz",
+    ("motivating", "bge-large-en-v1.5"): "results/motivating/embeddings/bge-large-en-v1.5.npz",
     ("motivating", "text-embedding-3-small"): "results/motivating/embeddings/text-embedding-3-small.npz",
     ("system_prompt", "nomic-embed-text-v1.5"): "results/system_prompt/embeddings/ministral-8b__nomic-embed-text-v1.5.npz",
     ("system_prompt", "all-MiniLM-L6-v2"): "results/system_prompt/embeddings/ministral-8b__all-MiniLM-L6-v2.npz",
+    ("system_prompt", "bge-large-en-v1.5"): "results/system_prompt/embeddings/ministral-8b__bge-large-en-v1.5.npz",
     ("system_prompt", "text-embedding-3-small"): "results/system_prompt/embeddings/ministral-8b__text-embedding-3-small.npz",
     ("rag", "nomic-embed-text-v1.5"): "results/rag/embeddings/ministral-8b__nomic-embed-text-v1.5.npz",
     ("rag", "all-MiniLM-L6-v2"): "results/rag/embeddings/ministral-8b__all-MiniLM-L6-v2.npz",
+    ("rag", "bge-large-en-v1.5"): "results/rag/embeddings/ministral-8b__bge-large-en-v1.5.npz",
     ("rag", "text-embedding-3-small"): "results/rag/embeddings/ministral-8b__text-embedding-3-small.npz",
 }
 

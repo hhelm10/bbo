@@ -13,6 +13,7 @@ load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 EMBEDDING_REGISTRY = {
     "nomic-embed-text-v1.5": ("local", "nomic-ai/nomic-embed-text-v1.5", 768),
     "all-MiniLM-L6-v2": ("local", "sentence-transformers/all-MiniLM-L6-v2", 384),
+    "bge-large-en-v1.5": ("local", "BAAI/bge-large-en-v1.5", 1024),
     "text-embedding-3-small": ("openai", "text-embedding-3-small", 1536),
     "text-embedding-3-large": ("openai", "text-embedding-3-large", 3072),
     "gemini-embedding": ("google", "gemini-embedding-001", 3072),
