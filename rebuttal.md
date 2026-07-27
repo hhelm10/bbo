@@ -14,7 +14,7 @@ Further, our interpretation allows for the development of query-budget theory ba
 
 We agree this was missing and have run it. We re-ran the full estimation pipeline on all three real tasks with five response-space dissimilarities. Writing $x = g(f(q))$ and $x' = g(f'(q))$ for the embedded responses of two models to query $q$:
 
-- Squared Euclidean (used in the paper): $\delta(x, x') = \lVert x - x' \rVert_2^2$
+- Energy distance (used in the paper): the squared energy distance between the response distributions $P_f(q)$ and $P_{f'}(q)$, which at temperature 0 (point-mass response distributions) is equivalent to the squared Euclidean distance $\delta(x, x') = \lVert x - x' \rVert_2^2$
 - Euclidean: $\delta(x, x') = \lVert x - x' \rVert_2$
 - Cosine: $\delta(x, x') = 1 - \langle x, x' \rangle / (\lVert x \rVert_2 \lVert x' \rVert_2)$
 - L1: $\delta(x, x') = \lVert x - x' \rVert_1$
