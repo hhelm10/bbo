@@ -33,6 +33,24 @@ def _one_rep_classify(responses, labels, M, m, seed, n_components, classifier,
     return int(err >= 0.5)
 
 
+def _one_rep_classify_fresh_panel(problem, n, M, m, seed, n_components,
+                                  classifier):
+    """Single classification trial with a freshly drawn model panel.
+
+    Resampling the panel per rep makes the Monte Carlo average over panels,
+    not conditional on one fixed draw (which dominates variance at small m).
+    """
+    rng = np.random.default_rng(seed)
+    models = problem.generate_models(n, rng=rng)
+    responses = get_all_responses(models)
+    labels = get_labels(models)
+    query_idx = sample_queries(M, m, rng=rng)
+    err = single_trial(responses, labels, query_idx,
+                       n_components=n_components, classifier_name=classifier,
+                       seed=seed)
+    return err
+
+
 def _one_rep_estimate(responses, labels, M, m, seed, r_true=None):
     """Single estimation trial. Returns (r_hat, rho_hats).
 
@@ -92,24 +110,23 @@ def run_panel_c(m_values=(1, 2, 5, 10, 20, 50, 100),
 
     results = []
     for n in n_values:
-        models = problem.generate_models(n, rng=np.random.default_rng(seed + 1))
-        responses = get_all_responses(models)
-        labels = get_labels(models)
-
         for m in tqdm(m_values, desc=f"panel_c n={n}"):
             seeds = [seed + rep * 100003 + m * 1009 + n * 31
                      for rep in range(n_reps)]
-            fails = Parallel(n_jobs=n_jobs, backend="loky")(
-                delayed(_one_rep_classify)(
-                    responses, labels, M, m, s, n_comp, "rf"
+            errs = Parallel(n_jobs=n_jobs, backend="loky")(
+                delayed(_one_rep_classify_fresh_panel)(
+                    problem, n, M, m, s, n_comp, "rf"
                 ) for s in seeds
             )
+            errs = np.asarray(errs)
             results.append({
                 "n_models": n, "m": m,
-                "prob_high_error": np.mean(fails),
+                "prob_high_error": np.mean(errs >= 0.5),
+                "mean_error": np.mean(errs),
                 "rho": 1 - signal_prob, "r": r, "n_reps": n_reps,
             })
-            print(f"  n={n}, m={m}: P[fail]={np.mean(fails):.3f}")
+            print(f"  n={n}, m={m}: P[fail]={np.mean(errs >= 0.5):.3f}, "
+                  f"mean_err={np.mean(errs):.3f}")
 
     return pd.DataFrame(results)
 

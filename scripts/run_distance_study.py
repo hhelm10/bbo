@@ -18,7 +18,7 @@ from sklearn.metrics import adjusted_rand_score
 
 from bbo.distances.energy import per_query_dissimilarity_tensor
 from bbo.estimation.rank_rho import (
-    compute_E_disc, estimate_discriminative_rank, estimate_rho, predict_mstar,
+    estimate_discriminative_rank, estimate_rho, predict_mstar,
 )
 
 
@@ -66,8 +66,7 @@ def main():
         for metric in METRICS:
             E, pairs = per_query_dissimilarity_tensor(
                 responses[:, all_idx, :], metric=metric)
-            E_disc, _, B_q = compute_E_disc(E, pairs, labels)
-            r_hat, U, s = estimate_discriminative_rank(E_disc)
+            r_hat, U, s = estimate_discriminative_rank(E)
             rho_hats, info = estimate_rho(U, r_hat)
 
             # Estimated signal set: active GMM component on direction 1

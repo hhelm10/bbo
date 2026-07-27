@@ -12,8 +12,9 @@ from typing import List
 from bbo.experiments.motivating.config import MotivatingConfig
 
 
-def _generate_batch(model, tokenizer, prompts: List[str], max_new_tokens: int) -> List[str]:
-    """Generate responses for a batch of prompts at temperature 0."""
+def _generate_batch(model, tokenizer, prompts: List[str], max_new_tokens: int,
+                    temperature: float = 0.0) -> List[str]:
+    """Generate responses for a batch of prompts (greedy if temperature == 0)."""
     inputs = tokenizer(
         prompts,
         return_tensors="pt",
@@ -22,13 +23,17 @@ def _generate_batch(model, tokenizer, prompts: List[str], max_new_tokens: int) -
         max_length=512,
     ).to(model.device)
 
+    gen_kwargs = dict(
+        max_new_tokens=max_new_tokens,
+        pad_token_id=tokenizer.pad_token_id,
+    )
+    if temperature > 0:
+        gen_kwargs.update(do_sample=True, temperature=temperature)
+    else:
+        gen_kwargs.update(do_sample=False)
+
     with torch.no_grad():
-        outputs = model.generate(
-            **inputs,
-            max_new_tokens=max_new_tokens,
-            do_sample=False,
-            pad_token_id=tokenizer.pad_token_id,
-        )
+        outputs = model.generate(**inputs, **gen_kwargs)
 
     # Decode only the generated tokens (skip the prompt)
     responses = []
@@ -41,8 +46,12 @@ def _generate_batch(model, tokenizer, prompts: List[str], max_new_tokens: int) -
     return responses
 
 
-def run_generate(config: MotivatingConfig):
-    """Generate responses for all adapters × all queries."""
+def run_generate(config: MotivatingConfig, seed: int = None):
+    """Generate responses for all adapters × all queries.
+
+    If seed is given, the torch RNG is reseeded per adapter (seed + adapter_id)
+    so sampled draws are reproducible per (draw, adapter).
+    """
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from peft import PeftModel
 
@@ -108,6 +117,9 @@ def run_generate(config: MotivatingConfig):
         model = PeftModel.from_pretrained(base_model, str(adapter_dir))
         model.eval()
 
+        if seed is not None:
+            torch.manual_seed(seed + adapter_id)
+
         # Generate in batches
         all_responses = []
         batch_size = config.gen_batch_size
@@ -115,7 +127,8 @@ def run_generate(config: MotivatingConfig):
             end = min(start + batch_size, n_queries)
             batch_prompts = query_texts[start:end]
             batch_responses = _generate_batch(
-                model, tokenizer, batch_prompts, config.max_new_tokens
+                model, tokenizer, batch_prompts, config.max_new_tokens,
+                temperature=config.temperature,
             )
             all_responses.extend(batch_responses)
 

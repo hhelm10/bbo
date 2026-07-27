@@ -62,6 +62,7 @@ class MotivatingConfig(ExperimentConfig):
     # Generation
     max_new_tokens: int = 128
     gen_batch_size: int = 16
+    temperature: float = 0.0
 
     # Embedding
     embedding_model: str = "nomic-embed-text-v1.5"

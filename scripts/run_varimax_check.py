@@ -15,7 +15,7 @@ import pandas as pd
 from pathlib import Path
 
 from bbo.distances.energy import per_query_dissimilarity_tensor
-from bbo.estimation.rank_rho import compute_E_disc, estimate_discriminative_rank
+from bbo.estimation.rank_rho import estimate_discriminative_rank
 
 NPZ_PATHS = {
     "nomic-embed-text-v1.5": "results/rag/embeddings/ministral-8b__nomic-embed-text-v1.5.npz",
@@ -57,8 +57,7 @@ def main():
 
         E, pairs = per_query_dissimilarity_tensor(
             responses[:, all_idx, :], metric="sq_euclidean")
-        E_disc, _, _ = compute_E_disc(E, pairs, labels)
-        r_hat, U, s = estimate_discriminative_rank(E_disc)
+        r_hat, U, s = estimate_discriminative_rank(E)
 
         V, R = varimax(U[:, :2])
         # Order rotated directions so direction 1 = finance-dominant
