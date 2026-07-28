@@ -2,7 +2,7 @@
 
 # Response to Reviewer Vhi3
 
-We thank the reviewer for their time and thoughtful review, and in particular for highlighting the response-distribution view of black-box models, the concrete early examples (Sections 2.1–2.2), and the compelling singular-value ratios as strengths. We address your weaknesses and questions below:
+Thank you for your time and thoughtful review. We appreciate you highlighting the response distribution view of black-box models, the concrete early examples, and the compelling singular-value ratios as strengths. We address your weaknesses and questions below:
 
 > The discriminative factorization is an interpretation of the SVD for a distance matrix based indexed by query-model pairs. This is useful but not novel.
 
@@ -28,33 +28,37 @@ All other experimental settings are as in the paper. Cell format: estimated rank
 |L1|1/.36/.75/.24|1/.17/.67/.11|1/.49/.67/.11|
 |RBF-MMD|1/.39/.76/.26|1/.28/.76/.26|1/.37/.62/.05|
 
-The estimated discriminative rank is identical across all five choices of dissimilarity for every task. Balanced accuracy varies by at most 0.09 and every estimated partition agrees with ground truth significantly above chance (ARI permutation test, $10^4$ permutations: all $p \leq .0005$; 14/15 at the resolution floor $p = 10^{-4}$). This study will be added to the appendix.
+The estimated discriminative rank is identical across all five choices of dissimilarity for every task. Balanced accuracy varies by at most 0.09 and every estimated partition agrees with ground truth significantly above chance (ARI permutation test, $10^4$ permutations: all $p \leq .0005$). This study will be added to the appendix.
 
 > [line 075] How do you choose the embedding function [g]? For example, is [a constant g] trivial and useless (but valid)?
 
 We chose the embedding function used in the paper because it is a near-SOTA embedding function that is open source (it has ~1m monthly downloads on HuggingFace). With that said, we have also added a sensitivity analysis for the embedding function in our response to Reviewer KojF. Importantly, our conclusions are robust to embedding function.
 
-Theoretically, your degenerate example is exactly a case our Assumption 2 excludes: for balanced binary classes $L^*(P_{g(f)Y}) = \tfrac{1}{2}(1 - \mathrm{TV}(P_0, P_1))$, where $P_y$ is the class-conditional law of the *embedded* model, so a constant $g$ gives $\mathrm{TV} = 0$ and no method can beat chance (see our response to Reviewer ye1m's first question).
+Theoretically, your degenerate example is exactly a case our Assumption 2 excludes.
 
 > [line 077] How do we compute [d_P] since we only have an empirical estimate of [P_f(q)]?
 
-At temperature 0 (all experiments), $P_f(q)$ is a point mass and $d_P$ is computed exactly from the single observed response — no estimation error at this step. For temperature $>0$, $d_P$ (energy distance) admits an unbiased U-statistic estimator from repeated draws, and the estimation noise enters the pipeline as the perturbation $N$ analyzed in our response to your next question; its variance decays with the number of draws per query. We will state this explicitly in Section 3.2.
+At temperature 0 (all experiments), $P_f(q)$ is a point mass and $d_P$ is computed exactly from the single observed response — no estimation error at this step. For temperature $>0$, $d_P$ (energy distance) admits an unbiased U-statistic estimator from repeated draws, and the estimation noise whose variance decays with the number of draws per query enters the pipeline.
 
 > [line 133] How do we know a factorization of rank [r] exists? How do we compute it?
 
-As mentioned in the paper, a rank $r = M$ factorization always exists. As for other known existences, when $\delta$ = squared Euclidean at temperature 0 the factorization exists *by construction*: $\lVert g(f(q)) - g(f'(q)) \rVert_2^2 = \sum_{j=1}^{p} (g_j(f(q)) - g_j(f'(q)))^2$ is a sum of $p$ nonnegative rank-one terms, so a nonnegative factorization with $r \leq p$ always exists; the discriminative rank is the minimal such $r$. This is also the principled reason squared Euclidean is our default $\delta$ (and why the theory uses squared rather than metric distances: the proof of Theorem 2 needs $d_Q$ of negative type so MDS achieves zero stress at finite $d$, App. A.1).
+As mentioned in the paper, a rank $r = M$ factorization always exists. As for other known existences, when $\delta$ = squared Euclidean at temperature 0 the factorization exists by construction: $\lVert g(f(q)) - g(f'(q)) \rVert_2^2 = \sum_{j=1}^{p} (g_j(f(q)) - g_j(f'(q)))^2$ is a sum of $p$ nonnegative rank-one terms, so a nonnegative factorization with $r \leq p$ always exists.
 
-For other distances we do not guarantee that a rank $r < M$ factorization exists — though our study above demonstrates empirical robustness to the choice of $\delta$ / model misspecification in practice.
-
-Computationally, the pipeline never needs the factorization itself, only the SVD of $\hat{E}$ (Section 3.2), which estimates its column space; the explicit $r>1$ procedure is given in our response to Reviewer ye1m's second question.
+For other distances we do not guarantee that a rank $r < M$ factorization exists -- though our study above demonstrates empirical robustness to the choice of $\delta$ / potential model misspecification in practice.
 
 > It would be useful to estimate [E] and its spectral decomposition... How much variance in the output can this framework handle before it loses confidence that the responses are generated from the same model?
 
-This is a good question with a quantitative answer. Section 3.2 already invokes Wedin's theorem [39] for subspace consistency; we will upgrade that remark to an explicit finite-sample statement. Writing $\hat{E} = E + N$ (noise from the finite model panel and, at temperature $>0$, response sampling), Wedin's theorem gives $\sin\Theta(\hat{U}, U) \leq \lVert N \rVert / (\sigma_r - \sigma_{r+1} - \lVert N \rVert)$: the estimated subspace, $\hat{r}$ (spectral-gap criterion), and the GMM-based $\hat{\rho}$ are stable exactly while the noise stays below the discriminative spectral gap, and the framework "loses confidence" when $\lVert N \rVert$ approaches $\sigma_r - \sigma_{r+1}$. The singular-value ratios $\sigma_1/\sigma_2$ in our new robustness studies (3.7–13.4 across all tasks/embedders/metrics) show this gap is well separated in practice, and the invariance of $\hat{r}$ across 4 embedders $\times$ 5 metrics (table above; embedder table in our response to Reviewer KojF) is direct evidence of stability.
+This is a good question with a quantitative answer. Section 3.2 already invokes Wedin's theorem [39] for subspace consistency. We can also use it to make an explicit finite-sample statement. Writing $\hat{E} = E + N$ (noise from the finite model panel and, at temperature $>0$, response sampling), Wedin's theorem gives $\sin\Theta(\hat{U}, U) \leq \lVert N \rVert / (\sigma_r - \sigma_{r+1} - \lVert N \rVert)$.
+
+The estimated subspace and the GMM-based $\hat{\rho}$ are stable exactly while the noise stays below the discriminative spectral gap, and the framework "loses confidence" when $\lVert N \rVert$ approaches $\sigma_r - \sigma_{r+1}$.
 
 > [line 187] Suggestion: More of the paper could focus on this subsection since we have to rely on estimates for black-box models. This is where the rubber hits the road.
 
-We agree and will expand Section 3.2 in the revision with (i) the finite-sample Wedin statement above, (ii) the explicit $r>1$ recovery procedure (response to Reviewer ye1m's second question), and (iii) the temperature $>0$ estimation remark.
+We agree and will expand Section 3.2 in the revision with comments on (i) the effect of non-deterministic decoding and (ii) an explicit $r>1$ recovery procedure.
+
+---
+
+Thank you again for taking the time to review our paper -- please let us know if you have any remaining questions for us!
 
 # Response to Reviewer KojF
 
