@@ -62,47 +62,55 @@ Thank you again for taking the time to review our paper -- please let us know if
 
 # Response to Reviewer KojF
 
-We thank the reviewer for their time and generous review, and in particular for highlighting the writing clarity, the reproducibility of the experimental detail, the repeated-trial design, and the ease of implementing the method as strengths.
+Thank you for taking the time to provide a detailed review of our paper. We appreciate you noting that the paper is clearly written and easy to follow. We address your weaknesses, questions, and limitations below:
 
-> Discriminative matrix factorization has been studied since long before the emergence of generative models... The term itself may be overloaded. The paper should cite existing literature and briefly explain exactly what it means within the scope of the work.
+> Discriminative matrix factorization has been studied ... the paper should cite existing literature and briefly explain exactly what it means within the scope of the work.
 
-Agreed — we will add a related-work paragraph that both defines the term within our scope (Definition 1: a query-indexed low-rank factorization of a family of response dissimilarities) and connects it to the established lines it touches: (i) *three-way MDS*: INDSCAL (Carroll & Chang, Psychometrika 1970) and its descendants decompose stacks of dissimilarity matrices indexed by subjects into shared components with per-subject nonnegative weights — the closest structural antecedent, with queries in place of subjects, but with no downstream inference task and no finite-sample theory; (ii) *kernel families*: for each $q$, $d_P^2$ is a squared energy distance, i.e. an MMD with a conditionally negative-type kernel (Sejdinovic et al., AoS 2013); the factorization expresses this query-indexed MMD family through $r$ shared model-pair components $\phi_\ell$; (iii) *latent position / spectral embedding theory*: our pipeline (pairwise dissimilarities → MDS → downstream classifier) is the two-step of latent position graph inference, where consistency of embed-then-classify is established (Tang, Sussman & Priebe, AoS 2013; Athreya et al., JMLR 2018); (iv) *sparse factor identifiability* for the $r>1$ rotation step (Rohe & Zeng, JRSS-B 2023; Donoho & Stodden 2003; Arora et al. 2012); (v) *contrastive representation learning theory* (Arora et al. 2019; Tosh et al. 2021; HaoChen et al. 2021), where downstream-risk guarantees play the role of our Theorem 1 with query sampling in place of augmentation/view sampling — the coverage term $\sum_\ell \rho_\ell^m$ has no analogue there and is the distinctive object of the query-budget setting.
+We will add an additional related work paragraph that both defines the term within our scope (Definition 1: a query-indexed low-rank factorization of a family of response dissimilarities) and contextualizes the factorization in the broader lineage of decompositions -- from classical function-space expansions (Fourier and Taylor expansions, Mercer/eigenfunction expansions of kernels) through matrix and tensor factorizations (PCA/SVD, nonnegative matrix factorization, and three-way MDS such as INDSCAL, which decomposes stacks of dissimilarity matrices indexed by subjects) to modern spectral embedding and representation-learning theory.
+
+We do note that the factorization in the context of generic black box functions with random outputs appears to be novel -- though we would defer to you if you think that claim is too strong.
 
 > Assumption 2 states: "the set of models distinguishable from at least one cross-class model under the discriminative factorization has positive measure". This is a strong assumption to make, and it should be re-examined in the experimental results section.
 
-We agree, and Reviewer ye1m identified the same issue from the proof side. We will restate Assumption 2 in a form that is simultaneously *weaker in spirit* and *sufficient in fact*: the embedded class-conditional distributions differ — which for balanced binary classes is equivalent to $L^*(P_{g(f)Y}) < \tfrac{1}{2}$, i.e. the weakest possible condition under which any method could beat chance (full details in our response to Reviewer ye1m's first question). It is also empirically checkable: the per-query between-class excess (mean cross-class minus mean within-class dissimilarity) is a finite-sample witness of the condition, and it is positive on all three real tasks; we will add this check to Section 4 as the reviewer suggests.
+While we agree that the assumption sounds strong, in practice most off-the-shelf embedding functions for well-studied modalities will preserve enough information about the response for this to be true. We examine this indirectly in the experimental section by showing that better-than-chance classification is possible across all three real data settings. We will add a note in the experiment section noting this indirect examination.
 
 > ...classification error alone is not enough to show the complete picture. The authors should also plot their ROC or Precision-Recall curves.
 
-We will add ROC and precision-recall curves for the Signal/Uniform/Orthogonal comparison to the appendix in the revision.
+In our case we study classification under balanced classes -- so the relative ordering of ROC / AUC / etc. would be the same as accuracy.
 
 > The title uses the term "generative model," which is very broad... I hope the authors can clarify the research objectives more clearly.
 
-Our experiments are on text LLMs, and we will say so explicitly in the introduction. The framework itself requires only (i) black-box query→response access and (ii) an embedding $g$ of responses into Euclidean space, so it applies in principle to image or multimodal generative models with a suitable $g$; we will state this scope precisely.
+The framework we present is general to any collection of black box functions where there exists an appropriate distance on their output spaces. We apply the factorization / its potential utility using LLMs because of their current relevance -- but the theoretical results and the methods will apply the same to image, video, audio, multi-modal, etc. models. We will emphasize this generality better after describing the discriminative factorization.
 
 > Please provide a more detailed explanation of why "[d_P] is of negative type" (Page 2, Line 78) and why "[d_Q] is of negative type" when there is a square root (which is non-negative).
 
-We will add a short remark with the proof. $d_P^2$ is a squared Euclidean distance between embedded responses, hence of negative type; nonnegative combinations of negative-type dissimilarities are of negative type, so $\sum_\ell \left( \sum_q \Pi_Q(q) \alpha_\ell(q) \right) \phi_\ell = d_Q^2$ is of negative type. By Schoenberg's theorem, this is exactly the condition under which the *square root* $d_Q$ embeds isometrically into Hilbert space — which is what classical MDS needs to achieve zero stress at finite dimension (App. A.1). So the square root is not incidental: "$d^2$ of negative type $\iff$ $d$ embeds in Hilbert space" is the standard pairing (cf. Sejdinovic et al., AoS 2013).
+$d_P^2$ is a squared Euclidean distance between embedded responses, hence of negative type. Nonnegative combinations of negative-type dissimilarities are of negative type, so $\sum_\ell \left( \sum_q \Pi_Q(q) \alpha_\ell(q) \right) \phi_\ell = d_Q^2$ is of negative type. By Schoenberg's theorem, this is exactly the condition under which the *square root* $d_Q$ embeds isometrically into Hilbert space -- which is what classical MDS needs to achieve zero stress at finite dimension (App. A.1).
 
 > The raw text embedding model... should be mentioned earlier in the paper.
 
-Agreed — we will introduce it (with the rationale, see the embedder study below) at the start of Section 4 rather than in App. B.1.4.
+Agreed -- we will introduce it at the start of Section 4 rather than in App. B.1.4.
 
-> In Figure 2, subfigure (d) shows that the yellow line (n=50) has a lower failure probability than the green line (n=100) when the number of labeled models is small. Please clarify if this is not due to a data logging error.
+> In Figure 2, subfigure (d) ...
 
-Thank you for catching this — it is not a logging error, and investigating it revealed a genuine improvement to the experiment. The submitted panel (d) drew one fixed model panel per $n$ and varied only the query draw and train/test split across repetitions, so the small-$m$ values were conditional on a single panel draw; we verified that the $n=50$/$n=100$ ordering at small $m$ flips sign across panel draws. We have rerun the experiment resampling the model panel on every repetition (5000 reps), which is the correct Monte Carlo average, and will replace Figure 2(d) in the revision. In the corrected panel, failure probability is strictly decreasing in $n$ for all $m \geq 10$ (e.g., at $m=20$: .42/.03/.003 for $n=20/50/100$). A small non-monotonicity remains at $m \leq 5$ with a simple explanation: in that regime coverage has typically failed, the classifier is at chance (mean error .46–.49 for every $n$), and $P[\mathrm{err} \geq 0.5]$ for a chance-level classifier on a test set of size $k=0.3n$ equals $P[\mathrm{Bin}(k, \tfrac{1}{2}) \geq k/2]$ — which is $\tfrac{1}{2}$ for odd $k$ and $\tfrac{1}{2} + \tfrac{1}{2}P[\mathrm{Bin}=k/2]$ for even $k$, i.e. non-monotone in $n$ through test-set discreteness ($k=6/15/30$ gives .66/.50/.57, matching the observed ordering). We will note this in the caption; it concerns only the chance regime and does not affect any conclusion about the $m$- or $n$-dependence of the bound.
+Thank you for catching this. The submitted panel (d) conditioned on a single model-panel draw per $n$; we have rerun the experiment resampling the panel on every repetition (5000 reps), after which failure probability is strictly decreasing in $n$ for all $m \geq 10$. We will replace Figure 2(d) in the revision.
 
-> The hyperparameters and configurations used in MDS and the random forest classifier should be briefly mentioned.
+> The hyperparameters ...
 
-These are in App. B.1.5/B.2.5/B.3.6 (classical MDS with $d=8$ or $d=\min(10, n-1)$; random forest with scikit-learn defaults; 200–500 stratified train/test repetitions), and we will surface them in the main text in Section 4.
+These are in App. B.1.5/B.2.5/B.3.6 (classical MDS with $d=8$ or $d=\min(10, n-1)$; random forest with scikit-learn defaults; 200–500 stratified train/test repetitions), though we plan to surface them in the main text in Section 4.
 
 > ...the authors should explain why other temperature values were not explored, or demonstrate that the method is insensitive to the choice of temperature...
 
-Temperature 0 was chosen to isolate the factorization structure from decoding stochasticity, matching the deterministic setting of the theory. The framework extends to temperature $>0$ without modification of the pipeline: $d_P$ becomes an energy distance between response distributions, estimated unbiasedly from repeated draws per query (temperature 0 is the point-mass special case), and the sampling noise enters the perturbation term $N$ of the finite-sample analysis (response to Reviewer Vhi3's variance question), with variance decaying in the number of draws — greedy decoding is, in this sense, a variance-reduction device. We will make this extension explicit in Section 3.2 of the revision.
+Temperature 0 was chosen to isolate the factorization structure from decoding stochasticity, matching the deterministic setting of the theory (which is built on the true response distributions).
 
-> When the embeddings of the LLM outputs... the paper did not discuss why the text embedding model "nomic-embed-text-v1.5" was chosen... the paper should employ at least one additional generic text embedding model to validate the invariance of the method.
+The framework extends to temperature $>0$ without modification of the pipeline: $d_P$ must be estimated from repeated draws per query, and the sampling introduces finite-sample noise. We will make this explicit in Section 3.2 of the revision.
 
-We chose nomic-embed-text-v1.5 as a highly performant open-source embedding model (millions of downloads per month), favoring reproducibility over closed API embedders; we will state this in Section 4. To verify the choice is not load-bearing, we re-ran the full estimation pipeline (per-query dissimilarity → SVD → GMM) on all three real tasks with three additional embedding models spanning different families, sizes, and training corpora: all-MiniLM-L6-v2 (384d, 22M params), bge-large-en-v1.5 (1024d, 335M params), and OpenAI text-embedding-3-small (closed API). Cell format: $\hat{r}$ / $\hat{\rho}_1$ / balanced accuracy / ARI vs. ground truth.
+> When the embeddings of the LLM outputs...
+
+We chose nomic-embed-text-v1.5 because it is a highly performant open-source embedding model (millions of downloads per month), favoring reproducibility over closed API embedders. We will state this in Section 4.
+
+To verify the choice is not load-bearing, we re-ran the full estimation pipeline on all three real tasks with three additional embedding models spanning different families, sizes, and training corpora: all-MiniLM-L6-v2 (384d, 22M params), bge-large-en-v1.5 (1024d, 335M params), and OpenAI text-embedding-3-small (closed API).
+
+Cell format: $\hat{r}$ / $\hat{\rho}_1$ / balanced accuracy / ARI vs. ground truth.
 
 |Embedder|LoRA|Sys.Prompt|RAG|
 |-|-|-|-|
@@ -111,15 +119,15 @@ We chose nomic-embed-text-v1.5 as a highly performant open-source embedding mode
 |bge-large-en-v1.5|1/.58/.66/.09|1/.34/.65/.08|1/.67/.69/.14|
 |text-embedding-3-small|1/.48/.72/.18|1/.50/.58/.02|1/.67/.66/.09|
 
-The estimated discriminative rank is identical across embedders for every task ($\hat{r}=1$ throughout, as in the submission), $\hat{\rho}_1$ varies within a modest band per task (LoRA .48–.58, Sys.Prompt .34–.56, RAG .67–.73), and the estimated partition agrees with ground truth significantly above chance in 10/12 cells (ARI permutation test, $10^4$ permutations; all 10 at the resolution floor $p=10^{-4}$). The two exceptions are both on Sys.Prompt (all-MiniLM $p=.25$, text-embedding-3-small $p=.048$) — consistent with that task's weak per-query signal (Section 4.2.2) rather than with the embedding choice, since the same embedders recover the sets on LoRA and RAG. This also addresses the specific concern that nomic's pretraining data might already contain the probe domains: if the recovery were an artifact of one embedder's training data, it would not replicate across four embedders trained on different corpora — including one whose corpus we cannot inspect at all. This study will be added to the appendix.
+The estimated discriminative rank is identical across embedders for every task ($\hat{r}=1$ throughout, as in the submission), $\hat{\rho}_1$ varies within a modest band per task (LoRA .48–.58, Sys.Prompt .34–.56, RAG .67–.73), and the estimated partition agrees with ground truth significantly above chance in 10/12 cells (ARI permutation test, $10^4$ permutations). The two exceptions are both on Sys.Prompt (all-MiniLM $p=.25$, text-embedding-3-small $p=.048$) -- consistent with that task's weak per-query signal (Section 4.2.2). We plan to add a figure and discussion describing these results to the main text.
 
 > These hyperparameters can be learned from an open-source LLM and applied to another open-source LLM to check the transferability...
 
-This is a valuable direction. We note that the three tasks already span two base models (Qwen2.5-1.5B-Instruct for LoRA; ministral-8b for system-prompt and RAG) with the same pipeline and hyperparameters throughout, which is indirect evidence of transferability of the *procedure*; transferring the *estimated factorization parameters* ($\hat{r}$, $\hat{\rho}$, estimated signal sets) across base models is an excellent test we will add to future work.
+One of the benefits of operating in the blackbox setting is that both open-source and closed models can be included in a collection of models. As such, you do not need to "transfer" the learned hyperparameters to a new setting -- you can just include the model of interest directly in your analysis. This type of model-level prediction is what motivated this paper -- and is discussed in a more general way in [16].
 
 > ...the internal states, including the intermediate layers and final logits... can be extracted to better check certain assumptions...
 
-Agreed — white-box validation of the factorization (e.g., against logit-level distances) would strengthen the assumption checks, and we will note it as future work. We chose to keep all validation black-box to match the audit setting that motivates the paper; the embedder-invariance study above addresses the specific worry that the raw text embedding model interferes with the conclusions.
+Agreed -- when white-box access is available there are additional analyses that can be done to validate the black-box findings. In our case, the "signal" we are trying to predict is already known by construction, so we do not need to investigate the weights, residual streams, etc. We plan to add a comment on the potential advantages of a white-box approach -- when available -- in the discussion / limitations.
 
 # Response to Reviewer ye1m
 
