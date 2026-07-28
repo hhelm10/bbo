@@ -185,7 +185,7 @@ On temperature: see our response to Reviewer KojF's temperature question -- the 
 
 The collapse occurs because both domains share a dominant "restricted-access" direction on which finance and HR signal queries both load ($\sigma_1/\sigma_2 = 3.7$--$4.3$ across the four embedders we studied), with the finance-vs-HR contrast appearing in the next direction ($\sigma_2/\sigma_3 = 1.2$--$1.4$). The spectral-gap criterion therefore selects $\hat{r} = 1$. The collapse is benign for the query-budget prediction: the $m^*$ from $\hat{r} = 1$ matches the observed error decay, since queries from both domains load on the shared direction. The finer two-domain structure remains present in the top-3 directions and is recoverable under additional structure on the loadings, per our response to your SVD question above.
 
-For example, the empirical distributions of the direction-2 loadings for finance and HR queries differ with total variation distance at least $.88$--$.94$ across the four embedders (two-sample Kolmogorov--Smirnov statistic, a lower bound on TV; $p < 10^{-19}$ in every case) -- so a single threshold on the direction-2 loading separates the two domains with accuracy $.94$--$.97$, without labels.
+For example, on the dominant (shared) direction the finance and HR loading distributions are statistically indistinguishable: two-sample Kolmogorov--Smirnov statistic (a lower bound on TV) of $.14$--$.24$ with $p = .11$--$.72$ across the four embedders. On direction 2 they differ with TV at least $.88$--$.94$ (KS statistic; $p < 10^{-19}$ in every case) -- so a single threshold on the direction-2 loading separates the two domains with accuracy $.94$--$.97$, without labels.
 
 > The learning term is opaque...
 
