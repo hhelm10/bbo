@@ -66,7 +66,7 @@ Thank you for taking the time to provide a detailed review of our paper. We appr
 
 > Discriminative matrix factorization has been studied ... the paper should cite existing literature and briefly explain exactly what it means within the scope of the work.
 
-We will add an additional related work paragraph that both defines the term within our scope (Definition 1: a query-indexed low-rank factorization of a family of response dissimilarities) and contextualizes the factorization in the broader lineage of decompositions -- from classical function-space expansions (Fourier and Taylor expansions, Mercer/eigenfunction expansions of kernels) through matrix and tensor factorizations (PCA/SVD, nonnegative matrix factorization, and three-way MDS such as INDSCAL, which decomposes stacks of dissimilarity matrices indexed by subjects) to modern spectral embedding and representation-learning theory.
+We will add an additional related work paragraph that both defines the term within our scope (Definition 1: a query-indexed low-rank factorization of a family of response dissimilarities) and contextualizes the factorization in the broader lineage of decompositions: classical function-space expansions (Fourier and Taylor expansions, Mercer/eigenfunction expansions of kernels) and matrix and tensor factorizations (PCA/SVD, nonnegative matrix factorization, and three-way MDS such as INDSCAL, which decomposes stacks of dissimilarity matrices indexed by subjects).
 
 We do note that the factorization in the context of generic black box functions with random outputs appears to be novel -- though we would defer to you if you think that claim is too strong.
 
@@ -76,7 +76,7 @@ While we agree that the assumption sounds strong, in practice most off-the-shelf
 
 > ...classification error alone is not enough to show the complete picture. The authors should also plot their ROC or Precision-Recall curves.
 
-In our case we study classification under balanced classes -- so the relative ordering of ROC / AUC / etc. would be the same as accuracy.
+In our case we study classification under balanced classes -- so accuracy is an appropriate summary. We are happy to add ROC / PR curves to the appendix if you would find them useful.
 
 > The title uses the term "generative model," which is very broad... I hope the authors can clarify the research objectives more clearly.
 
