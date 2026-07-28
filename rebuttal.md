@@ -42,7 +42,11 @@ At temperature 0 (all experiments), $P_f(q)$ is a point mass and $d_P$ is comput
 
 > [line 133] How do we know a factorization of rank [r] exists? How do we compute it?
 
-For $\delta$ = squared Euclidean at temperature 0, the factorization exists *by construction*: $\lVert g(f(q)) - g(f'(q)) \rVert_2^2 = \sum_{j=1}^{p} (g_j(f(q)) - g_j(f'(q)))^2$ is a sum of $p$ nonnegative rank-one terms, so a nonnegative factorization with $r \leq p$ always exists; the discriminative rank is the minimal such $r$. This is also the principled reason squared Euclidean is our default $\delta$ (and why the theory uses squared rather than metric distances: the proof of Theorem 2 needs $d_Q$ of negative type so MDS achieves zero stress at finite $d$, App. A.1). Other $\delta$ need not factor exactly, but the $\delta$ study above shows $\hat{r}$ is unchanged and the recovered query sets are stable under Euclidean, cosine, L1, and RBF-MMD — the framework is robust to $\delta$ misspecification in practice. Computationally, the pipeline never needs the factorization itself, only the SVD of $\hat{E}$ (Section 3.2), which estimates its column space; the explicit $r>1$ procedure is given in our response to Reviewer ye1m's second question.
+As mentioned in the paper, a rank $r = M$ factorization always exists. As for other known existences, when $\delta$ = squared Euclidean at temperature 0 the factorization exists *by construction*: $\lVert g(f(q)) - g(f'(q)) \rVert_2^2 = \sum_{j=1}^{p} (g_j(f(q)) - g_j(f'(q)))^2$ is a sum of $p$ nonnegative rank-one terms, so a nonnegative factorization with $r \leq p$ always exists; the discriminative rank is the minimal such $r$. This is also the principled reason squared Euclidean is our default $\delta$ (and why the theory uses squared rather than metric distances: the proof of Theorem 2 needs $d_Q$ of negative type so MDS achieves zero stress at finite $d$, App. A.1).
+
+For other distances we do not guarantee that a rank $r < M$ factorization exists — though our study above demonstrates empirical robustness to the choice of $\delta$ / model misspecification in practice.
+
+Computationally, the pipeline never needs the factorization itself, only the SVD of $\hat{E}$ (Section 3.2), which estimates its column space; the explicit $r>1$ procedure is given in our response to Reviewer ye1m's second question.
 
 > It would be useful to estimate [E] and its spectral decomposition... How much variance in the output can this framework handle before it loses confidence that the responses are generated from the same model?
 
