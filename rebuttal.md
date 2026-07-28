@@ -191,7 +191,7 @@ For example, on the dominant (shared) direction the finance and HR loading distr
 
 The learning term $\gamma(n)$ is opaque by design. We tried to keep the statement as general as possible and, given classical "No Free Lunch" theorems in statistical pattern recognition, it is not possible to provide rates in general.
 
-With that said, we can better characterize the rate if we are willing to make assumptions on the form of the class-conditional distributions. For example, if both are $d$-dimensional Gaussians with a shared covariance then the Bayes rule is linear with $L^* = \Phi(-\Delta/2)$, and the plug-in LDA/nearest-mean classifier satisfies $\gamma(n) = O(d/n)$ with constants depending on $\Delta$ (classical plug-in discriminant expansions). Other sub-Gaussian relaxations give $\exp(-cn\Delta^2)$ high-probability versions. We will add this to the discussion as an example of characterizing the rate in $n$.
+With that said, we can better characterize the rate if we are willing to make assumptions on the form of the class-conditional distributions. For example, if both are $d$-dimensional Gaussians $N(\mu_0, \Sigma)$ and $N(\mu_1, \Sigma)$ with a shared covariance then the Bayes rule is linear with $L^* = \Phi(-\Delta/2)$, where $\Delta = \sqrt{(\mu_1 - \mu_0)^\top \Sigma^{-1} (\mu_1 - \mu_0)}$ is the Mahalanobis separation, and the plug-in LDA/nearest-mean classifier satisfies $\gamma(n) = O(d/n)$ with constants depending on $\Delta$ (classical plug-in discriminant expansions). Other sub-Gaussian relaxations give $\exp(-cn\Delta^2)$ high-probability versions. We will add this to the discussion as an example of characterizing the rate in $n$.
 
 ---
 
