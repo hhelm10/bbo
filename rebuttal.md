@@ -131,17 +131,19 @@ Agreed -- when white-box access is available there are additional analyses that 
 
 # Response to Reviewer ye1m
 
-Thank you for taking the time to meaningfully engage with our paper. We appreciate you noting that the problem that we address is timely and that our contribution (the discriminative factorization) provides a good theoretical language for query selection and bounds. We also appreciate a generally positive review (3s across the board!). We address your weaknesses, questions, and limitations below:
+NB: We missed the original rebuttal deadline (which allowed 10k characters) and so have split our rebuttal into two Official Comments (which allow 5k each). Apologies for the email spam.
 
-> The better-than-chance theorem seems to require stronger label-preservation assumptions... The proof appears to assert that distinguishability from at least one cross-class model makes the restricted Bayes risk below 0.5, which is not generally valid...
+Thank you for taking the time to meaningfully engage with our paper. We appreciate you noting that the problem that we address is timely and that our contribution (the discriminative factorization) provides a good theoretical language for query selection and query-complexity bounds. We also appreciate a generally positive review (3s across the board!). We address your weaknesses, questions, and limitations below:
+
+> The better-than-chance theorem seems to require stronger label-preservation assumptions...
 > What exact additional assumptions are needed for Theorem 1?
 
 You are correct -- the better-than-chance theorem requires a stronger label-preservation assumption. In particular, it requires that the class-conditional distributions of the embedded models differ: $P_0 \neq P_1$ under the embedding function $g$. Given this assumption, the proof of Theorem 1 is relatively unchanged from the current version: for balanced classes, $P_0 \neq P_1$ is equivalent to $L^*(P_{g(f)Y}) < \tfrac{1}{2}$ (via $L^* = \tfrac{1}{2}(1 - \mathrm{TV}(P_0, P_1))$), which directly restores the step in App. A.2 that asserted the restricted Bayes risk is below $0.5$; the rest of the argument goes through as written.
 
-> The SVD-based estimation story appears overstated for rank greater than one... SVD generally recovers only a subspace, not the original nonnegative factorization or its coordinate-wise zero sets...
-> How should the SVD estimator be interpreted when r>1? Since SVD recovers a subspace rather than a uniquely aligned factorization, how are the individual zero sets identified up to rotations or sign changes?
+> The SVD-based estimation story appears overstated for rank greater than one...
+> How should the SVD estimator be interpreted when r>1?
 
-You are correct that the SVD recovers only the column space: for $r > 1$, the individual directions (and hence their zero sets) are identifiable only up to an orthogonal rotation. Importantly, the quantities the pipeline uses downstream are rotation-invariant: the estimated rank $\hat{r}$ (spectral-gap criterion), the estimated subspace itself (consistent by Wedin's theorem [39]), and the per-query signal scores given by the row norms of the query loadings across the top-$\hat{r}$ directions. Similarly, the proofs of Theorems 1--2 are organized around the accumulated-load event $A = \{\sum_{q \in Q} \alpha_\ell(q) > 0 \text{ for all } \ell\}$ (App. A.1) and never use the identity of individual directions. Query selection and the resulting $m^*$ prediction therefore do not require resolving the rotation.
+Yes, the SVD only recovers the column space. So for $r > 1$ the individual directions (and hence their zero sets) are identifiable only up to an orthogonal rotation. Importantly, the quantities the pipeline uses downstream are rotation-invariant: the estimated rank $\hat{r}$ (spectral-gap criterion), the estimated subspace itself (consistent by Wedin's theorem [39]), and the per-query signal scores given by the row norms of the query loadings across the top-$\hat{r}$ directions. Similarly, the proofs of Theorems 1 & 2 are organized around the accumulated-load event $A = \{\sum_{q \in Q} \alpha_\ell(q) > 0 \text{ for all } \ell\}$ (App. A.1) and never use the identity of individual directions. Query selection and the resulting $m^*$ prediction therefore do not require resolving the rotation.
 
 When the individual directions are themselves of interest, they can be recovered under additional structure on the loadings -- for example, sparsity-seeking rotations of the top-$\hat{r}$ singular vectors identify the basis when each query loads on few directions. In our experiments $\hat{r} = 1$, where the direction is identified up to sign. We will make the distinction between rotation-invariant outputs and direction-level interpretation explicit in Section 3.2.
 
@@ -156,15 +158,15 @@ The submitted statements under the zero-set model are recovered verbatim at $\va
 > The query-selection method is not clearly discriminative with respect to labels... it may recover dominant nuisance variation rather than class-relevant variation.
 > How does the method avoid selecting nuisance variation?
 
-Great question. This is partly due to the idealized zero-set formulation and partly due to error when labeling queries. With that said, we do want to note that the unsupervised spectral step recovers signal sets that agree with ground truth significantly above chance across 5 dissimilarities and 4 embedders (tables in our responses to Reviewers Vhi3 and KojF).
+Great question. This is partly due to the idealized zero-set formulation and partly due to error when labeling queries. With that said, we do want to note that the unsupervised spectral step recovers signal sets that agree with ground "truth" significantly above chance across 5 dissimilarities and 4 embedders (tables in our responses to Reviewers Vhi3 and KojF).
 
 > Can the framework be extended beyond binary balanced tasks?
 
-As noted in the limitations, it is likely possible to extend the framework -- or at least the concept of "orthogonality" -- to other tasks, including regression, multi-class classification, and unbalanced classification. For multi-class, the most direct route is a one-vs-rest reduction: apply the binary bound to each class-vs-rest problem and union-bound, replacing $\rho^m$ with $\sum_k \rho_k^m$ in the coverage term. Unbalanced classes leave the coverage term unchanged and enter through the class priors in the learning term (with $L^*$ measured against the majority-class baseline rather than $\tfrac{1}{2}$). For regression, the analogue of a direction's zero set is the set of queries whose response variation carries no information about the continuous target, with accumulated signal playing the role of class separation. A full treatment of these settings is future work.
+As noted in the limitations, it is possible to extend the framework -- or at least the concept of "orthogonality" -- to other tasks, including regression, multi-class classification, and unbalanced classification. For multi-class classification, the most direct route is a one-vs-rest reduction: apply the binary bound to each class-vs-rest problem and union-bound, replacing $\rho^m$ with $\sum_k \rho_k^m$ in the coverage term. Unbalanced classes leave the coverage term unchanged and enter through the class priors in the learning term (with $L^*$ measured against the majority-class baseline rather than $\tfrac{1}{2}$). For regression, the analogue of a direction's zero set is the set of queries whose response variation carries no information about the continuous target, with accumulated signal playing the role of class separation. A full treatment of these settings is future work.
 
-> How robust are the results to different embeddings and classifiers? ...other embedding models, distance metrics, classifier families, MDS dimensions, and response-generation temperatures.
+> How robust are the results?
 
-We ran three new robustness studies. For distance metrics (five $\delta$) see the table in our response to Reviewer Vhi3; for embedding models (four embedders) see the table in our response to Reviewer KojF -- $\hat{r}$ and the recovered query sets are stable throughout. For classifier families, we repeated the classification experiment with four classifiers on identical per-trial embeddings (50 reps). Cell format: mean accuracy at $m=1/10/100$.
+We ran three new robustness studies. For distance metrics (five $\delta$) see the table in our response to Reviewer Vhi3. For embedding models (four embedders) see the table in our response to Reviewer KojF. For classifier families, we repeated the classification experiment with four classifiers on identical per-trial embeddings (50 reps). Cell format: mean accuracy at $m=1/10/100$.
 
 |Classifier|LoRA|Sys.Prompt|RAG|
 |-|-|-|-|
@@ -177,11 +179,13 @@ All four classifiers exhibit the same monotone accuracy-vs-$m$ growth on every t
 
 On MDS dimension: the theory requires only $d \geq \min\{r^2, n, m(V-1)\}$ for zero stress (App. A.1), and the two settings used across tasks ($d=8$ and $d=\min(10, n-1)$) behave identically.
 
-On temperature: see our response to Reviewer KojF's temperature question -- the pipeline extends unchanged, with sampling noise entering the finite-sample perturbation term. This is a relatively expensive experiment to run since you need a lot of replicates per query per model.
+On temperature: see our response to Reviewer KojF's temperature question -- the estimation procedure is technically unchanged but sampling noise could meaningfully affect estimation quality by entering the finite-sample perturbation term. This is a relatively expensive experiment to run since you need a lot of replicates per query per model.
 
-> The treatment of discriminative directions is too simple... This issue appears in the RAG experiment: the task is designed with finance and HR domains, yet the estimated rank is [1], suggesting that semantically distinct domains can collapse into one discriminative direction.
+> The treatment of discriminative directions is too simple...
 
-This is exactly right. The collapse occurs because both domains share a dominant "restricted-access" direction on which finance and HR signal queries both load ($\sigma_1/\sigma_2 = 3.7$--$4.3$ across the four embedders we studied), with the finance-vs-HR contrast appearing in the next direction ($\sigma_2/\sigma_3 = 1.2$--$1.4$). The spectral-gap criterion therefore selects $\hat{r} = 1$. The collapse is benign for the query-budget prediction: the $m^*$ from $\hat{r} = 1$ matches the observed error decay, since queries from both domains load on the shared direction. The finer two-domain structure remains present in the top-2 directions and is recoverable under additional structure on the loadings, per our response to your SVD question above.
+The collapse occurs because both domains share a dominant "restricted-access" direction on which finance and HR signal queries both load ($\sigma_1/\sigma_2 = 3.7$--$4.3$ across the four embedders we studied), with the finance-vs-HR contrast appearing in the next direction ($\sigma_2/\sigma_3 = 1.2$--$1.4$). The spectral-gap criterion therefore selects $\hat{r} = 1$. The collapse is benign for the query-budget prediction: the $m^*$ from $\hat{r} = 1$ matches the observed error decay, since queries from both domains load on the shared direction. The finer two-domain structure remains present in the top-3 directions and is recoverable under additional structure on the loadings, per our response to your SVD question above.
+
+For example, the empirical distributions of the direction-2 loadings for finance and HR queries differ with total variation distance at least $.88$--$.94$ across the four embedders (two-sample Kolmogorov--Smirnov statistic, a lower bound on TV; $p < 10^{-19}$ in every case) -- so a single threshold on the direction-2 loading separates the two domains with accuracy $.94$--$.97$, without labels.
 
 > The learning term is opaque...
 
