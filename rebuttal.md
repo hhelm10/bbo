@@ -149,7 +149,7 @@ When the individual directions are themselves of interest, they can be recovered
 
 Yes, the zero-set model is practically brittle -- as noted in the limitations and seen when looking at the query loadings for each of the tasks. If appropriate, we can add the corresponding theoretical results under a less brittle $\varepsilon$ framing:
 
-> Define the $\varepsilon$-load set $S_\ell(\varepsilon) = \{q : \alpha_\ell(q) \leq \varepsilon\}$ and $\rho_\ell(\varepsilon) = P(q \in S_\ell(\varepsilon))$. The proof of Theorem 2 (App. A.1) runs through the accumulated-load event $A = \{\sum_q \alpha_\ell(q) > 0 \; \forall \ell\}$; the relaxation replaces $A$ with $A(\varepsilon) = \{\sum_q \alpha_\ell(q) > m\varepsilon \; \forall \ell\}$. Two changes: (a) $P[A(\varepsilon)^c] \leq \sum_\ell \rho_\ell(\varepsilon)^m$ -- the same geometric decay; (b) queries in $S_\ell(\varepsilon)$ still contribute at most $m\varepsilon$ accumulated signal, degrading the bound by an additive $O(m\varepsilon)$ term.
+>> Define the $\varepsilon$-load set $S_\ell(\varepsilon) = \{q : \alpha_\ell(q) \leq \varepsilon\}$ and $\rho_\ell(\varepsilon) = P(q \in S_\ell(\varepsilon))$. The proof of Theorem 2 (App. A.1) runs through the accumulated-load event $A = \{\sum_q \alpha_\ell(q) > 0 \; \forall \ell\}$; the relaxation replaces $A$ with $A(\varepsilon) = \{\sum_q \alpha_\ell(q) > m\varepsilon \; \forall \ell\}$. Two changes: (a) $P[A(\varepsilon)^c] \leq \sum_\ell \rho_\ell(\varepsilon)^m$ -- the same geometric decay; (b) queries in $S_\ell(\varepsilon)$ still contribute at most $m\varepsilon$ accumulated signal, degrading the bound by an additive $O(m\varepsilon)$ term.
 
 The submitted statements under the zero-set model are recovered verbatim at $\varepsilon = 0$, so no result is weakened and no empirical section changes. Importantly, as you pointed out, the estimators already live in the $\varepsilon$-world -- so the $m^*$ predictions that match observed error decay in the paper are already $\varepsilon$-versions.
 
@@ -188,6 +188,10 @@ This is exactly right. The collapse occurs because both domains share a dominant
 The learning term $\gamma(n)$ is opaque by design. We tried to keep the statement as general as possible and, given classical "No Free Lunch" theorems in statistical pattern recognition, it is not possible to provide rates in general.
 
 With that said, we can better characterize the rate if we are willing to make assumptions on the form of the class-conditional distributions. For example, if both are $d$-dimensional Gaussians with a shared covariance then the Bayes rule is linear with $L^* = \Phi(-\Delta/2)$, and the plug-in LDA/nearest-mean classifier satisfies $\gamma(n) = O(d/n)$ with constants depending on $\Delta$ (classical plug-in discriminant expansions). Other sub-Gaussian relaxations give $\exp(-cn\Delta^2)$ high-probability versions. We will add this to the discussion as an example of characterizing the rate in $n$.
+
+---
+
+Thank you again for taking the time to review our paper -- please let us know if you have any remaining questions for us!
 
 # Confidential Comment to the Area Chair
 
