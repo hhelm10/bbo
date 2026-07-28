@@ -2,17 +2,15 @@
 
 # Response to Reviewer Vhi3
 
-We thank the reviewer for their time and thoughtful review, and in particular for highlighting the response-distribution view of black-box models, the concrete early examples (§2.1–2.2), and the compelling singular-value ratios as strengths.
+We thank the reviewer for their time and thoughtful review, and in particular for highlighting the response-distribution view of black-box models, the concrete early examples (Sections 2.1–2.2), and the compelling singular-value ratios as strengths. We address your weaknesses and questions below:
 
 > The discriminative factorization is an interpretation of the SVD for a distance matrix based indexed by query-model pairs. This is useful but not novel.
 
-We agree that the discriminative factorization can be interpreted as the SVD of a (model pair, query) response matrix, though we are not aware of any existing work that contributes a similar decomposition in this setting. With that said, we will better position our contribution in the context of other uses for this type of factorization (see our response to Reviewer KojF).
+We agree that the discriminative factorization can be interpreted as the SVD of a (model pair, query) response matrix, though we are not aware of any existing work that contributes a similar decomposition in this setting. With that said, we will better position our contribution in the context of other uses for this type of factorization in other settings (see our response to Reviewer KojF).
 
-Further, our interpretation allows for the development of query-budget theory based on the per-query loadings from the factorization. Again, to our knowledge this is the first paper that discusses this idea.
+> The paper lacks a study on the choice of the measure between response distributions. This is a missing piece
 
-> The paper lacks a study on the choice of [δ], i.e., the measure between response distributions. This is a missing piece
-
-We agree this was missing and have run it. We re-ran the full estimation pipeline on all three real tasks with five response-space dissimilarities. Writing $x = g(f(q))$ and $x' = g(f'(q))$ for the embedded responses of two models to query $q$:
+We agree this was missing. We re-ran the full estimation pipeline on all three real tasks with five response-space dissimilarities. Writing $x = g(f(q))$ and $x' = g(f'(q))$ for the embedded responses of two models to query $q$:
 
 - Energy distance (used in the paper): the squared energy distance between the response distributions $P_f(q)$ and $P_{f'}(q)$, which at temperature 0 (point-mass response distributions) is equivalent to the squared Euclidean distance $\delta(x, x') = \lVert x - x' \rVert_2^2$
 - Euclidean: $\delta(x, x') = \lVert x - x' \rVert_2$
@@ -20,7 +18,7 @@ We agree this was missing and have run it. We re-ran the full estimation pipelin
 - L1: $\delta(x, x') = \lVert x - x' \rVert_1$
 - RBF-MMD: $\delta(x, x') = 2\left(1 - \exp(-\lVert x - x' \rVert_2^2 / (2\sigma^2))\right)$, i.e. the squared MMD between the two point-mass response distributions under an RBF kernel, with $\sigma^2$ set by the median heuristic over pairwise squared distances.
 
-All else is as in the paper. Cell format: estimated rank r̂ / ρ̂₁ / balanced accuracy / ARI of the estimated signal/orthogonal partition vs. ground truth.
+All other experimental settings are as in the paper. Cell format: estimated rank $\hat{r}$ / $\hat{\rho}_1$ / balanced accuracy / ARI of the estimated signal/orthogonal partition vs. ground truth.
 
 |δ|LoRA|Sys.Prompt|RAG|
 |-|-|-|-|
@@ -30,27 +28,29 @@ All else is as in the paper. Cell format: estimated rank r̂ / ρ̂₁ / balance
 |L1|1/.36/.75/.24|1/.17/.67/.11|1/.49/.67/.11|
 |RBF-MMD|1/.39/.76/.26|1/.28/.76/.26|1/.37/.62/.05|
 
-The estimated discriminative rank is identical across all five choices of δ for every task (r̂=1, as reported in the submission), signal-set recovery varies by at most 0.09 balanced accuracy, and every estimated partition agrees with ground truth significantly above chance (ARI permutation test, 10⁴ permutations: all p≤.0005; 14/15 at the resolution floor p=10⁻⁴). (Cosine matches squared Euclidean exactly: the embeddings are L2-normalized, so ‖x−y‖²=2(1−cos(x,y)), and the pipeline is invariant to scaling of δ.) There is also a principled reason squared Euclidean is the default: see our response to your line-133 question below. This study will be added to the appendix.
+The estimated discriminative rank is identical across all five choices of dissimilarity for every task. Balanced accuracy varies by at most 0.09 and every estimated partition agrees with ground truth significantly above chance (ARI permutation test, $10^4$ permutations: all $p \leq .0005$; 14/15 at the resolution floor $p = 10^{-4}$). This study will be added to the appendix.
 
 > [line 075] How do you choose the embedding function [g]? For example, is [a constant g] trivial and useless (but valid)?
 
-Empirically: the four-embedder study in our response to Reviewer KojF (final weakness) shows the conclusions are invariant across embedders spanning families, sizes, and training corpora. Theoretically, the reviewer's example is exactly the case our (restated) Assumption 2 excludes: for balanced binary classes L*(P_{g(f)Y}) = ½(1−TV(P₀,P₁)) where P_y is the class-conditional law of the *embedded* model, so a constant g gives TV=0 and no method can beat chance — the theory transparently charges this to the embedding. The restated assumption (see our response to Reviewer ye1m's first question) is precisely "g does not erase the class difference"; injective g additionally gives Bayes-optimality (Theorem 2). Between these extremes the bound degrades continuously through TV.
+We chose the embedding function used in the paper because it is a near-SOTA embedding function that is open source (it has ~1m monthly downloads on HuggingFace). With that said, we have also added a sensitivity analysis for the embedding function in our response to Reviewer KojF. Importantly, our conclusions are robust to embedding function.
+
+Theoretically, your degenerate example is exactly a case our Assumption 2 excludes: for balanced binary classes $L^*(P_{g(f)Y}) = \tfrac{1}{2}(1 - \mathrm{TV}(P_0, P_1))$, where $P_y$ is the class-conditional law of the *embedded* model, so a constant $g$ gives $\mathrm{TV} = 0$ and no method can beat chance (see our response to Reviewer ye1m's first question).
 
 > [line 077] How do we compute [d_P] since we only have an empirical estimate of [P_f(q)]?
 
-At temperature 0 (all experiments), P_f(q) is a point mass and d_P is computed exactly from the single observed response — no estimation error at this step. For temperature >0, d_P (energy distance) admits an unbiased U-statistic estimator from repeated draws, and the estimation noise enters the pipeline as the perturbation N analyzed in our response to your next question; its variance decays with the number of draws per query. We will state this explicitly in §3.2.
+At temperature 0 (all experiments), $P_f(q)$ is a point mass and $d_P$ is computed exactly from the single observed response — no estimation error at this step. For temperature $>0$, $d_P$ (energy distance) admits an unbiased U-statistic estimator from repeated draws, and the estimation noise enters the pipeline as the perturbation $N$ analyzed in our response to your next question; its variance decays with the number of draws per query. We will state this explicitly in Section 3.2.
 
 > [line 133] How do we know a factorization of rank [r] exists? How do we compute it?
 
-For δ = squared Euclidean at temperature 0, the factorization exists *by construction*: ‖g(f(q))−g(f′(q))‖² = Σ_j (g_j(f(q))−g_j(f′(q)))² is a sum of p nonnegative rank-one terms, so a nonnegative factorization with r ≤ p always exists; the discriminative rank is the minimal such r. This is also the principled reason squared Euclidean is our default δ (and why the theory uses squared rather than metric distances: the proof of Theorem 2 needs d_Q of negative type so MDS achieves zero stress at finite d, App. A.1). Other δ need not factor exactly, but the δ study above shows r̂ is unchanged and the recovered query sets are stable under Euclidean, cosine, L1, and RBF-MMD — the framework is robust to δ misspecification in practice. Computationally, the pipeline never needs the factorization itself, only the SVD of Ê (§3.2), which estimates its column space; the explicit r>1 procedure is given in our response to Reviewer ye1m's second question.
+For $\delta$ = squared Euclidean at temperature 0, the factorization exists *by construction*: $\lVert g(f(q)) - g(f'(q)) \rVert_2^2 = \sum_{j=1}^{p} (g_j(f(q)) - g_j(f'(q)))^2$ is a sum of $p$ nonnegative rank-one terms, so a nonnegative factorization with $r \leq p$ always exists; the discriminative rank is the minimal such $r$. This is also the principled reason squared Euclidean is our default $\delta$ (and why the theory uses squared rather than metric distances: the proof of Theorem 2 needs $d_Q$ of negative type so MDS achieves zero stress at finite $d$, App. A.1). Other $\delta$ need not factor exactly, but the $\delta$ study above shows $\hat{r}$ is unchanged and the recovered query sets are stable under Euclidean, cosine, L1, and RBF-MMD — the framework is robust to $\delta$ misspecification in practice. Computationally, the pipeline never needs the factorization itself, only the SVD of $\hat{E}$ (Section 3.2), which estimates its column space; the explicit $r>1$ procedure is given in our response to Reviewer ye1m's second question.
 
 > It would be useful to estimate [E] and its spectral decomposition... How much variance in the output can this framework handle before it loses confidence that the responses are generated from the same model?
 
-This is a good question with a quantitative answer. §3.2 already invokes Wedin's theorem [39] for subspace consistency; we will upgrade that remark to an explicit finite-sample statement. Writing Ê = E + N (noise from the finite model panel and, at temperature >0, response sampling), Wedin's theorem gives sinΘ(Û,U) ≤ ‖N‖/(σ_r − σ_{r+1} − ‖N‖): the estimated subspace, r̂ (spectral-gap criterion), and the GMM-based ρ̂ are stable exactly while the noise stays below the discriminative spectral gap, and the framework "loses confidence" when ‖N‖ approaches σ_r − σ_{r+1}. The singular-value ratios σ₁/σ₂ in our new robustness studies (3.7–13.4 across all tasks/embedders/metrics) show this gap is well separated in practice, and the invariance of r̂ across 4 embedders × 5 metrics (table above; embedder table in our response to Reviewer KojF) is direct evidence of stability.
+This is a good question with a quantitative answer. Section 3.2 already invokes Wedin's theorem [39] for subspace consistency; we will upgrade that remark to an explicit finite-sample statement. Writing $\hat{E} = E + N$ (noise from the finite model panel and, at temperature $>0$, response sampling), Wedin's theorem gives $\sin\Theta(\hat{U}, U) \leq \lVert N \rVert / (\sigma_r - \sigma_{r+1} - \lVert N \rVert)$: the estimated subspace, $\hat{r}$ (spectral-gap criterion), and the GMM-based $\hat{\rho}$ are stable exactly while the noise stays below the discriminative spectral gap, and the framework "loses confidence" when $\lVert N \rVert$ approaches $\sigma_r - \sigma_{r+1}$. The singular-value ratios $\sigma_1/\sigma_2$ in our new robustness studies (3.7–13.4 across all tasks/embedders/metrics) show this gap is well separated in practice, and the invariance of $\hat{r}$ across 4 embedders $\times$ 5 metrics (table above; embedder table in our response to Reviewer KojF) is direct evidence of stability.
 
 > [line 187] Suggestion: More of the paper could focus on this subsection since we have to rely on estimates for black-box models. This is where the rubber hits the road.
 
-We agree and will expand §3.2 in the revision with (i) the finite-sample Wedin statement above, (ii) the explicit r>1 recovery procedure (response to Reviewer ye1m's second question), and (iii) the temperature->0 estimation remark.
+We agree and will expand Section 3.2 in the revision with (i) the finite-sample Wedin statement above, (ii) the explicit $r>1$ recovery procedure (response to Reviewer ye1m's second question), and (iii) the temperature $>0$ estimation remark.
 
 # Response to Reviewer KojF
 
